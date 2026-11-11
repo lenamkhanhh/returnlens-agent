@@ -19,7 +19,7 @@ class TestVideoPipeline(unittest.TestCase):
         self.credits_path = self.video_dir / "CREDITS.md"
 
     def test_narration_srt_integrity(self):
-        """Verify narration.srt exists, has 23 blocks, and contains no raw unmeasured placeholders."""
+        """Verify narration.srt exists, has 25 blocks, and contains measured reliability facts."""
         self.assertTrue(self.srt_path.exists(), "narration.srt missing")
         content = self.srt_path.read_text(encoding="utf-8")
 
@@ -27,14 +27,14 @@ class TestVideoPipeline(unittest.TestCase):
         self.assertNotIn("[MEASURED:", content, "narration.srt still contains unresolved [MEASURED: ...] placeholder!")
 
         # Verify contains the measured pass^k result from reliability.json
-        self.assertIn("8 of 10 scenarios passed all five runs", content)
+        self.assertIn("9 of 10 scenarios pass 5 of 5", content)
 
         # Count subtitle blocks
         blocks = re.findall(r"^\d+\s*$", content, re.MULTILINE)
-        self.assertEqual(len(blocks), 23, "narration.srt should have exactly 23 timed subtitle blocks")
+        self.assertEqual(len(blocks), 25, "narration.srt should have exactly 25 timed subtitle blocks")
 
-        # Verify timing bounds (ends near 02:59)
-        self.assertIn("00:02:48,000 --> 00:02:59,500", content)
+        # Verify timing bounds (ends near 02:30)
+        self.assertIn("00:02:26,500 --> 00:02:30,000", content)
 
     def test_shotlist_covers_all_eight_scenes(self):
         """Verify SHOTLIST.md exists and covers scenes 01 through 08 per 18 §3 and 19 §1."""
@@ -70,7 +70,7 @@ class TestVideoPipeline(unittest.TestCase):
         self.assertIn("BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV", content)
 
         dialogues = [line for line in content.splitlines() if line.startswith("Dialogue:")]
-        self.assertEqual(len(dialogues), 23, "narration.ass must have exactly 23 dialogue cues")
+        self.assertEqual(len(dialogues), 25, "narration.ass must have exactly 25 dialogue cues")
 
         for d in dialogues:
             parts = d.split(",", 9)
@@ -82,15 +82,15 @@ class TestVideoPipeline(unittest.TestCase):
                 self.assertLessEqual(len(l), 42, f"Line exceeds 42 characters ({len(l)} chars): '{l}'")
 
     def test_audio_assets_and_credits(self):
-        """Verify 23 MP3 clips exist, no WAV copies remain, music exists, and CREDITS.md is complete."""
+        """Verify 25 MP3 clips exist, no WAV copies remain, music exists, and CREDITS.md is complete."""
         self.assertTrue(self.clips_dir.exists(), "Clips directory missing")
         mp3_clips = list(self.clips_dir.glob("cue_*.mp3"))
         wav_clips = list(self.clips_dir.glob("cue_*.wav"))
-        self.assertEqual(len(mp3_clips), 23, "Expected exactly 23 cue MP3 files")
+        self.assertEqual(len(mp3_clips), 25, "Expected exactly 25 cue MP3 files")
         self.assertEqual(len(wav_clips), 0, "No raw WAV clips should remain committed in repo")
 
         total_mp3_size = sum(f.stat().st_size for f in mp3_clips)
-        self.assertLess(total_mp3_size, 1_000_000, "All 23 MP3 clips together should be under 1 MB")
+        self.assertLess(total_mp3_size, 1_000_000, "All 25 MP3 clips together should be under 1 MB")
 
         music_file = self.audio_dir / "gymnopedie_no1.ogg"
         self.assertTrue(music_file.exists(), "Background music gymnopedie_no1.ogg missing")
@@ -98,6 +98,7 @@ class TestVideoPipeline(unittest.TestCase):
         self.assertTrue(self.credits_path.exists(), "CREDITS.md missing")
         credits_text = self.credits_path.read_text(encoding="utf-8")
         self.assertIn("synthetic", credits_text.lower())
+        self.assertIn("andrew", credits_text.lower())
         self.assertIn("gymnopédie", credits_text.lower())
         self.assertIn("public domain", credits_text.lower())
 

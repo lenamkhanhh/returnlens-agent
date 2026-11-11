@@ -1,109 +1,124 @@
 1
-00:00:00,500 --> 00:00:05,800
-This seller wants an AI agent
-to refund damaged items on its own.
+00:00:00,800 --> 00:00:04,500
+Can an AI agent refund on its own?
+Sounds risky, right?
 
 2
-00:00:06,000 --> 00:00:13,200
-ReturnLens says not yet: damage refunds
-have not passed 5 of 5 test runs.
+00:00:05,000 --> 00:00:10,000
+ReturnLens says not yet.
+Damage stays locked on live stores.
 
 3
-00:00:13,600 --> 00:00:18,200
-The agent drafts the refund
-and shows why it stopped.
+00:00:10,500 --> 00:00:16,000
+The courier confirms the return parcel.
+Does the agent refund immediately?
 
 4
-00:00:18,600 --> 00:00:24,800
-Every step of the gate is checked
-in code and logged.
+00:00:16,500 --> 00:00:22,000
+Never. It drafts a refund proposal,
+and waits for seller review.
 
 5
-00:00:25,200 --> 00:00:30,200
-Meet ReturnLens, the support agent
-that earns its autonomy.
+00:00:22,500 --> 00:00:28,500
+Why? Damage requires 5 of 5 runs.
+The seller approves it safely.
 
 6
-00:00:30,600 --> 00:00:39,800
-Indian sellers spend all day answering
-orders, returns, and courier panels.
+00:00:30,200 --> 00:00:35,500
+Meet the multi-case inbox:
+order facts, seen evidence, unverified.
 
 7
-00:00:40,200 --> 00:00:44,500
-A customer asks where her order is.
+00:00:35,800 --> 00:00:41,000
+An immutable audit drawer
+tracks every single event in code.
 
 8
-00:00:44,800 --> 00:00:51,500
-The agent calls store and courier tools
-and answers from live data.
+00:00:42,200 --> 00:00:47,500
+A customer asks where her order is.
+The agent checks live Delhivery data.
 
 9
-00:00:52,000 --> 00:01:04,500
-On failed delivery for a COD order,
-the agent re-routes to a new address.
+00:00:48,000 --> 00:00:54,000
+Immediate tracking status and ETA,
+answered without human delay.
 
 10
-00:01:05,000 --> 00:01:09,200
-Now a harder case: a voice note
-and an unboxing video.
+00:00:54,500 --> 00:01:02,000
+Delivery failed for Sneha Patil.
+The agent reaches out right away.
 
 11
-00:01:09,600 --> 00:01:17,800
-Order says white headphones.
-At 00:05 the video shows black ones.
+00:01:02,500 --> 00:01:08,200
+She texts an address change in Hinglish:
+Flat 14B, tomorrow at 6 PM.
 
 12
-00:01:18,200 --> 00:01:25,500
-No fraud accusation, no guessing.
-It marks the barcode as unverified.
+00:01:08,600 --> 00:01:13,200
+Parsed into a reattempt proposal,
+scheduled with a single click.
 
 13
-00:01:26,000 --> 00:01:35,500
-It asks once for a photo of the box label,
-and drafts the reply.
+00:01:14,300 --> 00:01:19,500
+Now, multimodal evidence:
+an unboxing clip and English voice note.
 
 14
-00:01:36,000 --> 00:01:49,500
-The seller sees every source and decides.
+00:01:20,000 --> 00:01:27,000
+The catalog says white headphones.
+At 00:10, vision spots black!
 
 15
-00:01:50,000 --> 00:01:59,800
-When the buyer returns later,
-the agent remembers case and context...
+00:01:27,500 --> 00:01:33,000
+No guessing, no false claims.
+The box barcode remains unverified.
 
 16
-00:02:00,200 --> 00:02:09,500
-...so it never asks twice.
+00:01:33,300 --> 00:01:37,400
+Zero rogue proposals created:
+transferred directly to human review.
 
 17
-00:02:10,000 --> 00:02:16,000
-Autonomy is not a setting we hand out.
+00:01:38,400 --> 00:01:45,000
+A dark video shows no visible damage.
+The agent asks once for a clear photo.
 
 18
-00:02:16,400 --> 00:02:24,000
-Each case runs 5 times in a harness
-checking data, procedure, and messages.
+00:01:45,500 --> 00:01:51,500
+The customer leaves and returns later...
+the entire chat and context restore.
 
 19
-00:02:24,400 --> 00:02:29,200
-8 of 10 scenarios passed all five runs.
+00:01:52,000 --> 00:01:57,200
+It remembers preferred language Hinglish,
+so it never asks twice.
 
 20
-00:02:29,600 --> 00:02:34,800
-Under 5 of 5 stays locked.
-One click takes it back.
+00:01:58,200 --> 00:02:03,500
+How does an agent earn autonomy?
+By passing 5 of 5 runs in the harness.
 
 21
-00:02:35,200 --> 00:02:39,500
-Models observe.
-Store tools act.
+00:02:04,000 --> 00:02:09,500
+9 of 10 scenarios pass 5 of 5.
+Mismatch sits at 4 of 5... locked.
 
 22
-00:02:39,800 --> 00:02:47,500
-Code enforces the money limits.
-Every tool call and block is logged.
+00:02:10,000 --> 00:02:13,600
+Nervous? One click on the kill switch
+takes back total control.
 
 23
-00:02:48,000 --> 00:02:59,500
+00:02:14,600 --> 00:02:19,500
+Try to break it in the sandbox:
+prompt injection neutralized.
+
+24
+00:02:20,000 --> 00:02:25,600
+Over-refunds and velocity attacks:
+hard-blocked by code invariants!
+
+25
+00:02:26,500 --> 00:02:30,000
 ReturnLens.
-Every return decision, backed by evidence.
+Every decision, backed by evidence.
