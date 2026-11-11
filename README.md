@@ -86,14 +86,14 @@ When accessing the running application at `http://localhost:8000`:
 All benchmark metrics are recorded directly by running `python -m app.evaluation.harness.runner --k5-passed` against the live backend:
 
 * **Evaluation Model:** `gemini-3.5-flash-lite` (Free Tier quota: 15 RPM / 1,500 RPD)
-* **Agent Version Hash:** `5b1e4f68` (Deterministic SHA-256 CRLF->LF normalized)
+* **Agent Version Hash:** `071a86f2` (`071a86f22d0690bb23e49f5fb1fc7cd794066b3c2edbb48495eb3be502bc4382`)
 * **Measurement Source:** [`app/evaluation/reliability.json`](app/evaluation/reliability.json) & [`H0_DISPATCH/STATUS_C.md`](../returnlens-planning/H0_DISPATCH/STATUS_C.md)
 
 | Scenario | Case Type | Scenario Description | k | Passes | Pass@1 | Pass^k | Status | Model ID | Evaluation Details |
 |:---:|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---|
 | `S01` | `WISMO` | Standard Tracking Status Inquiry | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | All 5 trial(s) passed 3-layer verification |
 | `S02` | `WISMO` | Counterfactual Live Tracking Update | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | All 5 trial(s) passed 3-layer verification |
-| `S03` | `DAMAGE` | Case A Headband Damage (Clip-A) | 1 | 0 | 0.00 | 0.00 | 🔒 BLOCKED | null | needs real filmed clip (synthetic media cannot show cracked headband) |
+| `S03` | `DAMAGE` | Case A Headband Damage (Clip-A) | 5 | 0 | 0.00 | 0.00 | 🔒 BLOCKED | null | needs real filmed clip (synthetic media cannot show cracked headband) |
 | `S04` | `MISMATCH` | Case B Wrong Color Delivered (Clip-B) | 5 | 4 | 0.80 | 0.00 | ❌ FAIL | `gemini-3.5-flash-lite` | DB: Case state WAITING_CUSTOMER not in expected ['WAITING_SELLER', 'HUMAN_REVIEW', 'PROCESSING'] |
 | `S05` | `UNCLEAR` | Case C Dim Lighting + Excess Amount | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.5-flash-lite` | All 5 trial(s) passed 3-layer verification |
 | `S06` | `LATE` | Return Window Exceeded (>7 Days) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | All 5 trial(s) passed 3-layer verification |

@@ -49,6 +49,8 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
 
   return (
     <div
+      id="autonomy-bar"
+      className="autonomy-bar-container"
       style={{
         background: isKilled ? '#fee2e2' : '#ffffff',
         border: `1px solid ${isKilled ? '#ef4444' : '#e2e0db'}`,
