@@ -1,11 +1,12 @@
 """S03 — Case A, Damage (CaseType: DAMAGE).
 
-Per 18 §2:
-- Setup: CUS-03, ORD-1042 HEAD-WHT-01 ₹1.299, delivered -4 days.
-- Steps: customer sends "The headband cracked" + CLIP-A -> (harness-seller) approve PROPOSE_RETURN ->
-  operator RETURN_RECEIVED -> (harness-seller) approve PROPOSE_REFUND ₹1.299.
+Per 18 §2 & Wave 13:
+- Setup: CUS-06, ORD-1043 HEAD-BLK-01 ₹1,299, delivered -4 days.
+- Steps: customer sends "The headband cracked during normal use." + real CC damage photo ->
+  (harness-seller) approve PROPOSE_RETURN -> operator RETURN_RECEIVED ->
+  (harness-seller) approve PROPOSE_REFUND ₹1,299 -> replay idempotent refund decision.
 - DB: 1 return status received; 1 refund 129900 paise processed; order refunded_minor = 129900; case RESOLVED.
-- Process: observation damage visible with t in 00:00-00:20; P_WINDOW PASS; refund only after RETURN_RECEIVED;
+- Process: observation damage visible; P_WINDOW PASS; refund only after RETURN_RECEIVED;
   replay decision with same Idempotency-Key does not create second refund.
 - Message: confirmation has return label ID; refund confirmation ₹1,299 only after processed.
 """
@@ -45,38 +46,25 @@ class Scenario03DamageCaseA(BaseScenario):
         assert env.client is not None
         assert env.repo is not None
 
-        clip_a_path = Path("app/demo/media/synthetic_damaged_item.webm")
-        if not clip_a_path.exists():
+        photo_path = Path("app/demo/media/stock/flickr_broken_headphones_gabrielsaldana_4728001748.jpg")
+        if not photo_path.exists():
             return TrialResult(
                 scenario_id=self.scenario_id,
                 trial_no=trial_no,
                 passed=False,
                 status="BLOCKED",
-                reason=f"Media file {clip_a_path} not found",
+                reason=f"Media file {photo_path} not found",
                 duration_ms=(time.perf_counter() - start_time) * 1000,
             )
 
-        # Cause 1 (media-limited per WAVE5_DIAGNOSE.md):
-        # synthetic_damaged_item.webm is a solid-color synthetic clip.
-        # A vision model cannot see a cracked headband in it; real filmed clip is required.
-        if "synthetic" in clip_a_path.name.lower():
-            return TrialResult(
-                scenario_id=self.scenario_id,
-                trial_no=trial_no,
-                passed=False,
-                status="BLOCKED",
-                reason="needs real filmed clip (synthetic media cannot show cracked headband)",
-                duration_ms=(time.perf_counter() - start_time) * 1000,
-            )
-
-        # 1. Customer initiates damage claim with CLIP-A (18 §2 line 36)
+        # 1. Customer initiates damage claim with real CC photo (Wave 13 / 18 §2)
         res = await env.client.post(
             "/api/cases",
             json={
-                "order_id": "ORD-1042",
+                "order_id": "ORD-1043",
                 "initial_message": "The headband cracked during normal use.",
             },
-            headers={"X-Customer-Id": "CUS-03"},
+            headers={"X-Customer-Id": "CUS-06"},
         )
         if res.status_code != 202:
             return TrialResult(
@@ -90,12 +78,12 @@ class Scenario03DamageCaseA(BaseScenario):
 
         case_id = res.json()["case_id"]
 
-        # Upload CLIP-A evidence per 18 §2 line 36
-        with open(clip_a_path, "rb") as f:
+        # Upload real broken-headphones JPEG photo
+        with open(photo_path, "rb") as f:
             res_evi = await env.client.post(
                 f"/api/cases/{case_id}/evidence",
-                files={"file": (clip_a_path.name, f, "video/webm")},
-                headers={"X-Customer-Id": "CUS-03"},
+                files={"file": (photo_path.name, f, "image/jpeg")},
+                headers={"X-Customer-Id": "CUS-06"},
             )
         if res_evi.status_code != 201:
             return TrialResult(
@@ -114,12 +102,14 @@ class Scenario03DamageCaseA(BaseScenario):
             None,
         )
         if not return_prop:
+            cur_case = env.repo.get_case(case_id)
+            detail = f" (state={cur_case.state.value}, summary={cur_case.summary})" if cur_case else ""
             return TrialResult(
                 scenario_id=self.scenario_id,
                 trial_no=trial_no,
                 passed=False,
                 status="FAIL",
-                reason="Return proposal not created by agent",
+                reason=f"Return proposal not created by agent{detail}",
                 duration_ms=(time.perf_counter() - start_time) * 1000,
             )
 
@@ -138,11 +128,18 @@ class Scenario03DamageCaseA(BaseScenario):
                 duration_ms=(time.perf_counter() - start_time) * 1000,
             )
 
+        with env.repo.db.cursor() as cur:
+            cur.execute("SELECT label_id FROM returns WHERE order_id = ?", ("ORD-1043",))
+            ret_row = cur.fetchone()
+            cur.execute("SELECT count(*) AS cnt FROM refunds WHERE order_id = ?", ("ORD-1043",))
+            pre_refund_cnt = cur.fetchone()["cnt"]
+        label_id = ret_row["label_id"] if ret_row else ""
+
         # 3. Operator fires RETURN_RECEIVED courier event (18 §2)
         res_courier = await env.client.post(
             "/api/operator/courier-events",
             json={
-                "shipment_id": "SHP-1042",
+                "shipment_id": "SHP-1043",
                 "type": "RETURN_RECEIVED",
             },
         )
@@ -213,19 +210,81 @@ class Scenario03DamageCaseA(BaseScenario):
             case_id=case_id,
             max_clarifications=1,
             check_no_premature_write=True,
-            expected_event_types=["action_executed"],
+            expected_event_types=["policy_checked", "courier_event_received", "return_created", "refund_posted"],
             require_model_observation=True,
         )
 
         # 8. Layer 3: Message assertion
+        required_subs = ["1,299"]
+        if label_id:
+            required_subs.append(label_id)
         msg_res = verify_message_layer(
             env=env,
             case_id=case_id,
-            required_substrings=["1,299"],
+            required_substrings=required_subs,
             forbidden_substrings=["fraud", "scam"],
+            include_seller_messages=True,
         )
 
-        passed = db_res.passed and process_res.passed and msg_res.passed
+        extra_failures = []
+        if pre_refund_cnt != 0:
+            extra_failures.append(f"Refund existed before RETURN_RECEIVED (count={pre_refund_cnt})")
+        if not label_id:
+            extra_failures.append("Return label_id missing after return approval")
+        if res_replay.status_code != 200 or res_replay.json().get("action_id") != res_ref.json().get("action_id"):
+            extra_failures.append(
+                f"Idempotent replay returned unexpected payload: {res_replay.status_code} {res_replay.text} (expected action_id {res_ref.json().get('action_id')})"
+            )
+
+        updated_order = env.repo.get_order("ORD-1043")
+        if not updated_order or updated_order.refunded_minor != 129900:
+            extra_failures.append(
+                f"Expected ORD-1043 refunded_minor=129900, got {updated_order.refunded_minor if updated_order else None}"
+            )
+
+        with env.repo.db.cursor() as cur:
+            cur.execute(
+                "SELECT attribute, value, visibility FROM observations WHERE case_id = ?",
+                (case_id,),
+            )
+            obs_rows = cur.fetchall()
+            cur.execute(
+                "SELECT event_type FROM audit_events WHERE case_id = ? ORDER BY seq ASC",
+                (case_id,),
+            )
+            ordered_events = [r["event_type"] for r in cur.fetchall()]
+
+        audit_events = env.repo.list_case_audit_events(case_id)
+        p_window_pass = any(
+            e.event_type == "policy_checked"
+            and (
+                (
+                    isinstance(e.safe_payload, dict)
+                    and e.safe_payload.get("rule_id") == "P_WINDOW"
+                    and str(e.safe_payload.get("result", "")).upper() == "PASS"
+                )
+                or "p_window pass" in (e.outcome or "").lower()
+            )
+            for e in audit_events
+        )
+
+        no_damage_vals = {"none", "none observed", "no damage", "no visible damage", "not visible", ""}
+        if not any(
+            str(r["attribute"]).lower() == "damage"
+            and str(r["visibility"]).lower() == "visible"
+            and str(r["value"] or "").strip().lower() not in no_damage_vals
+            for r in obs_rows
+        ):
+            extra_failures.append("Expected at least one visible concrete damage observation in DB")
+
+        if not p_window_pass:
+            extra_failures.append("Expected P_WINDOW PASS in policy audit trace")
+
+        if "courier_event_received" in ordered_events and "refund_posted" in ordered_events:
+            if ordered_events.index("refund_posted") <= ordered_events.index("courier_event_received"):
+                extra_failures.append("refund_posted occurred before courier_event_received")
+
+        passed = db_res.passed and process_res.passed and msg_res.passed and not extra_failures
         duration_ms = (time.perf_counter() - start_time) * 1000
 
         reasons = []
@@ -235,6 +294,7 @@ class Scenario03DamageCaseA(BaseScenario):
             reasons.append(f"Process: {process_res.reason}")
         if not msg_res.passed:
             reasons.append(f"Message: {msg_res.reason}")
+        reasons.extend(extra_failures)
 
         return TrialResult(
             scenario_id=self.scenario_id,

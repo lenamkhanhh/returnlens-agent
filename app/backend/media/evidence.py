@@ -311,6 +311,9 @@ def evaluate_color_match(
     if observed_color is None or observed_color == ColorClass.UNKNOWN:
         return "UNCLEAR", "observed_color_unknown"
 
+    if observed_color == ColorClass.OTHER:
+        return "UNCLEAR", "observed_color_other"
+
     if catalog_color == ColorClass.UNKNOWN:
         return "UNCLEAR", "catalog_color_unknown"
 

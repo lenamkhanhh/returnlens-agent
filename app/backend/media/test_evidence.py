@@ -459,6 +459,24 @@ class TestEvidenceSlice(unittest.TestCase):
         self.assertNotIn("exact_model", output.unknowns)
         self.assertNotIn("shipping_label", output.unknowns)
 
+    def test_color_match_other_vs_black_is_unclear_and_definite_mismatch_preserved(self):
+        """Wave 13: ColorClass.OTHER returns UNCLEAR (observed_color_other); definite mismatches stay MISMATCH."""
+        status_other, reason_other = evaluate_color_match(
+            observed_color=ColorClass.OTHER,
+            catalog_color=ColorClass.BLACK,
+            visibility=Visibility.VISIBLE,
+        )
+        self.assertEqual(status_other, "UNCLEAR")
+        self.assertEqual(reason_other, "observed_color_other")
+
+        status_mismatch, reason_mismatch = evaluate_color_match(
+            observed_color=ColorClass.BLACK,
+            catalog_color=ColorClass.WHITE,
+            visibility=Visibility.VISIBLE,
+        )
+        self.assertEqual(status_mismatch, "MISMATCH")
+        self.assertEqual(reason_mismatch, "observed_black_catalog_white")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 """Domain Seed Fixtures per 14 §5 and 17 §8.
 
-Populates store Dhun Audio, 5 customers, 4 products, 7 orders with shipments
+Populates store Dhun Audio, 6 customers, 5 products, 8 orders with shipments
 relative to DEMO_TODAY, default autonomy policy, and supports clean multi-run reset.
 """
 
@@ -44,6 +44,7 @@ def seed_database(db: Database, demo_today_str: Optional[str] = None) -> date:
             ("CUS-03", STORE_ID, "Kavya Iyer", "+91 90000 00003", "en", "original", 0, now_iso),
             ("CUS-04", STORE_ID, "Rohan Das", "+91 90000 00004", "hinglish", "original", 0, now_iso),
             ("CUS-05", STORE_ID, "Sneha Patil", "+91 90000 00005", "hinglish", "original", 0, now_iso),
+            ("CUS-06", STORE_ID, "Neha Kapoor", "+91 90000 00006", "en", "original", 0, now_iso),
         ]
         conn.executemany(
             """
@@ -59,6 +60,7 @@ def seed_database(db: Database, demo_today_str: Optional[str] = None) -> date:
             ("HEAD-WHT-02", STORE_ID, "Dhun Wave Headphones", "white", 149900),
             ("HEAD-BLK-02", STORE_ID, "Dhun Wave Headphones", "black", 149900),
             ("HEAD-WHT-01", STORE_ID, "Dhun Lite Headphones", "white", 129900),
+            ("HEAD-BLK-01", STORE_ID, "Dhun Lite Headphones", "black", 129900),
             ("BUDS-GRY-01", STORE_ID, "Dhun Buds", "grey", 99900),
         ]
         conn.executemany(
@@ -120,6 +122,12 @@ def seed_database(db: Database, demo_today_str: Optional[str] = None) -> date:
                 "item_4401", "BUDS-GRY-01", "grey", "Dhun Buds", 1, 99900, "Prepaid",
                 "SHP-4401", "DELIVERED", (demo_today - timedelta(days=2)).isoformat(), (demo_today - timedelta(days=2)).isoformat(), 1,
                 (demo_today - timedelta(days=2)).isoformat(), "Flat 12B, Test Residency, Chennai 600020", "600020", 1, None,
+            ),
+            (
+                "ORD-1043", STORE_ID, "CUS-06", "INR", 129900, 0, 0, 1,
+                "item_1043", "HEAD-BLK-01", "black", "Dhun Lite Headphones", 1, 129900, "Prepaid",
+                "SHP-1043", "DELIVERED", (demo_today - timedelta(days=4)).isoformat(), (demo_today - timedelta(days=4)).isoformat(), 1,
+                (demo_today - timedelta(days=4)).isoformat(), "14 MG Road, Bengaluru 560001", "560001", 1, None,
             ),
         ]
 

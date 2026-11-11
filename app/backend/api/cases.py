@@ -111,7 +111,7 @@ async def get_case_snapshot(
 
     visible_messages = [
         m.model_dump() for m in messages
-        if m.role in (ActorRole.CUSTOMER, ActorRole.AGENT)
+        if m.role in (ActorRole.CUSTOMER, ActorRole.AGENT, ActorRole.SELLER)
     ]
 
     with repo.db.cursor() as cur:
@@ -450,7 +450,7 @@ async def get_case_messages(
     messages = repo.get_case_messages(case_id)
     visible_messages = [
         m.model_dump() for m in messages
-        if m.role in (ActorRole.CUSTOMER, ActorRole.AGENT)
+        if m.role in (ActorRole.CUSTOMER, ActorRole.AGENT, ActorRole.SELLER)
     ]
     return visible_messages
 

@@ -72,10 +72,24 @@
       "language": "en",
       "transcript": "I want a full refund of eighteen hundred rupees for order ORD-5150.",
       "use_for": ["test 47 spoken amount vs ledger"]
+    },
+    {
+      "file": "flickr_broken_headphones_gabrielsaldana_4728001748.jpg",
+      "kind": "image",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.flickr.com/photos/gabrielsaldana/4728001748/",
+      "creator": "gabrielsaldana",
+      "license": "CC BY-SA 2.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/2.0/",
+      "edits": "unmodified",
+      "use_for": ["S03", "Case A"],
+      "ground_truth": "Close-up photo of black and silver over-ear headphones (Sony MDR-NC6) with white translucent tape holding a cracked headband together.",
+      "expected_unknowns": ["barcode", "exact_model"]
     }
   ],
   "missing": [
-    "Case A damage clip (cracked white headband): no free stock clip found; needs filming or stays on a synthetic dev fixture",
+    "Case A video clip (cracked white headband): no free stock video clip found; S03 uses unmodified CC photo flickr_broken_headphones_gabrielsaldana_4728001748.jpg on ORD-1043",
     "Hindi voice note: no free offline Hindi voice on this machine; needs a human speaker"
   ]
 }

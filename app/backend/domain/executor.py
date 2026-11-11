@@ -301,7 +301,7 @@ class ActionExecutor:
                     summary=f"Refund {refund_id} for ₹{amount_minor/100:.2f} processed. Case resolved.",
                 )
 
-                customer_reply = f"Your refund of ₹{amount_minor/100:.2f} for order {order_id} has been processed."
+                customer_reply = f"Your refund of ₹{amount_minor/100:,.2f} for order {order_id} has been processed."
                 outbound_msg_id = f"MSG-{proposal.case_id}-{uuid.uuid4().hex[:6]}"
                 self.repo.add_message(
                     message_id=outbound_msg_id,

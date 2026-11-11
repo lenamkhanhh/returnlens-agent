@@ -266,6 +266,7 @@ def verify_message_layer(
     required_substrings: Optional[List[str]] = None,
     forbidden_substrings: Optional[List[str]] = None,
     require_agent_reply: bool = True,
+    include_seller_messages: bool = False,
 ) -> LayerResult:
     """Evaluate Layer 3: Customer-facing message correctness and facts."""
     assert env.repo is not None
@@ -273,7 +274,8 @@ def verify_message_layer(
     details: Dict[str, Any] = {}
 
     messages = env.repo.get_case_messages(case_id)
-    agent_messages = [m for m in messages if m.role == ActorRole.AGENT]
+    allowed_roles = (ActorRole.AGENT, ActorRole.SELLER) if include_seller_messages else (ActorRole.AGENT,)
+    agent_messages = [m for m in messages if m.role in allowed_roles]
     details["agent_messages_count"] = len(agent_messages)
 
     if require_agent_reply and not agent_messages:

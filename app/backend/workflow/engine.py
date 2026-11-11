@@ -37,6 +37,7 @@ from app.backend.contracts import (
 from app.backend.domain.executor import compute_payload_hash
 from app.backend.domain.policy import check_return_window
 from app.backend.media.evidence import (
+    detect_mime_type,
     evaluate_color_match,
     validate_observations_grounding,
 )
@@ -52,6 +53,21 @@ from app.backend.model.observer import VisionObserverRunner
 from app.backend.model.transcriber import AudioTranscriberRunner
 from app.backend.persistence.repository import Repository
 from app.backend.workflow.router import Router
+
+
+_NO_DAMAGE_VALUES = ("none", "none observed", "no damage", "no visible damage", "not visible", "")
+
+
+def _has_visible_damage(obs_output: Any) -> bool:
+    """Return True only when observations include concrete, visible damage."""
+    if not obs_output:
+        return False
+    return any(
+        getattr(o.attribute, "value", o.attribute) in (ObservationAttribute.DAMAGE.value, "damage")
+        and str(o.value or "").strip().lower() not in _NO_DAMAGE_VALUES
+        and getattr(o.visibility, "value", o.visibility) in (Visibility.VISIBLE.value, "visible")
+        for o in obs_output.observations
+    )
 
 
 class WorkflowEngine:
@@ -579,7 +595,7 @@ class WorkflowEngine:
                 if video_row:
                     v_bytes = _get_media_bytes(video_row)
                     sk = video_row["storage_key"]
-                    mime_type = "video/mp4" if sk.endswith(".mp4") else "video/webm" if sk.endswith(".webm") else "image/png"
+                    mime_type = detect_mime_type(v_bytes, sk)
                     v_contract = Evidence(
                         evidence_id=video_row["evidence_id"],
                         case_id=case_id,
@@ -642,11 +658,7 @@ class WorkflowEngine:
                                     now_iso,
                                 ),
                             )
-                    has_damage = any(
-                        (getattr(o.attribute, "value", o.attribute) in (ObservationAttribute.DAMAGE.value, "damage"))
-                        for o in obs_output.observations
-                    )
-                    if has_damage:
+                    if _has_visible_damage(obs_output):
                         self.repo.update_case_type(case_id, CaseType.DAMAGE)
 
                 # 2. Process Voice Note evidence
@@ -1079,14 +1091,7 @@ class WorkflowEngine:
         # which returned earlier). Do not propose a return on the claim text alone:
         # ask once for a close-up; a later reply is handed to the seller by 7.5.
         if obs_output is not None and case.clarification_count == 0:
-            no_damage_words = ("none", "none observed", "no damage", "no visible damage", "not visible", "")
-            damage_seen = any(
-                o.attribute in (ObservationAttribute.DAMAGE, "damage")
-                and str(o.value).strip().lower() not in no_damage_words
-                and o.visibility in (Visibility.VISIBLE, "visible")
-                for o in obs_output.observations
-            )
-            if not damage_seen:
+            if not _has_visible_damage(obs_output):
                 self.repo.update_case_state(
                     case_id=case_id,
                     state=CaseState.WAITING_CUSTOMER,
