@@ -408,10 +408,38 @@ class WorkflowEngine:
             evidence_rows = cur.fetchall()
 
         # Test 07: Return or damage claim without video/photo evidence
-        if not evidence_rows and (
-            any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch"])
+        if not evidence_rows and case.clarification_count == 0 and not amount_blocked and (
+            any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch", "acting up", "issue", "problem", "faulty", "dark", "blur", "blurry", "video", "footage", "voice"])
             or ("white" in text.lower() and "black" in text.lower())
         ):
+            # If voice note claim (18 §2 S08)
+            if any(w in text.lower() for w in ["voice", "[voice note"]):
+                self.repo.update_case_state(
+                    case_id=case_id,
+                    state=CaseState.WAITING_CUSTOMER,
+                    summary="Clarification requested: outer box label photo for voice note claim",
+                    increment_clarification=True,
+                )
+                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                reply = f"To help us process your request for order {case.order_id}, please provide a clear photo of the outer box label showing the barcode and model number."
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=case_id,
+                    actor_id="agent:returnlens",
+                    role=ActorRole.AGENT,
+                    text=reply,
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="agent:returnlens",
+                    event_type="clarification_sent",
+                    outcome="Asked customer for box label photo (1 of 1)",
+                    case_id=case_id,
+                    refs=[f"msg:{outbound_msg_id}"],
+                )
+                self._mark_job_completed(job_id, now_iso)
+                return True
+
             # If color mismatch (18 §2 S04)
             catalog_color = str(order_info.get("catalog_color", "")).lower()
             if "black" in text.lower() and (catalog_color == "white" or "white" in text.lower()):
@@ -445,6 +473,7 @@ class WorkflowEngine:
                 case_id=case_id,
                 state=CaseState.WAITING_CUSTOMER,
                 summary="Evidence requested: please share photo or unboxing video of item",
+                increment_clarification=True if any(w in text.lower() for w in ["dark", "blur", "blurry", "acting up"]) else False,
             )
             outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
             reply = f"To help us process your return request for order {case.order_id}, please provide a clear photo or unboxing video of the item."
@@ -578,6 +607,14 @@ class WorkflowEngine:
                     outcome="Handed to seller with summary",
                     case_id=case_id,
                     safe_payload={"handoff_summary": handoff_summary},
+                )
+                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=case_id,
+                    actor_id="agent:returnlens",
+                    role=ActorRole.AGENT,
+                    text="Your case has been forwarded to our seller support team for manual review.",
                 )
                 self._mark_job_completed(job_id, now_iso)
                 return True
