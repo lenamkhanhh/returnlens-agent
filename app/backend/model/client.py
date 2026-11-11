@@ -36,6 +36,27 @@ except Exception:
     SDK_VERSION = "3.1.0"
 
 
+def clean_json_schema(schema: Any) -> Any:
+    """Clean JSON schema recursively for Gemini API compatibility.
+
+    Strips 'additionalProperties' and 'title' which are rejected by the
+    Gemini Developer API (only supported in Enterprise Agent Platform mode).
+    """
+    if not isinstance(schema, dict):
+        return schema
+    cleaned: Dict[str, Any] = {}
+    for k, v in schema.items():
+        if k in ("additionalProperties", "title"):
+            continue
+        if isinstance(v, dict):
+            cleaned[k] = clean_json_schema(v)
+        elif isinstance(v, list):
+            cleaned[k] = [clean_json_schema(elem) for elem in v]
+        else:
+            cleaned[k] = v
+    return cleaned
+
+
 class GeminiModelAdapter:
     """Production adapter for Google GenAI with strict safety and governance gates."""
 
@@ -181,7 +202,12 @@ class GeminiModelAdapter:
 
         if response_schema is not None:
             config_kwargs["response_mime_type"] = "application/json"
-            config_kwargs["response_schema"] = response_schema
+            if hasattr(response_schema, "model_json_schema"):
+                config_kwargs["response_schema"] = clean_json_schema(response_schema.model_json_schema())
+            elif isinstance(response_schema, dict):
+                config_kwargs["response_schema"] = clean_json_schema(response_schema)
+            else:
+                config_kwargs["response_schema"] = response_schema
 
         if resolved_thinking is not None:
             config_kwargs["thinking_config"] = types.ThinkingConfig(
@@ -219,6 +245,14 @@ class GeminiModelAdapter:
             except Exception as exc:
                 last_exc = exc
                 err_str = str(exc).lower()
+
+                # Fall back gracefully if model does not support ThinkingLevel.MINIMAL (e.g. gemini-3.8-flash)
+                if "thinking level minimal is not supported" in err_str:
+                    if config and hasattr(config, "thinking_config"):
+                        config.thinking_config = types.ThinkingConfig(
+                            thinking_level=types.ThinkingLevel.LOW
+                        )
+                        continue
                 is_retryable = (
                     isinstance(exc, (TimeoutError, ConnectionError))
                     or "429" in err_str

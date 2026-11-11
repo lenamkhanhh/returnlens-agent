@@ -18,6 +18,9 @@ import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -33,6 +36,7 @@ from app.backend.contracts import (
     TranscriberOutput,
     Visibility,
 )
+from app.backend.model.client import clean_json_schema
 
 
 def get_model_ids() -> tuple[str, str, str]:
@@ -56,8 +60,8 @@ def probe_1_structured_output(client: Any, model_id: str) -> dict:
     start = time.perf_counter()
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_schema=RouterOutput,
-        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL),
+        response_schema=clean_json_schema(RouterOutput.model_json_schema()),
+        thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
     )
     response = client.models.generate_content(
         model=model_id,
@@ -147,7 +151,7 @@ def probe_3_native_video(client: Any, model_id: str, video_path: Path) -> dict:
     start = time.perf_counter()
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_schema=ObserverOutput,
+        response_schema=clean_json_schema(ObserverOutput.model_json_schema()),
         media_resolution=types.MediaResolution.MEDIA_RESOLUTION_LOW,
         thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
     )
@@ -193,7 +197,7 @@ def probe_4_audio_voice_note(client: Any, model_id: str, audio_path: Path) -> di
     start = time.perf_counter()
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
-        response_schema=TranscriberOutput,
+        response_schema=clean_json_schema(TranscriberOutput.model_json_schema()),
         thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
     )
 
@@ -218,19 +222,19 @@ def probe_4_audio_voice_note(client: Any, model_id: str, audio_path: Path) -> di
 def probe_5_latency_comparison(
     client: Any, model_id: str, sample_text: str = "Order ORD-7729 status check"
 ) -> dict:
-    """Probe 5: Benchmark latency across thinking_level and media_resolution."""
+    """Probe 5: Benchmark latency across thinking configurations."""
     from google.genai import types
 
     benchmarks = {}
-    for level, level_enum in [
-        ("minimal", types.ThinkingLevel.MINIMAL),
-        ("low", types.ThinkingLevel.LOW),
+    for level, t_cfg in [
+        ("thinking_low", types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW)),
+        ("thinking_budget_0", types.ThinkingConfig(thinking_budget=0)),
     ]:
         start = time.perf_counter()
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=RouterOutput,
-            thinking_config=types.ThinkingConfig(thinking_level=level_enum),
+            response_schema=clean_json_schema(RouterOutput.model_json_schema()),
+            thinking_config=t_cfg,
         )
         res = client.models.generate_content(
             model=model_id,
@@ -238,7 +242,8 @@ def probe_5_latency_comparison(
             config=config,
         )
         elapsed = int((time.perf_counter() - start) * 1000)
-        benchmarks[f"thinking_{level}"] = {"latency_ms": elapsed}
+        benchmarks[level] = {"latency_ms": elapsed}
+        time.sleep(2)
 
     return {
         "status": "PASS",
@@ -297,44 +302,74 @@ def run_all_probes() -> dict[str, Any]:
     client = genai.Client(api_key=api_key)
     results: dict[str, Any] = {"status": "SUCCESS", "probes": {}}
 
+    def run_with_retry(fn, name, max_retries=2, delay=5):
+        for attempt in range(max_retries + 1):
+            try:
+                return fn()
+            except Exception as e:
+                err_str = str(e).lower()
+                if attempt < max_retries and ("503" in err_str or "429" in err_str or "unavailable" in err_str):
+                    print(f"   ... transient error ({e}), retrying in {delay}s ...")
+                    time.sleep(delay)
+                    continue
+                raise
+
     print("\nExecuting live probes against Google GenAI API...")
     try:
         print("1. Running Probe 1 (Structured Output)...")
-        results["probes"]["probe_1"] = probe_1_structured_output(client, primary_model)
+        results["probes"]["probe_1"] = run_with_retry(
+            lambda: probe_1_structured_output(client, primary_model), "probe_1"
+        )
         print(f"   ✓ Passed in {results['probes']['probe_1']['latency_ms']} ms")
     except Exception as e:
         print(f"   ✗ Probe 1 failed: {e}")
         results["probes"]["probe_1"] = {"status": "FAIL", "error": str(e)}
 
+    time.sleep(2)
+
     try:
         print("2. Running Probe 2 (Manual Function Calling)...")
-        results["probes"]["probe_2"] = probe_2_manual_function_calling(client, primary_model)
+        results["probes"]["probe_2"] = run_with_retry(
+            lambda: probe_2_manual_function_calling(client, primary_model), "probe_2"
+        )
         print(f"   ✓ Passed in {results['probes']['probe_2']['latency_ms']} ms")
     except Exception as e:
         print(f"   ✗ Probe 2 failed: {e}")
         results["probes"]["probe_2"] = {"status": "FAIL", "error": str(e)}
 
+    time.sleep(2)
+
     if video_fixture.exists():
         try:
             print("3. Running Probe 3 (Native Video Observation)...")
-            results["probes"]["probe_3"] = probe_3_native_video(client, primary_model, video_fixture)
+            results["probes"]["probe_3"] = run_with_retry(
+                lambda: probe_3_native_video(client, primary_model, video_fixture), "probe_3"
+            )
             print(f"   ✓ Passed in {results['probes']['probe_3']['latency_ms']} ms")
         except Exception as e:
             print(f"   ✗ Probe 3 failed: {e}")
             results["probes"]["probe_3"] = {"status": "FAIL", "error": str(e)}
 
+    time.sleep(2)
+
     if audio_fixture.exists():
         try:
             print("4. Running Probe 4 (Audio Voice Note Transcription)...")
-            results["probes"]["probe_4"] = probe_4_audio_voice_note(client, primary_model, audio_fixture)
+            results["probes"]["probe_4"] = run_with_retry(
+                lambda: probe_4_audio_voice_note(client, primary_model, audio_fixture), "probe_4"
+            )
             print(f"   ✓ Passed in {results['probes']['probe_4']['latency_ms']} ms")
         except Exception as e:
             print(f"   ✗ Probe 4 failed: {e}")
             results["probes"]["probe_4"] = {"status": "FAIL", "error": str(e)}
 
+    time.sleep(2)
+
     try:
         print("5. Running Probe 5 (Latency Comparison)...")
-        results["probes"]["probe_5"] = probe_5_latency_comparison(client, primary_model)
+        results["probes"]["probe_5"] = run_with_retry(
+            lambda: probe_5_latency_comparison(client, primary_model), "probe_5"
+        )
         print("   ✓ Passed")
     except Exception as e:
         print(f"   ✗ Probe 5 failed: {e}")
