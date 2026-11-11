@@ -12,9 +12,13 @@ import { ProposalsPanel } from './ProposalsPanel';
 import { TimelineDrawer } from './TimelineDrawer';
 
 export const SellerView: React.FC = () => {
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const paramCaseId = urlParams?.get('case_id') || null;
+  const paramModal = urlParams?.get('modal');
+
   const [inboxCases, setInboxCases] = useState<SellerCaseSummary[]>([]);
   const [inboxFilter, setInboxFilter] = useState('ALL');
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(paramCaseId);
   const [activeCase, setActiveCase] = useState<CaseDetail | null>(null);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
@@ -38,16 +42,27 @@ export const SellerView: React.FC = () => {
       setInboxCases(list);
       setAutonomyPolicy(policy);
       if (!selectedCaseId && list.length > 0) {
-        setSelectedCaseId(list[0].case_id);
+        const found = paramCaseId ? list.find(c => c.case_id === paramCaseId) : null;
+        setSelectedCaseId(found ? found.case_id : list[0].case_id);
       }
     } catch (err) {
       console.error('Failed to load seller inbox:', err);
     }
-  }, [selectedCaseId]);
+  }, [selectedCaseId, paramCaseId]);
 
   useEffect(() => {
     refreshInbox();
   }, [refreshInbox]);
+
+  // Open Why modal if requested in URL
+  useEffect(() => {
+    if (paramModal === 'why' && selectedCaseId) {
+      api.getAutonomyExplanation(selectedCaseId).then((expl) => {
+        setWhyExplanation(expl);
+        setIsWhyOpen(true);
+      });
+    }
+  }, [paramModal, selectedCaseId]);
 
   // 2. Fetch Active Case detail & events
   const refreshActiveCase = useCallback(async (caseId: string) => {

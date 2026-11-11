@@ -6,8 +6,12 @@ import { OperatorView } from './components/OperatorView/OperatorView';
 import { BreakItModal } from './components/BreakIt/BreakItModal';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('customer');
-  const [isBreakItOpen, setIsBreakItOpen] = useState(false);
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const initialTab = (urlParams?.get('tab') as ActiveTab) || 'customer';
+  const initialBreakIt = urlParams?.get('modal') === 'breakit';
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
+  const [isBreakItOpen, setIsBreakItOpen] = useState(initialBreakIt);
 
   return (
     <div>

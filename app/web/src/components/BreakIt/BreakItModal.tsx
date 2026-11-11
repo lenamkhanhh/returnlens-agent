@@ -7,7 +7,10 @@ interface BreakItModalProps {
 }
 
 export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) => {
-  const [selectedPreset, setSelectedPreset] = useState<string>('injection');
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const initialPreset = urlParams?.get('preset') || 'injection';
+
+  const [selectedPreset, setSelectedPreset] = useState<string>(initialPreset);
   const [customInput, setCustomInput] = useState('');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<{
@@ -17,6 +20,12 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
     reason: string;
     details: string;
   } | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen && !result && !running) {
+      handleRunPreset(selectedPreset);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
