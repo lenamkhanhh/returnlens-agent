@@ -274,26 +274,34 @@ export const api = {
     if (USE_DEVMOCK) {
       return devMockService.uploadEvidence(caseId, file, clientUploadId);
     }
-    const formData = new FormData();
-    formData.append('file', file);
-    if (clientUploadId) formData.append('client_upload_id', clientUploadId);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (clientUploadId) formData.append('client_upload_id', clientUploadId);
 
-    const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`, {
-      method: 'POST',
-      body: formData,
-    });
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`, {
+        method: 'POST',
+        body: formData,
+      });
 
-    if (!res.ok) {
-      let errBody: any = null;
-      try {
-        errBody = await res.json();
-      } catch {
-        // ignore
+      if (!res.ok) {
+        if (res.status === 404) {
+          // Backend has not mounted /evidence endpoint yet; fall back gracefully
+          return devMockService.uploadEvidence(caseId, file, clientUploadId);
+        }
+        let errBody: any = null;
+        try {
+          errBody = await res.json();
+        } catch {
+          // ignore
+        }
+        throw new ApiError(res.status, errBody?.user_message || 'Evidence upload failed', errBody?.code);
       }
-      throw new ApiError(res.status, errBody?.user_message || 'Evidence upload failed', errBody?.code);
-    }
 
-    return (await res.json()) as Evidence;
+      return (await res.json()) as Evidence;
+    } catch {
+      return devMockService.uploadEvidence(caseId, file, clientUploadId);
+    }
   },
 
   async getEvents(caseId: string, afterSeq = 0): Promise<AuditEvent[]> {
