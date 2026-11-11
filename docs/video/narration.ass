@@ -13,10 +13,10 @@ Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H80000000,&H80000000,0,0,0,0,100,
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 Dialogue: 0,0:00:00.80,0:00:04.50,Default,,0,0,0,,Can an AI agent refund on its own?\NSounds risky, right?
-Dialogue: 0,0:00:05.00,0:00:10.00,Default,,0,0,0,,ReturnLens says not yet.\NDamage stays locked on live stores.
+Dialogue: 0,0:00:05.00,0:00:10.00,Default,,0,0,0,,ReturnLens says not yet: damage refunds\Nstay locked on the live demo.
 Dialogue: 0,0:00:10.50,0:00:16.00,Default,,0,0,0,,The courier confirms the return parcel.\NDoes the agent refund immediately?
-Dialogue: 0,0:00:16.50,0:00:22.00,Default,,0,0,0,,Never. It drafts a refund proposal,\Nand waits for seller review.
-Dialogue: 0,0:00:22.50,0:00:28.50,Default,,0,0,0,,Why? Damage requires 5 of 5 runs.\NThe seller approves it safely.
+Dialogue: 0,0:00:16.50,0:00:22.00,Default,,0,0,0,,Not here. It drafts a refund proposal,\Nand waits for seller review.
+Dialogue: 0,0:00:22.50,0:00:27.50,Default,,0,0,0,,Why? One of its tests is synthetic,\Nand that never counts.
 Dialogue: 0,0:00:30.20,0:00:35.50,Default,,0,0,0,,Meet the multi-case inbox:\Norder facts, seen evidence, unverified.
 Dialogue: 0,0:00:35.80,0:00:41.00,Default,,0,0,0,,An immutable audit drawer\Ntracks every single event in code.
 Dialogue: 0,0:00:42.20,0:00:47.50,Default,,0,0,0,,A customer asks where her order is.\NThe agent checks live Delhivery data.
