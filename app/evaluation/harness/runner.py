@@ -161,12 +161,22 @@ class HarnessRunner:
         return summaries
 
     def save_reliability_json(self, summaries: List[ScenarioRunSummary]) -> None:
-        """Write reliability results matching ReliabilityResult contract."""
+        """Write reliability results matching ReliabilityResult contract, merging with existing entries."""
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        results_list: List[Dict[str, Any]] = []
+        existing_results: Dict[str, Dict[str, Any]] = {}
+        existing_meta: Dict[str, Dict[str, Any]] = {}
+        if self.output_path.exists():
+            try:
+                with open(self.output_path, "r", encoding="utf-8") as f:
+                    old_data = json.load(f)
+                    for r in old_data.get("results", []):
+                        existing_results[r["scenario_id"]] = r
+                    existing_meta = old_data.get("scenario_metadata", {})
+            except Exception:
+                pass
+
         for s in summaries:
-            # Map into strict ReliabilityResult format (02 §2, 17 §2, Wave 3 Bug 4)
             res = ReliabilityResult(
                 run_id=f"RUN-{s.scenario_id}-{int(time.time())}",
                 scenario_id=s.scenario_id,
@@ -182,7 +192,20 @@ class HarnessRunner:
                 status=s.status,
                 reason=s.reason,
             )
-            results_list.append(res.model_dump())
+            existing_results[s.scenario_id] = res.model_dump()
+            existing_meta[s.scenario_id] = {
+                "status": s.status,
+                "reason": s.reason,
+                "case_type": s.case_type.value,
+                "synthetic": s.synthetic,
+                "model_id": s.model_id,
+            }
+
+        sorted_keys = sorted(
+            existing_results.keys(),
+            key=lambda x: int(x[1:]) if x[1:].isdigit() else x,
+        )
+        sorted_results = [existing_results[k] for k in sorted_keys]
 
         output_payload = {
             "metadata": {
@@ -191,17 +214,8 @@ class HarnessRunner:
                 "model_id": self.model_id,
                 "k": self.k,
             },
-            "results": results_list,
-            "scenario_metadata": {
-                s.scenario_id: {
-                    "status": s.status,
-                    "reason": s.reason,
-                    "case_type": s.case_type.value,
-                    "synthetic": s.synthetic,
-                    "model_id": s.model_id,
-                }
-                for s in summaries
-            },
+            "results": sorted_results,
+            "scenario_metadata": existing_meta,
         }
 
         with open(self.output_path, "w", encoding="utf-8") as f:
@@ -210,7 +224,7 @@ class HarnessRunner:
     def render_markdown_table(self, summaries: List[ScenarioRunSummary]) -> str:
         """Generate formatted Markdown results table per 15 B11."""
         lines = [
-            f"### Reliability Benchmark (k={self.k}, agent_version: `{self.agent_version[:8]}`)",
+            f"### Reliability Benchmark (agent_version: `{self.agent_version[:8]}`, model: `{self.model_id}`)",
             "",
             "| Scenario | Case Type | Name | k | Passes | Pass@1 | Pass^k | Status | Reason / Details |",
             "|:---:|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---|",
@@ -249,23 +263,54 @@ class HarnessRunner:
         total_pass = sum(1 for s in summaries if s.status.lower() in ("pass", "passed"))
         total_blocked = sum(1 for s in summaries if s.status.lower() in ("blocked",))
         total_failed = len(summaries) - total_pass - total_blocked
-        lines.append(f"**Total Passing**: {total_pass}/{len(summaries)} scenarios (k={self.k}) — {total_blocked} blocked (no GEMINI_API_KEY), {total_failed} failed")
+        lines.append(f"**Total Passing**: {total_pass}/{len(summaries)} scenarios — {total_blocked} blocked, {total_failed} failed")
         return "\n".join(lines)
 
 
 async def _main():
     parser = argparse.ArgumentParser(description="ReturnLens Reliability Harness Runner")
     parser.add_argument("-k", "--k", "--trials", dest="trials", type=int, default=1, help="Number of trials per scenario (k)")
-    parser.add_argument("-s", "--scenario", type=str, default=None, help="Run specific scenario ID (e.g. S01)")
+    parser.add_argument("-s", "--scenario", type=str, default=None, help="Run specific scenario ID(s), e.g. S01 or S01,S02")
     parser.add_argument("-o", "--output", type=str, default=None, help="Output path for reliability.json")
+    parser.add_argument("--k5-passed", action="store_true", help="Run k=1 for all scenarios, then k=5 for all scenarios that pass k=1")
     args = parser.parse_args()
 
     out_path = Path(args.output) if args.output else DEFAULT_RELIABILITY_JSON
     runner = HarnessRunner(k=args.trials, output_path=out_path)
 
-    targets = [args.scenario.upper()] if args.scenario else None
+    if args.k5_passed:
+        print(f"Phase 1: Running all 10 scenarios with k=1 (agent_version={runner.agent_version[:8]})...")
+        k1_summaries = await runner.run_all(k=1)
+        passed_sids = [s.scenario_id for s in k1_summaries if s.status.lower() in ("pass", "passed")]
+        print(f"\nPhase 1 complete: {len(passed_sids)}/10 passed ({', '.join(passed_sids)}).")
+
+        final_summaries_map = {s.scenario_id: s for s in k1_summaries}
+        if passed_sids:
+            print(f"\nPhase 2: Running k=5 for passing scenarios ({', '.join(passed_sids)})...")
+            runner_k5 = HarnessRunner(k=5, output_path=out_path)
+            for sid in passed_sids:
+                print(f"  -> Running {sid} (k=5)...")
+                summary_k5 = await runner_k5.run_scenario(sid, k=5)
+                final_summaries_map[sid] = summary_k5
+
+            # Save full merged results
+            ordered_summaries = [
+                final_summaries_map[sid]
+                for sid in ALL_SCENARIOS.keys()
+                if sid in final_summaries_map
+            ]
+            runner_k5.save_reliability_json(ordered_summaries)
+            table = runner_k5.render_markdown_table(ordered_summaries)
+        else:
+            table = runner.render_markdown_table(k1_summaries)
+
+        print("\n" + table)
+        print(f"\nWrote results to {runner.output_path}")
+        return
+
+    targets = [s.strip().upper() for s in args.scenario.split(",") if s.strip()] if args.scenario else None
     print(f"Running Reliability Harness (k={args.trials}, agent_version={runner.agent_version[:8]})...")
-    summaries = await runner.run_all(scenario_ids=targets)
+    summaries = await runner.run_all(scenario_ids=targets, k=args.trials)
 
     table = runner.render_markdown_table(summaries)
     print("\n" + table)
