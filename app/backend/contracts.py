@@ -261,6 +261,7 @@ class Shipment(AppBaseModel):
     recipient_address: Optional[str] = None
     pincode: Optional[str] = None
     attempt_count: int = 0
+    reason: Optional[str] = None
 
 
 class Message(AppBaseModel):
