@@ -95,15 +95,20 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
           ) : (
             observations.map((obs: Observation) => {
               const seconds = obs.t ? parseTimestampToSeconds(obs.t) : null;
+              const attrLower = (obs.attribute || '').toLowerCase();
+              const isColorAttr = attrLower === 'color' || attrLower === 'colour' || attrLower === 'item_color';
               const isMismatch =
-                obs.color_class &&
-                catalogColor &&
-                obs.color_class !== catalogColor &&
-                obs.color_class !== 'unknown';
+                isColorAttr &&
+                Boolean(
+                  obs.color_class &&
+                  catalogColor &&
+                  obs.color_class.toLowerCase() !== catalogColor.toLowerCase() &&
+                  obs.color_class.toLowerCase() !== 'unknown'
+                );
 
               return (
                 <div
-                  key={obs.id}
+                  key={obs.id || `${obs.attribute}-${obs.t || 'photo'}`}
                   style={{
                     padding: '8px',
                     borderRadius: '4px',
@@ -145,7 +150,7 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
 
                   <div style={{ fontSize: '12.5px', marginTop: '2px' }}>
                     {obs.value}
-                    {obs.color_class && (
+                    {obs.color_class && isColorAttr && (
                       <span style={{ marginLeft: '6px', fontWeight: 600, color: isMismatch ? 'var(--terracotta)' : 'inherit' }}>
                         (Detected: {obs.color_class})
                       </span>

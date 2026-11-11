@@ -224,6 +224,7 @@ export interface AuditEvent {
   outcome: string;
   safe_payload: Record<string, any>;
   recorded_at: string;
+  refs?: string[];
 }
 
 export interface CreateCaseResponse {

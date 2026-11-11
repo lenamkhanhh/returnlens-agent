@@ -310,7 +310,7 @@ class DevMockService {
       transcript: isAudio
         ? 'नमस्ते, मैंने सफ़ेद हेडफ़ोन ऑर्डर किए थे, लेकिन डिब्बे में काले हेडफ़ोन आए हैं। ऑर्डर ORD-7729.'
         : undefined,
-      language_detected: isAudio ? 'Hindi' : undefined,
+      language_detected: isAudio ? (file.name.toLowerCase().includes('hindi') ? 'Hindi' : 'English') : undefined,
       created_at: new Date().toISOString(),
     };
 
@@ -333,7 +333,7 @@ class DevMockService {
         event_type: 'voice_note_transcribed',
         actor: 'transcriber',
         outcome: 'success',
-        safe_payload: { language: 'Hindi', transcript: newEvidence.transcript },
+        safe_payload: { language: file.name.toLowerCase().includes('hindi') ? 'Hindi' : 'English', transcript: newEvidence.transcript },
         recorded_at: new Date().toISOString(),
       });
     } else if (isVideo) {

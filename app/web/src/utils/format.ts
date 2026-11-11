@@ -83,3 +83,18 @@ export function formatDate(isoString?: string): string {
     return isoString;
   }
 }
+
+/**
+ * Formats transcriber detected language into human-friendly label.
+ * Defaults to 'English' for stock English voice notes if unspecified or 'en'.
+ */
+export function formatDetectedLanguage(lang?: string | null): string {
+  if (!lang) return 'English';
+  const clean = lang.trim().toLowerCase();
+  if (clean === 'en' || clean === 'english') return 'English';
+  if (clean === 'hi' || clean === 'hindi') return 'Hindi';
+  if (clean === 'hinglish') return 'Hinglish';
+  if (clean === 'other') return 'Other';
+  return lang.charAt(0).toUpperCase() + lang.slice(1);
+}
+

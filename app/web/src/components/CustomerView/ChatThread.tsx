@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Message, Evidence } from '../../types';
-import { formatDate } from '../../utils/format';
+import { formatDate, formatDetectedLanguage } from '../../utils/format';
 
 interface ChatThreadProps {
   messages: Message[];
@@ -42,7 +42,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ messages, evidenceList }
                     {evi.media_type === 'audio' && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <span style={{ fontSize: '11px', opacity: 0.9 }}>
-                          🎙️ Voice Note {evi.language_detected ? `(${evi.language_detected})` : ''}
+                          🎙️ Voice Note ({formatDetectedLanguage(evi.language_detected)})
                         </span>
                         <audio controls src={mediaUrl} style={{ width: '100%', height: '30px' }} />
                         {evi.transcript && (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Message, Evidence } from '../../types';
-import { formatDate } from '../../utils/format';
+import { formatDate, formatDetectedLanguage } from '../../utils/format';
 
 interface CaseChatMediaProps {
   messages: Message[];
@@ -55,7 +55,7 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
           <div key={audio.evidence_id} style={{ background: '#fbfbfa', padding: '10px', borderRadius: '4px', border: 'var(--border-thin)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600 }}>
-                🎙️ Voice Note ({audio.language_detected || 'Hindi'})
+                🎙️ Voice Note ({formatDetectedLanguage(audio.language_detected)})
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>{audio.filename}</span>
             </div>

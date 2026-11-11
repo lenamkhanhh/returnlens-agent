@@ -248,10 +248,34 @@ export const api = {
       }
     }
 
-    const evidence = (snap.evidence || []).map((e: any) => ({
-      ...e,
-      url: e.evidence_id ? `/api/media/${e.evidence_id}` : e.url,
-    }));
+    const evidence = (snap.evidence || []).map((e: any) => {
+      let language_detected = e.language_detected;
+      let transcript = e.transcript;
+      if (e.media_type === 'audio') {
+        for (const ev of events) {
+          const isTranscriber =
+            ev.event_type === 'voice_note_transcribed' ||
+            ev.actor === 'model:transcriber' ||
+            (ev.event_type === 'observation_validated' && ev.safe_payload?.language);
+          const refs = ev.refs || [];
+          const matchesRef = refs.length === 0 || refs.some((r: string) => r.includes(e.evidence_id));
+          if (isTranscriber && matchesRef) {
+            if (!language_detected && ev.safe_payload?.language) {
+              language_detected = ev.safe_payload.language;
+            }
+            if (!transcript && ev.safe_payload?.transcript) {
+              transcript = ev.safe_payload.transcript;
+            }
+          }
+        }
+      }
+      return {
+        ...e,
+        language_detected: language_detected || (e.media_type === 'audio' ? 'en' : undefined),
+        transcript: transcript || e.transcript,
+        url: e.evidence_id ? `/api/media/${e.evidence_id}` : e.url,
+      };
+    });
 
     return {
       ...snap,

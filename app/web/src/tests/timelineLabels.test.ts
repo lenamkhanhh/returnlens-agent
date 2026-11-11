@@ -64,6 +64,28 @@ describe('17 §7 Timeline Human Labels', () => {
       recorded_at: '',
     };
     expect(getHumanEventLabel(e)).toBe('Voice note transcribed (Hindi)');
+
+    const eEn: AuditEvent = {
+      event_id: '5b',
+      seq: 5,
+      event_type: 'voice_note_transcribed',
+      actor: 'transcriber',
+      outcome: 'success',
+      safe_payload: { language: 'en' },
+      recorded_at: '',
+    };
+    expect(getHumanEventLabel(eEn)).toBe('Voice note transcribed (English)');
+
+    const eObs: AuditEvent = {
+      event_id: '5c',
+      seq: 5,
+      event_type: 'observation_validated',
+      actor: 'model:transcriber',
+      outcome: 'Transcribed voice note: intent=RETURN',
+      safe_payload: { language: 'en', intent: 'RETURN' },
+      recorded_at: '',
+    };
+    expect(getHumanEventLabel(eObs)).toBe('Voice note transcribed (English)');
   });
 
   it('maps clarification_sent', () => {

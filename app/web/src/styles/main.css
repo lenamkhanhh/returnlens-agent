@@ -885,3 +885,9 @@ button:disabled {
   max-width: 600px;
   margin: 40px auto;
 }
+
+/* Wave 11: Demo Mode Scaling for 1080p Video Readability (125-150%) */
+body.demo-mode {
+  zoom: var(--demo-scale, 1.35);
+}
+

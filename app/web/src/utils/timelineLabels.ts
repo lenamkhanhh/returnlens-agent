@@ -1,5 +1,5 @@
 import { AuditEvent } from '../types';
-import { formatPaise } from './format';
+import { formatPaise, formatDetectedLanguage } from './format';
 
 /**
  * Returns human-readable label according to 17 §7:
@@ -38,6 +38,9 @@ export function getHumanEventLabel(event: AuditEvent): string {
       return `Blocked: ${p.reason || 'policy limit exceeded'}`;
 
     case 'observation_validated':
+      if (p.language || event.actor === 'model:transcriber') {
+        return `Voice note transcribed (${formatDetectedLanguage(p.language)})`;
+      }
       if (p.t) {
         const itemDesc = p.color_class ? `${p.color_class} item` : (p.value || p.attribute || 'item');
         return `Saw ${itemDesc} at ${p.t}`;
@@ -45,7 +48,7 @@ export function getHumanEventLabel(event: AuditEvent): string {
       return `Observed ${p.attribute || 'attribute'}: ${p.value || 'identified'}`;
 
     case 'voice_note_transcribed':
-      return `Voice note transcribed (${p.language || 'Hindi'})`;
+      return `Voice note transcribed (${formatDetectedLanguage(p.language)})`;
 
     case 'clarification_sent':
       return `Asked for a close-up photo (${p.count || 1} of 1)`;
