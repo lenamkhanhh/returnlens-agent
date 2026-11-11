@@ -178,8 +178,8 @@ export const INITIAL_DEV_CASES: Record<string, CaseDetail> = {
         case_id: 'CASE-0012',
         media_type: 'video',
         url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm',
-        filename: 'clip-b-unboxing.webm',
-        duration_s: 15,
+        filename: 'stock_black_headphones_pexels_9130360.mp4',
+        duration_s: 20,
         created_at: '2026-11-11T11:00:10Z',
       },
     ],
@@ -204,7 +204,7 @@ export const INITIAL_DEV_CASES: Record<string, CaseDetail> = {
         limitation: null,
       },
     ],
-    unknowns: ['barcode', 'exact_model'],
+    unknowns: ['barcode', 'exact_model', 'shipping_label'],
     policy_checks: [
       {
         rule_id: 'P_WINDOW',
