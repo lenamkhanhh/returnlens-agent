@@ -72,15 +72,15 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
             <div><strong>Product:</strong> {selectedOrder.item_name}</div>
             <div><strong>Color:</strong> {selectedOrder.catalog_color}</div>
             <div><strong>SKU:</strong> {selectedOrder.sku}</div>
-            <div><strong>Status:</strong> {selectedOrder.shipping_status}</div>
+            <div><strong>Shipment Status:</strong> <span style={{ fontWeight: 600, color: selectedOrder.shipping_status.toLowerCase().includes('transit') ? 'var(--pine-green)' : 'inherit' }}>{selectedOrder.shipping_status}</span></div>
             {selectedOrder.delivered_date && (
-              <div><strong>Delivered:</strong> {selectedOrder.delivered_date}</div>
+              <div><strong>Delivered Date:</strong> {selectedOrder.delivered_date}</div>
             )}
-            {selectedOrder.eta_days_relative !== undefined && (
-              <div><strong>ETA:</strong> in {selectedOrder.eta_days_relative} days</div>
+            {selectedOrder.eta_days_relative && (
+              <div><strong>Estimated Arrival (ETA):</strong> {typeof selectedOrder.eta_days_relative === 'number' ? `in ${selectedOrder.eta_days_relative} days` : selectedOrder.eta_days_relative}</div>
             )}
             <div style={{ marginTop: '6px', color: 'var(--pine-green)', fontWeight: 600 }}>
-              Tag: {selectedOrder.scenario_tag}
+              Scenario: {selectedOrder.scenario_tag}
             </div>
           </div>
         </div>

@@ -10,18 +10,22 @@ interface CaseStatusBarProps {
 export const CaseStatusBar: React.FC<CaseStatusBarProps> = ({ status, caseId, errorMessage }) => {
   const getLabelAndDesc = () => {
     switch (status) {
+      case 'new conversation':
+        return { label: 'New conversation', desc: 'Type your inquiry or upload media below to start support' };
       case 'sending':
         return { label: 'Sending message…', desc: 'Delivering your update to store support' };
       case 'processing':
         return { label: 'Agent is processing', desc: 'Analyzing order tracking, unboxing media, and store policy' };
       case 'waiting for you':
         return { label: 'Waiting for you', desc: 'Please review agent instructions or provide requested evidence' };
+      case 'waiting for seller':
+        return { label: 'Waiting for seller review', desc: 'Dispute proposal submitted; awaiting merchant authorization' };
       case 'done':
         return { label: 'Case resolved', desc: 'Your request has been processed and concluded' };
       case 'error':
         return { label: 'Error encountered', desc: errorMessage || 'An unexpected issue occurred' };
       default:
-        return { label: 'Ready', desc: 'Start a conversation regarding your order' };
+        return { label: 'New conversation', desc: 'Start a conversation regarding your order' };
     }
   };
 

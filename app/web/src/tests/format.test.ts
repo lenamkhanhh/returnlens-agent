@@ -30,10 +30,11 @@ describe('format utilities', () => {
   });
 
   it('maps domain CaseState to customer-facing status states', () => {
+    expect(mapCaseStateToCustomerStatus(null)).toBe('new conversation');
     expect(mapCaseStateToCustomerStatus('NEW')).toBe('processing');
     expect(mapCaseStateToCustomerStatus('PROCESSING')).toBe('processing');
     expect(mapCaseStateToCustomerStatus('WAITING_CUSTOMER')).toBe('waiting for you');
-    expect(mapCaseStateToCustomerStatus('WAITING_SELLER')).toBe('processing');
+    expect(mapCaseStateToCustomerStatus('WAITING_SELLER')).toBe('waiting for seller');
     expect(mapCaseStateToCustomerStatus('HUMAN_REVIEW')).toBe('waiting for you');
     expect(mapCaseStateToCustomerStatus('RESOLVED')).toBe('done');
   });

@@ -289,6 +289,18 @@ button:disabled {
   border-radius: 12px;
 }
 
+.status-pill.new-conversation {
+  background: #f0f0ed;
+  color: #555555;
+  border: 1px solid #dedcd6;
+}
+
+.status-pill.waiting-for-seller {
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
+  border: 1px solid #fae6a6;
+}
+
 .status-pill.sending {
   background: #eef2ff;
   color: #3b82f6;

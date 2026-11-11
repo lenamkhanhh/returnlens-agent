@@ -11,7 +11,14 @@ export type CaseState =
   | 'RECONCILIATION'
   | 'RESOLVED';
 
-export type CustomerFacingStatus = 'sending' | 'processing' | 'waiting for you' | 'done' | 'error';
+export type CustomerFacingStatus =
+  | 'new conversation'
+  | 'sending'
+  | 'processing'
+  | 'waiting for you'
+  | 'waiting for seller'
+  | 'done'
+  | 'error';
 
 export type NextStep =
   | 'SEND_STATUS'

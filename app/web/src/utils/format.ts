@@ -47,18 +47,20 @@ export function formatSecondsToTimestamp(totalSeconds: number): string {
  * Maps domain CaseState to CustomerFacingStatus per BRIEF_D_WEB.md:
  * states: sending, processing, waiting for you, done, error
  */
-export function mapCaseStateToCustomerStatus(state: CaseState): CustomerFacingStatus {
+export function mapCaseStateToCustomerStatus(state?: CaseState | null): CustomerFacingStatus {
+  if (!state) return 'new conversation';
   switch (state) {
     case 'NEW':
     case 'PROCESSING':
     case 'ACTION_PENDING':
     case 'RECONCILIATION':
-    case 'WAITING_SELLER':
-    case 'WAITING_RETURN':
       return 'processing';
     case 'WAITING_CUSTOMER':
     case 'HUMAN_REVIEW':
       return 'waiting for you';
+    case 'WAITING_SELLER':
+    case 'WAITING_RETURN':
+      return 'waiting for seller';
     case 'RESOLVED':
       return 'done';
     default:

@@ -10,6 +10,7 @@ import {
   AutonomyPolicy,
   AutonomyExplanation,
   CourierEventRequest,
+  Message,
 } from '../types';
 import { devMockService } from '../devmock';
 
@@ -54,6 +55,15 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+function normalizeShippingStatus(rawStatus?: string): string {
+  if (!rawStatus) return 'In transit';
+  const upper = rawStatus.toUpperCase();
+  if (upper === 'IN_TRANSIT') return 'In transit';
+  if (upper === 'DELIVERED') return 'Delivered';
+  if (upper.includes('NDR')) return rawStatus;
+  return rawStatus;
+}
+
 export const api = {
   async getCustomers(): Promise<Customer[]> {
     if (USE_DEVMOCK) {
@@ -62,7 +72,7 @@ export const api = {
     try {
       return await request<Customer[]>('/api/demo/customers');
     } catch {
-      // If endpoint doesn't exist yet on backend, return standard fixtures
+      // Default fake fixtures per 14 §5
       return devMockService.getCustomers();
     }
   },
@@ -74,21 +84,48 @@ export const api = {
     try {
       const url = customerId ? `/api/orders?customer_id=${encodeURIComponent(customerId)}` : '/api/orders';
       const rawOrders = await request<any[]>(url);
-      return rawOrders.map((o) => ({
-        order_id: o.order_id,
-        customer_id: o.customer_id,
-        sku: o.line_item?.sku || o.sku,
-        item_name: o.line_item?.display_name || o.item_name || o.sku,
-        catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
-        paid_minor: o.paid_minor,
-        currency: o.currency || 'INR',
-        payment_method: o.payment_method || 'Prepaid',
-        shipping_status: o.shipping_status || 'Delivered',
-        delivered_date: o.delivered_date,
-        eta_days_relative: o.eta_days_relative,
-        scenario_tag: o.scenario_tag || 'Standard order',
-        line_item: o.line_item,
-      }));
+
+      // Enrich orders with actual shipment details from /api/orders/{order_id}
+      const enriched = await Promise.all(
+        rawOrders.map(async (o) => {
+          try {
+            const detail = await request<any>(`/api/orders/${encodeURIComponent(o.order_id)}`);
+            const shp = detail.shipment;
+            return {
+              order_id: o.order_id,
+              customer_id: o.customer_id,
+              sku: o.line_item?.sku || o.sku,
+              item_name: o.line_item?.display_name || o.item_name || o.sku,
+              catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
+              paid_minor: o.paid_minor,
+              currency: o.currency || 'INR',
+              payment_method: o.payment_method || 'Prepaid',
+              shipping_status: normalizeShippingStatus(shp?.status || o.shipping_status),
+              delivered_date: shp?.delivered_at || o.delivered_date,
+              eta_days_relative: shp?.eta ? shp.eta : o.eta_days_relative,
+              scenario_tag: o.scenario_tag || (shp?.status === 'IN_TRANSIT' ? 'WISMO + counterfactual' : 'Standard order'),
+              line_item: o.line_item,
+            };
+          } catch {
+            return {
+              order_id: o.order_id,
+              customer_id: o.customer_id,
+              sku: o.line_item?.sku || o.sku,
+              item_name: o.line_item?.display_name || o.item_name || o.sku,
+              catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
+              paid_minor: o.paid_minor,
+              currency: o.currency || 'INR',
+              payment_method: o.payment_method || 'Prepaid',
+              shipping_status: normalizeShippingStatus(o.shipping_status),
+              delivered_date: o.delivered_date,
+              eta_days_relative: o.eta_days_relative,
+              scenario_tag: o.scenario_tag || 'Standard order',
+              line_item: o.line_item,
+            };
+          }
+        })
+      );
+      return enriched;
     } catch (err) {
       console.warn('Real /api/orders request failed, falling back to mock:', err);
       return devMockService.getOrders(customerId);
@@ -124,10 +161,75 @@ export const api = {
     }
     try {
       const snap = await request<any>(`/api/cases/${encodeURIComponent(caseId)}`);
-      // Ensure messages and evidence are safely array-defaulted if omitted
+      let messages: Message[] = snap.messages || [];
+
+      // 1. If snapshot has no messages, check /api/cases/{caseId}/messages
+      if (messages.length === 0) {
+        try {
+          const rawMsgs = await request<any[]>(`/api/cases/${encodeURIComponent(caseId)}/messages`);
+          if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
+            messages = rawMsgs.map((m) => ({
+              message_id: m.message_id || `msg-${Math.random().toString(16).slice(2, 8)}`,
+              case_id: caseId,
+              role: (m.role?.value || m.role || 'agent').toLowerCase(),
+              text: m.text,
+              attachment_ids: m.attachment_ids || [],
+              created_at: m.created_at || new Date().toISOString(),
+            }));
+          }
+        } catch {
+          // Endpoint might not exist yet
+        }
+      }
+
+      // 2. If messages are still empty, reconstruct from audit events (Bug 1 fix)
+      if (messages.length === 0) {
+        try {
+          const events = await this.getEvents(caseId);
+          for (const ev of events) {
+            if (ev.event_type === 'message_received' && ev.safe_payload?.text) {
+              messages.push({
+                message_id: ev.event_id || `msg-in-${ev.seq}`,
+                case_id: caseId,
+                role: 'customer',
+                text: ev.safe_payload.text,
+                attachment_ids: ev.safe_payload.attachment_ids || [],
+                created_at: ev.recorded_at,
+              });
+            } else if (ev.event_type === 'customer_reply_delivered' && (ev.safe_payload?.reply || ev.outcome)) {
+              messages.push({
+                message_id: ev.event_id || `msg-out-${ev.seq}`,
+                case_id: caseId,
+                role: 'agent',
+                text: ev.safe_payload?.reply || ev.outcome,
+                created_at: ev.recorded_at,
+              });
+            } else if (ev.event_type === 'clarification_sent' && (ev.safe_payload?.template || ev.outcome)) {
+              messages.push({
+                message_id: ev.event_id || `msg-clarify-${ev.seq}`,
+                case_id: caseId,
+                role: 'agent',
+                text: ev.safe_payload?.template || ev.outcome,
+                created_at: ev.recorded_at,
+              });
+            } else if (ev.event_type === 'handoff_created') {
+              messages.push({
+                message_id: ev.event_id || `msg-handoff-${ev.seq}`,
+                case_id: caseId,
+                role: 'agent',
+                text: ev.safe_payload?.summary || ev.outcome || 'Case handed off to merchant support.',
+                created_at: ev.recorded_at,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to load events for messages reconstruction:', e);
+        }
+      }
+
       return {
         ...snap,
-        messages: snap.messages || [],
+        messages,
         evidence: snap.evidence || [],
         observations: snap.observations || [],
         unknowns: snap.unknowns || [],
@@ -228,7 +330,7 @@ export const api = {
   },
 
   // =========================================================================
-  // Wave 2 Methods
+  // Wave 2 & Wave 3 Methods
   // =========================================================================
 
   async getAutonomyPolicy(): Promise<AutonomyPolicy> {
@@ -236,7 +338,17 @@ export const api = {
       return devMockService.getAutonomyPolicy();
     }
     try {
-      return await request<AutonomyPolicy>('/api/seller/autonomy');
+      const res = await request<any>('/api/seller/autonomy');
+      return {
+        store_id: res.store_id,
+        version: res.version,
+        levels: res.levels,
+        per_order_cap_minor: res.per_order_cap_minor,
+        per_customer_daily_cap_minor: res.per_customer_daily_cap_minor,
+        kill_switch: res.kill_switch,
+        changed_by: res.changed_by,
+        changed_at: res.changed_at,
+      };
     } catch {
       return devMockService.getAutonomyPolicy();
     }
@@ -247,10 +359,11 @@ export const api = {
       return devMockService.updateAutonomyPolicy(policy);
     }
     try {
-      return await request<AutonomyPolicy>('/api/seller/autonomy', {
+      await request<any>('/api/seller/autonomy', {
         method: 'PUT',
         body: JSON.stringify(policy),
       });
+      return this.getAutonomyPolicy();
     } catch (err: any) {
       if (err.status === 422) throw err;
       return devMockService.updateAutonomyPolicy(policy);
@@ -276,7 +389,22 @@ export const api = {
       return devMockService.getAutonomyExplanation(caseId);
     }
     try {
-      return await request<AutonomyExplanation>(`/api/seller/autonomy/explanation?case_id=${encodeURIComponent(caseId)}`);
+      // Backend router endpoint: /api/seller/autonomy/why/{case_id}
+      const res = await request<any>(`/api/seller/autonomy/why/${encodeURIComponent(caseId)}`);
+      const checks = (res.checklist || res.checks || []).map((item: any) => ({
+        step: item.step_no || item.step,
+        title: item.title,
+        passed: item.passed,
+        detail: item.details || item.detail,
+      }));
+      return {
+        case_id: caseId,
+        case_type: res.case_type || 'MISMATCH',
+        action_type: res.action_type || 'PROPOSE_RETURN',
+        decision: res.decision,
+        reason_code: res.reason_code,
+        checks,
+      };
     } catch {
       return devMockService.getAutonomyExplanation(caseId);
     }

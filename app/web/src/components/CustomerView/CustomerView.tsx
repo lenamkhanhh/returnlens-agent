@@ -16,7 +16,7 @@ export const CustomerView: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const [activeCase, setActiveCase] = useState<CaseDetail | null>(null);
-  const [status, setStatus] = useState<CustomerFacingStatus>('waiting for you');
+  const [status, setStatus] = useState<CustomerFacingStatus>('new conversation');
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 
   const [inputText, setInputText] = useState('');
@@ -30,7 +30,7 @@ export const CustomerView: React.FC = () => {
     api.getCustomers().then((custs) => {
       setCustomers(custs);
       if (custs.length > 0) {
-        setSelectedCustomer(custs[1]); // Default to Arjun Mehta (CUS-02, Case B)
+        setSelectedCustomer(custs[0]); // Default to Priya Sharma (CUS-01, WISMO ORD-2030)
       }
     });
   }, []);
@@ -42,6 +42,8 @@ export const CustomerView: React.FC = () => {
       setOrders(ordList);
       if (ordList.length > 0) {
         setSelectedOrder(ordList[0]);
+      } else {
+        setSelectedOrder(null);
       }
     });
   }, [selectedCustomer]);
@@ -71,7 +73,8 @@ export const CustomerView: React.FC = () => {
       pollingTimerRef.current = null;
     }
 
-    const intervalMs = status === 'processing' || status === 'sending' ? 1000 : 5000;
+    const isProcessing = status === 'processing' || status === 'sending';
+    const intervalMs = isProcessing ? 1000 : 5000;
 
     if (status !== 'done') {
       pollingTimerRef.current = window.setInterval(() => {
@@ -91,18 +94,17 @@ export const CustomerView: React.FC = () => {
   useEffect(() => {
     if (!selectedOrder) {
       setActiveCase(null);
-      setStatus('waiting for you');
+      setStatus('new conversation');
       return;
     }
 
-    // Try finding existing case for this order in seller list
     api.getSellerCases().then(async (cases) => {
       const match = cases.find((c) => c.order_id === selectedOrder.order_id);
       if (match) {
         await refreshCase(match.case_id);
       } else {
         setActiveCase(null);
-        setStatus('waiting for you');
+        setStatus('new conversation');
       }
     });
   }, [selectedOrder, refreshCase]);
@@ -137,14 +139,16 @@ export const CustomerView: React.FC = () => {
       }
 
       if (pendingAudio && caseId) {
-        const audioFile = new File([pendingAudio.blob], `voice-note-${Date.now()}.${pendingAudio.mimeType.includes('mp4') ? 'mp4' : 'webm'}`, {
-          type: pendingAudio.mimeType,
-        });
+        const audioFile = new File(
+          [pendingAudio.blob],
+          `voice-note-${Date.now()}.${pendingAudio.mimeType.includes('mp4') ? 'mp4' : 'webm'}`,
+          { type: pendingAudio.mimeType }
+        );
         const uploaded = await api.uploadEvidence(caseId, audioFile);
         attachmentIds.push(uploaded.evidence_id);
       }
 
-      // 3. Send message if existing case or if new message is appended
+      // 3. Send message if existing case and extra text is appended
       if (activeCase && textToSend) {
         await api.sendMessage(caseId, textToSend, attachmentIds);
       }
@@ -170,12 +174,14 @@ export const CustomerView: React.FC = () => {
         onSelectCustomer={(c) => {
           setSelectedCustomer(c);
           setActiveCase(null);
+          setStatus('new conversation');
         }}
         orders={orders}
         selectedOrder={selectedOrder}
         onSelectOrder={(o) => {
           setSelectedOrder(o);
           setActiveCase(null);
+          setStatus('new conversation');
         }}
       />
 
@@ -199,7 +205,7 @@ export const CustomerView: React.FC = () => {
               placeholder={
                 activeCase
                   ? 'Type your reply or question…'
-                  : 'Describe your issue (e.g. "I ordered white headphones but got black")…'
+                  : 'Describe your issue (e.g. "Where is my order?")…'
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
