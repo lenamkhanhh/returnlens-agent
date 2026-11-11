@@ -94,15 +94,20 @@ async def test_wave8_no_keyword_shortcut_when_observer_sees_white():
             assert res_snap.status_code == 200
             snap = res_snap.json()
 
-            # Must NOT be WAITING_CUSTOMER with clarification_count=1 for color mismatch
-            assert snap["clarification_count"] == 0
+            # Must NOT take the colour-mismatch path (label-photo request) on the claim text alone.
+            # The evidence shows white and no damage, so the agent may ask once for a close-up.
+            assert snap["clarification_count"] <= 1
 
-            # Verify audit events: observation was validated as white, no clarification_sent
             res_events = await client.get(f"/api/cases/{case_id}/events")
             events = res_events.json()
             event_types = [e["event_type"] for e in events]
             assert "observation_validated" in event_types
-            assert "clarification_sent" not in event_types
+            clar_outcomes = [str(e.get("outcome", "")).lower() for e in events if e["event_type"] == "clarification_sent"]
+            assert not any("label" in o for o in clar_outcomes)
+            agent_text = " ".join(m["text"].lower() for m in snap.get("messages", []) if m.get("role") == "agent")
+            assert "label" not in agent_text
+            # No return proposal on unsupported evidence
+            assert not snap.get("proposals")
 
 
 @pytest.mark.asyncio

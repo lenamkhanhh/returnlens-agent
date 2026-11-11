@@ -1062,6 +1062,57 @@ class WorkflowEngine:
                 self._mark_job_completed(job_id, now_iso)
                 return True
 
+        # 7.58 The model watched the evidence but saw no damage (and no colour mismatch,
+        # which returned earlier). Do not propose a return on the claim text alone:
+        # ask once for a close-up; a later reply is handed to the seller by 7.5.
+        if obs_output is not None and case.clarification_count == 0:
+            no_damage_words = ("none", "none observed", "no damage", "no visible damage", "not visible", "")
+            damage_seen = any(
+                o.attribute in (ObservationAttribute.DAMAGE, "damage")
+                and str(o.value).strip().lower() not in no_damage_words
+                and o.visibility in (Visibility.VISIBLE, "visible")
+                for o in obs_output.observations
+            )
+            if not damage_seen:
+                self.repo.update_case_state(
+                    case_id=case_id,
+                    state=CaseState.WAITING_CUSTOMER,
+                    summary="Clarification requested: the video does not show the problem clearly",
+                    increment_clarification=True,
+                )
+                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=case_id,
+                    actor_id="agent:returnlens",
+                    role=ActorRole.AGENT,
+                    text=self._validate_reply_text(
+                        "Thanks for the video. I could not see the problem clearly in it. "
+                        "Please share a clear close-up photo of the product and the issue in good light.",
+                        case_id,
+                    ),
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="agent:returnlens",
+                    event_type="clarification_sent",
+                    outcome="No damage visible in evidence; asked for a close-up photo (1 of 1)",
+                    case_id=case_id,
+                    refs=[f"msg:{outbound_msg_id}"],
+                )
+                record_case_plan(
+                    repo=self.repo,
+                    case_id=case_id,
+                    job_id=job_id,
+                    goal=f"Get usable evidence for the claim on {case.order_id}",
+                    tools_planned=["get_order", "observe_media", "request_clarification"],
+                    tools_called=["get_order", "observe_media"],
+                    outcome="No damage visible in evidence; asked for a close-up photo (1 of 1)",
+                    memory_used=memory_used,
+                )
+                self._mark_job_completed(job_id, now_iso)
+                return True
+
         # 7.6 Clear Damage or Color Mismatch (Case A / Case B)
         # Create PROPOSE_RETURN proposal
         item_id = order_info.get("line_item", {}).get("item_id", "item_01")

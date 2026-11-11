@@ -61,25 +61,6 @@ class TrialEnvironment:
         os.environ["DATA_DIR"] = str(self.data_dir)
         os.environ["HARNESS_MODE"] = "1"
 
-        if not hasattr(Repository, "list_case_observations"):
-            from app.backend.contracts import (
-                ObservationAttribute,
-                ObservationItem,
-                Visibility,
-            )
-
-            def _list_case_observations(self, case_id: str):
-                return [
-                    ObservationItem(
-                        id=f"OBS-{case_id}",
-                        evidence_id="EVI-01",
-                        t="00:03",
-                        attribute=ObservationAttribute.DAMAGE,
-                        value="visible damage",
-                        visibility=Visibility.VISIBLE,
-                    )
-                ]
-            Repository.list_case_observations = _list_case_observations
 
         self.app = create_app(
             data_dir=self.data_dir,
