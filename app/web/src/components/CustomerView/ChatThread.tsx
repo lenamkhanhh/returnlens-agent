@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Message, Evidence } from '../../types';
-import { formatDetectedLanguage, formatMessageTime, formatSecondsToTimestamp } from '../../utils/format';
+import {
+  formatDetectedLanguage,
+  formatMessageTime,
+  formatSecondsToTimestamp,
+  isCourierOrSystemMessage,
+  formatCourierOrSystemMessage,
+} from '../../utils/format';
 
 interface ChatThreadProps {
   messages: Message[];
@@ -122,6 +128,14 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ messages, evidenceList, 
         </div>
       ) : (
         messages.map((m) => {
+          if (isCourierOrSystemMessage(m)) {
+            return (
+              <div key={m.message_id} className="chat-system-event-note">
+                <span>{formatCourierOrSystemMessage(m.text || '')}</span>
+              </div>
+            );
+          }
+
           const isCustomer = m.role === 'customer';
           const attached = (m.attachment_ids || [])
             .map((id) => evidenceList.find((e) => e.evidence_id === id))

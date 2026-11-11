@@ -129,7 +129,7 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
       });
     });
 
-    it('computes 4/5 locked when bottleneck scenario is 4/5', () => {
+    it('computes locked scenario when bottleneck scenario is 4/5', () => {
       const lock = {
         eligible_for_l2_l3: false,
         metrics: {
@@ -138,13 +138,13 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
         },
       };
       expect(getCaseTypePassDisplay(lock)).toEqual({
-        text: '4/5 locked',
+        text: 'Locked · S08 4/5',
         isLocked: true,
         passCount: '4/5',
       });
     });
 
-    it('computes 0/5 locked when scenario is missing or failed with 0', () => {
+    it('computes locked reason with synthetic notice when S10 is missing or synthetic', () => {
       const lock = {
         eligible_for_l2_l3: false,
         metrics: {
@@ -153,9 +153,9 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
         },
       };
       expect(getCaseTypePassDisplay(lock)).toEqual({
-        text: '0/5 locked',
+        text: 'Locked · S03 5/5, S10 synthetic (not counted)',
         isLocked: true,
-        passCount: '0/5',
+        passCount: '5/5',
       });
     });
 
@@ -169,7 +169,7 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
         },
       };
       expect(getCaseTypePassDisplay(lock)).toEqual({
-        text: 'locked · synthetic test does not count',
+        text: 'Locked · S03 5/5, S10 synthetic (not counted)',
         isLocked: true,
         passCount: '5/5',
       });

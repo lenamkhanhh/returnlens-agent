@@ -59,8 +59,12 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     } catch {
       // not JSON
     }
-    const code = errBody?.code;
-    const userMessage = errBody?.user_message || errBody?.detail || errBody?.message || res.statusText;
+    let code = errBody?.code;
+    let userMessage = errBody?.user_message || errBody?.detail || errBody?.message || res.statusText;
+    if (errBody?.detail && typeof errBody.detail === 'object') {
+      code = code || errBody.detail.code;
+      userMessage = errBody.detail.user_message || errBody.detail.message || userMessage;
+    }
     throw new ApiError(res.status, userMessage, code, userMessage);
   }
 

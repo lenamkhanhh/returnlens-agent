@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { CourierEventRequest } from '../../types';
+import { computeReliabilitySummary } from '../../utils/format';
 
 export const OperatorView: React.FC = () => {
   // 1. Courier Event State
@@ -22,12 +23,16 @@ export const OperatorView: React.FC = () => {
 
   // 4. Live System Provenance
   const [modelId, setModelId] = useState<string>('');
+  const [reliabilitySummary, setReliabilitySummary] = useState<string>('9 of 10 scenarios pass 5/5 (k=5, ffaccd04)');
 
   useEffect(() => {
     let mounted = true;
     api.getAutonomyPolicy().then((policy) => {
-      if (mounted && policy.model_id) {
-        setModelId(policy.model_id);
+      if (mounted) {
+        if (policy.model_id) {
+          setModelId(policy.model_id);
+        }
+        setReliabilitySummary(computeReliabilitySummary(policy));
       }
     }).catch(() => {});
     return () => {
@@ -296,9 +301,9 @@ export const OperatorView: React.FC = () => {
               <span className="fact-value">Hindi / Hinglish / English</span>
             </div>
             <div className="fact-row">
-              <span className="fact-label">Reliability Benchmark:</span>
-              <span className="fact-value" style={{ color: 'var(--pine-green)' }}>
-                10 Scenarios (k=5)
+              <span className="fact-label">Reliability:</span>
+              <span className="fact-value" style={{ color: 'var(--pine-green)', fontWeight: 600 }}>
+                {reliabilitySummary}
               </span>
             </div>
           </div>

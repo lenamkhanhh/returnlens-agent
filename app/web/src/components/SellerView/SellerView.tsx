@@ -148,7 +148,12 @@ export const SellerView: React.FC = () => {
 
   // 6. Autonomy Handlers
   const handleUpdateAutonomy = async (policyUpdate: Partial<AutonomyPolicy>) => {
-    const updated = await api.updateAutonomyPolicy(policyUpdate);
+    const fullPayload = {
+      levels: policyUpdate.levels || autonomyPolicy?.levels || {},
+      per_order_cap_minor: policyUpdate.per_order_cap_minor ?? autonomyPolicy?.per_order_cap_minor ?? 150000,
+      per_customer_daily_cap_minor: policyUpdate.per_customer_daily_cap_minor ?? autonomyPolicy?.per_customer_daily_cap_minor ?? 200000,
+    };
+    const updated = await api.updateAutonomyPolicy(fullPayload as any);
     setAutonomyPolicy(updated);
   };
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AutonomyPolicy, CaseType, AutonomyLevel } from '../../types';
-import { formatPaise, getCaseTypePassDisplay } from '../../utils/format';
+import { formatPaise, getCaseTypePassDisplay, formatAutonomyLockError } from '../../utils/format';
 
 interface AutonomyBarProps {
   policy: AutonomyPolicy | null;
@@ -37,12 +37,14 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
           ...policy.levels,
           [caseType]: newLevel,
         },
+        per_order_cap_minor: policy.per_order_cap_minor ?? 150000,
+        per_customer_daily_cap_minor: policy.per_customer_daily_cap_minor ?? 200000,
       });
     } catch (err: any) {
-      if (err.code === 'reliability_locked' || err.status === 422) {
-        setLockError(err.userMessage || `${caseType} is locked: Reliability benchmark < 5/5`);
+      if (err.code === 'reliability_locked' || err.status === 422 || err.code === 'UNPROCESSABLE') {
+        setLockError(formatAutonomyLockError(err, caseType));
       } else {
-        alert(err.userMessage || err.message || 'Failed to update policy');
+        alert(formatAutonomyLockError(err, caseType));
       }
     } finally {
       setUpdating(false);
@@ -166,7 +168,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                 title={lock?.status_message || (isLocked ? 'Locked' : 'All scenarios passed')}
                 style={{
                   color: isLocked ? 'var(--terracotta)' : 'var(--pine-green)',
-                  fontSize: '10px',
+                  fontSize: '9.5px',
                   fontWeight: 600,
                   marginBottom: '2px',
                   whiteSpace: 'nowrap',
@@ -174,7 +176,9 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                   textOverflow: 'ellipsis',
                 }}
               >
-                {isLocked ? `🔒 ${passInfo.text}` : `✓ ${passInfo.text}`}
+                {isLocked
+                  ? (passInfo.text.startsWith('Locked') ? `🔒 ${passInfo.text}` : `🔒 Locked · ${passInfo.text}`)
+                  : `✓ ${passInfo.text}`}
               </div>
 
               {(
@@ -202,7 +206,18 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
       </div>
 
       {lockError && (
-        <div style={{ fontSize: '11.5px', color: 'var(--terracotta)', fontWeight: 600 }}>
+        <div
+          style={{
+            fontSize: '12px',
+            color: 'var(--terracotta)',
+            fontWeight: 600,
+            padding: '6px 10px',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '4px',
+            lineHeight: 1.4,
+          }}
+        >
           ⚠️ {lockError}
         </div>
       )}
