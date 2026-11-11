@@ -24,6 +24,7 @@ from app.backend.contracts import (
     Message,
 )
 from app.backend.media.evidence import ingest_evidence
+from app.backend.memory.plan import get_case_plan
 from app.backend.persistence.repository import Repository
 from app.backend.workflow.engine import WorkflowEngine
 
@@ -58,6 +59,8 @@ async def create_case(
         customer_id=effective_customer_id,
         initial_message=payload.initial_message,
         client_message_id=payload.client_message_id,
+        has_attachment=bool(payload.has_attachment or payload.attachment_ids),
+        attachment_ids=payload.attachment_ids,
     )
 
     return CreateCaseResponse(
@@ -137,50 +140,90 @@ async def get_case_snapshot(
                 obs = ev.safe_payload.get("observations") or []
                 if isinstance(obs, list):
                     observations_list.extend(obs)
-            if not unknowns_list:
-                unk = ev.safe_payload.get("unknowns") or []
-                if isinstance(unk, list):
-                    unknowns_list.extend(unk)
+            unk = ev.safe_payload.get("unknowns") or []
+            if isinstance(unk, list):
+                for u in unk:
+                    if u not in unknowns_list:
+                        unknowns_list.append(u)
 
-    # Policy checks
-    policy_checks_list = []
+    # Ensure unverified policy fields (barcode, exact_model, shipping_label) are listed
+    # whenever packaging label / barcode is not verified in observations (Wave 11 A.3)
+    has_verified_barcode = any(
+        (o.get("attribute") in ("LABEL_TEXT", "label_text", "barcode") and case.order_id.lower() in str(o.get("value", "")).lower())
+        for o in observations_list
+    )
+    if not has_verified_barcode and (observations_list or case.case_type in (CaseType.MISMATCH, CaseType.DAMAGE, CaseType.UNCLEAR)):
+        for u in ["barcode", "exact_model", "shipping_label"]:
+            if u not in unknowns_list:
+                unknowns_list.append(u)
+
+    # Policy checks (deduplicate per rule id, latest result wins per Wave 11 A.4)
+    policy_checks_map: Dict[str, Dict[str, Any]] = {}
     with repo.db.cursor() as cur:
         cur.execute("SELECT * FROM policy_checks WHERE case_id = ? ORDER BY created_at ASC", (case_id,))
         for r in cur.fetchall():
-            policy_checks_list.append(dict(r))
+            policy_checks_map[r["rule_id"]] = dict(r)
 
-    if not policy_checks_list:
-        for ev in events:
-            if ev.event_type == "policy_checked" and ev.safe_payload:
-                policy_checks_list.append({
-                    "rule_id": ev.safe_payload.get("rule_id", "POL-DEF"),
-                    "result": ev.safe_payload.get("result", "PASS"),
-                    "reason_code": ev.safe_payload.get("reason_code", "OK"),
-                })
+    for ev in events:
+        if ev.event_type == "policy_checked" and ev.safe_payload:
+            rule_id = ev.safe_payload.get("rule_id", "POL-DEF")
+            policy_checks_map[rule_id] = {
+                "rule_id": rule_id,
+                "result": ev.safe_payload.get("result", "PASS"),
+                "reason_code": ev.safe_payload.get("reason_code", "OK"),
+            }
+    policy_checks_list = list(policy_checks_map.values())
 
-    # Plan card synthesis
-    plan = None
-    if proposals:
-        latest_prop = proposals[-1]
-        action_val = latest_prop.action_type.value if hasattr(latest_prop.action_type, "value") else str(latest_prop.action_type)
+    # Plan card synthesis from database plan_records (Wave 11 A.2)
+    db_plan = get_case_plan(repo, case_id)
+    if db_plan:
         plan = {
-            "action_type": action_val,
-            "summary": f"Proposed {action_val} for order {case.order_id}",
-            "requires_approval": True,
-            "proposal_id": latest_prop.proposal_id,
+            "plan_id": db_plan.plan_id,
+            "goal": db_plan.goal,
+            "tools": db_plan.tools_called or db_plan.tools_planned,
+            "outcome": db_plan.outcome,
+            "memory_used": db_plan.memory_used,
+            "action_type": proposals[-1].action_type.value if proposals else (case.state.value if hasattr(case.state, "value") else str(case.state)),
+            "summary": db_plan.outcome,
+            "requires_approval": bool(proposals),
+            "proposal_id": proposals[-1].proposal_id if proposals else None,
         }
-    elif case.state == CaseState.WAITING_CUSTOMER:
-        plan = {
-            "action_type": "REQUEST_CLARIFICATION",
-            "summary": case.summary or "Awaiting additional evidence from customer",
-            "requires_approval": False,
-        }
-    elif case.state in (CaseState.RESOLVED, CaseState.WAITING_RETURN):
-        plan = {
-            "action_type": case.state.value,
-            "summary": case.summary or f"Case in {case.state.value}",
-            "requires_approval": False,
-        }
+    else:
+        # Fallback plan synthesis if no plan_record row yet
+        plan = None
+        if proposals:
+            latest_prop = proposals[-1]
+            action_val = latest_prop.action_type.value if hasattr(latest_prop.action_type, "value") else str(latest_prop.action_type)
+            plan = {
+                "action_type": action_val,
+                "summary": f"Proposed {action_val} for order {case.order_id}",
+                "requires_approval": True,
+                "proposal_id": latest_prop.proposal_id,
+                "goal": f"Customer dispute resolution for order {case.order_id}",
+                "tools": ["get_order", "get_store_policy"],
+                "outcome": f"Created {action_val} proposal awaiting seller approval",
+                "memory_used": [],
+            }
+        elif case.state == CaseState.WAITING_CUSTOMER:
+            plan = {
+                "action_type": "REQUEST_CLARIFICATION",
+                "summary": case.summary or "Awaiting additional evidence from customer",
+                "requires_approval": False,
+                "goal": f"Gather missing evidence for order {case.order_id}",
+                "tools": ["get_order", "observe_media"],
+                "outcome": case.summary or "Requested evidence from customer",
+                "memory_used": [],
+            }
+        elif case.state in (CaseState.RESOLVED, CaseState.WAITING_RETURN, CaseState.HUMAN_REVIEW):
+            plan = {
+                "action_type": case.state.value if hasattr(case.state, "value") else str(case.state),
+                "summary": case.summary or f"Case in {case.state.value}",
+                "requires_approval": False,
+                "goal": f"Case resolution for order {case.order_id}",
+                "tools": ["get_order"],
+                "outcome": case.summary or f"Case in {case.state.value}",
+                "memory_used": [],
+            }
 
     return CaseSnapshotResponse(
         case_id=case.case_id,

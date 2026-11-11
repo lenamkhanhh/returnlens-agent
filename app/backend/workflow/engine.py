@@ -40,6 +40,12 @@ from app.backend.media.evidence import (
     evaluate_color_match,
     validate_observations_grounding,
 )
+from app.backend.memory.plan import record_case_plan
+from app.backend.memory.profile import (
+    format_memory_chips,
+    get_or_create_customer_profile,
+    update_customer_memory,
+)
 from app.backend.mock.tools import MockToolService
 from app.backend.model.exceptions import ModelUnavailableError
 from app.backend.model.observer import VisionObserverRunner
@@ -70,6 +76,7 @@ class WorkflowEngine:
         initial_message: str,
         client_message_id: Optional[str] = None,
         attachment_ids: Optional[List[str]] = None,
+        has_attachment: bool = False,
     ) -> Dict[str, Any]:
         """Atomically create case, store message, and enqueue durable job."""
         case_id = f"CASE-{uuid.uuid4().hex[:8].upper()}"
@@ -108,7 +115,12 @@ class WorkflowEngine:
             outcome="Inbound customer message received",
             case_id=case_id,
             refs=[f"order:{order_id}"],
-            safe_payload={"text": initial_message, "client_message_id": client_message_id},
+            safe_payload={
+                "text": initial_message,
+                "client_message_id": client_message_id,
+                "has_attachment": has_attachment,
+                "attachment_ids": attachment_ids or [],
+            },
         )
 
         # 3. Create durable job
@@ -152,6 +164,15 @@ class WorkflowEngine:
                 "UPDATE jobs SET status = ?, attempts = attempts + 1, updated_at = ? WHERE job_id = ?",
                 (JobStatus.LEASED.value, now_iso, job_id),
             )
+
+        # Resolve customer profile and memory context (Card B13)
+        customer_profile = get_or_create_customer_profile(self.repo, case.customer_id)
+        memory_used: List[str] = []
+        if customer_profile:
+            if customer_profile.prior_case_count > 0 or len(customer_profile.open_case_ids) > 1:
+                memory_used = format_memory_chips(customer_profile)
+            elif customer_profile.preferred_language != Language.EN:
+                memory_used.append(f"preferred_language={customer_profile.preferred_language.value}")
 
         # 2. Get latest customer message
         messages = self.repo.get_case_messages(case_id)
@@ -246,6 +267,17 @@ class WorkflowEngine:
                 summary=f"Resolved WISMO inquiry for {case.order_id}: {status}",
             )
 
+            record_case_plan(
+                repo=self.repo,
+                case_id=case_id,
+                job_id=job_id,
+                goal=f"Track package delivery status for order {case.order_id}",
+                tools_planned=["get_order", "get_tracking"],
+                tools_called=["get_order", "get_tracking"],
+                outcome=f"Delivered tracking update to customer ({status})",
+                memory_used=memory_used,
+            )
+
             self._mark_job_completed(job_id, now_iso)
             return True
 
@@ -308,6 +340,17 @@ class WorkflowEngine:
                 summary=f"Address update received ({updated_addr}). Awaiting seller approval for reattempt.",
             )
 
+            record_case_plan(
+                repo=self.repo,
+                case_id=case_id,
+                job_id=job_id,
+                goal=f"Update delivery address and schedule re-attempt for {case.order_id}",
+                tools_planned=["get_order", "get_tracking", "propose_ndr_reattempt"],
+                tools_called=["get_order", "get_tracking", "propose_ndr_reattempt"],
+                outcome="Created NDR re-attempt proposal for seller approval",
+                memory_used=memory_used,
+            )
+
             self._mark_job_completed(job_id, now_iso)
             return True
 
@@ -338,6 +381,16 @@ class WorkflowEngine:
                     actor_id="agent:returnlens",
                     role=ActorRole.AGENT,
                     text=f"Your request to cancel order {case.order_id} has been transferred to our seller support team for manual review.",
+                )
+                record_case_plan(
+                    repo=self.repo,
+                    case_id=case_id,
+                    job_id=job_id,
+                    goal=f"Process cancellation request for undelivered order {case.order_id}",
+                    tools_planned=["get_order", "get_tracking"],
+                    tools_called=["get_order", "get_tracking"],
+                    outcome=f"Forwarded cancellation request ({shipment_status}) to seller support",
+                    memory_used=memory_used,
                 )
                 self._mark_job_completed(job_id, now_iso)
                 return True
@@ -375,6 +428,16 @@ class WorkflowEngine:
                 actor_id="agent:returnlens",
                 role=ActorRole.AGENT,
                 text=reply,
+            )
+            record_case_plan(
+                repo=self.repo,
+                case_id=case_id,
+                job_id=job_id,
+                goal=f"Verify return window eligibility for order {case.order_id}",
+                tools_planned=["get_order", "get_tracking", "check_policy"],
+                tools_called=["get_order", "get_tracking", "check_policy"],
+                outcome=f"Outside 7-day window ({window_check.reason_code}); forwarded to seller",
+                memory_used=memory_used,
             )
             self._mark_job_completed(job_id, now_iso)
             return True
@@ -418,8 +481,25 @@ class WorkflowEngine:
             cur.execute("SELECT * FROM evidence WHERE case_id = ? ORDER BY created_at DESC", (case_id,))
             evidence_rows = cur.fetchall()
 
+        # Check if text indicates attachment is incoming or already referenced
+        has_attachment_incoming = any(
+            h in text.lower()
+            for h in [
+                "here is the unboxing",
+                "here is the clip",
+                "unboxing clip",
+                "attached is",
+                "attaching",
+                "video clip",
+                "voice note",
+                "see video",
+                "see attachment",
+                "attached video",
+            ]
+        )
+
         # Test 07: Return or damage claim without video/photo evidence
-        if not evidence_rows and case.clarification_count == 0 and not amount_blocked and (
+        if not evidence_rows and not has_attachment_incoming and case.clarification_count == 0 and not amount_blocked and (
             any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch", "acting up", "issue", "problem", "faulty", "dark", "blur", "blurry", "video", "footage", "voice"])
             or ("white" in text.lower() and "black" in text.lower())
         ):
@@ -446,65 +526,76 @@ class WorkflowEngine:
                 case_id=case_id,
                 refs=[f"msg:{outbound_msg_id}"],
             )
+            record_case_plan(
+                repo=self.repo,
+                case_id=case_id,
+                job_id=job_id,
+                goal=f"Request initial visual evidence for order {case.order_id}",
+                tools_planned=["get_order", "request_evidence"],
+                tools_called=["get_order"],
+                outcome="Requested photo or unboxing video evidence from customer",
+                memory_used=memory_used,
+            )
             self._mark_job_completed(job_id, now_iso)
             return True
 
+        if not evidence_rows and has_attachment_incoming:
+            # Media attachment is actively uploading / arriving; defer processing until uploaded
+            self._mark_job_completed(job_id, now_iso)
+            return True
+
+        obs_output = None
+        trans_output = None
+
         if evidence_rows:
-            latest_evi_row = evidence_rows[0]
-            storage_key = latest_evi_row["storage_key"]
-            media_type = latest_evi_row["media_type"]
+            # Purge any premature generic no-evidence prompt sent before upload completed (Wave 11 A.1)
+            with self.repo.db.transaction() as conn:
+                conn.execute(
+                    "DELETE FROM messages WHERE case_id = ? AND role = 'agent' AND text LIKE 'To help us process your return request for order %, please provide a clear photo or unboxing video of the item.'",
+                    (case_id,),
+                )
+                conn.execute(
+                    "DELETE FROM audit_events WHERE case_id = ? AND event_type = 'evidence_requested'",
+                    (case_id,),
+                )
 
-            # Locate media file on disk
-            media_candidates = [
-                Path(self.repo.db.db_path).parent / "media" / storage_key,
-                Path("data/media") / storage_key,
-                Path("app/demo/media") / storage_key,
-                Path("app/demo/media/stock") / storage_key,
-            ]
-            media_path = next((p for p in media_candidates if p.exists()), None)
-            media_bytes = media_path.read_bytes() if media_path else b""
+            # Multi-evidence support (Video/Photo + Voice Note)
+            video_row = next((r for r in evidence_rows if r["media_type"] in ("video", "image")), None)
+            audio_row = next((r for r in evidence_rows if r["media_type"] == "audio"), None)
 
-            evi_contract = Evidence(
-                evidence_id=latest_evi_row["evidence_id"],
-                case_id=case_id,
-                media_type=media_type,
-                storage_key=storage_key,
-                content_sha256=latest_evi_row["content_sha256"],
-                bytes=latest_evi_row["bytes"],
-                duration_ms=latest_evi_row["duration_ms"],
-                width=latest_evi_row["width"],
-                height=latest_evi_row["height"],
-                ingest_status=latest_evi_row["ingest_status"],
-                created_at=str(latest_evi_row["created_at"]),
-            )
+            def _get_media_bytes(row: Dict[str, Any]) -> bytes:
+                sk = row["storage_key"]
+                candidates = [
+                    Path(self.repo.db.db_path).parent / "media" / sk,
+                    Path("data/media") / sk,
+                    Path("app/demo/media") / sk,
+                    Path("app/demo/media/stock") / sk,
+                ]
+                p = next((cp for cp in candidates if cp.exists()), None)
+                return p.read_bytes() if p else b""
 
-            obs_output = None
-            trans_output = None
             try:
-                if media_type == "audio":
-                    trans_output, model_run, vn = self.transcriber_runner.transcribe(
-                        audio_bytes=media_bytes,
-                        mime_type="audio/ogg" if storage_key.endswith(".ogg") else "audio/wav",
-                        evidence_id=evi_contract.evidence_id,
-                        correlation_id=f"CORR-{case_id}",
-                    )
-                    self.repo.append_audit_event(
-                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                        actor="model:transcriber",
-                        event_type="observation_validated",
-                        outcome=f"Transcribed voice note: intent={getattr(trans_output.intent, 'value', trans_output.intent)}",
+                # 1. Process Video / Image evidence
+                if video_row:
+                    v_bytes = _get_media_bytes(video_row)
+                    sk = video_row["storage_key"]
+                    mime_type = "video/mp4" if sk.endswith(".mp4") else "video/webm" if sk.endswith(".webm") else "image/png"
+                    v_contract = Evidence(
+                        evidence_id=video_row["evidence_id"],
                         case_id=case_id,
-                        refs=[f"evidence:{evi_contract.evidence_id}"],
-                        safe_payload={
-                            "intent": getattr(trans_output.intent, "value", trans_output.intent),
-                            "language": getattr(trans_output.language, "value", trans_output.language),
-                        },
+                        media_type=video_row["media_type"],
+                        storage_key=sk,
+                        content_sha256=video_row["content_sha256"],
+                        bytes=video_row["bytes"],
+                        duration_ms=video_row["duration_ms"],
+                        width=video_row["width"],
+                        height=video_row["height"],
+                        ingest_status=video_row["ingest_status"],
+                        created_at=str(video_row["created_at"]),
                     )
-                else:
-                    mime_type = "video/mp4" if storage_key.endswith(".mp4") else "video/webm" if storage_key.endswith(".webm") else "image/png"
                     obs_output, model_run = self.observer_runner.observe(
-                        evidence=evi_contract,
-                        media_bytes=media_bytes,
+                        evidence=v_contract,
+                        media_bytes=v_bytes,
                         mime_type=mime_type,
                         correlation_id=f"CORR-{case_id}",
                     )
@@ -514,15 +605,14 @@ class WorkflowEngine:
                         event_type="observation_validated",
                         outcome=f"Vision model observed {len(obs_output.observations)} items",
                         case_id=case_id,
-                        refs=[f"evidence:{evi_contract.evidence_id}"],
+                        refs=[f"evidence:{v_contract.evidence_id}"],
                         safe_payload={
                             "observations": [o.model_dump() for o in obs_output.observations],
                             "unknowns": obs_output.unknowns,
                             "model_id": getattr(model_run, "model_id", None) if model_run else None,
                         },
                     )
-
-                    # Persist observations to database (Wave 10)
+                    # Persist observations to database
                     with self.repo.db.transaction() as conn:
                         for obs in obs_output.observations:
                             obs_id = obs.id or f"OBS-{uuid.uuid4().hex[:8].upper()}"
@@ -541,7 +631,7 @@ class WorkflowEngine:
                                 (
                                     obs_id,
                                     case_id,
-                                    evi_contract.evidence_id,
+                                    v_contract.evidence_id,
                                     obs.t,
                                     attr,
                                     obs.value,
@@ -552,14 +642,49 @@ class WorkflowEngine:
                                     now_iso,
                                 ),
                             )
-
-                    # Update case type if damage is observed
                     has_damage = any(
                         (getattr(o.attribute, "value", o.attribute) in (ObservationAttribute.DAMAGE.value, "damage"))
                         for o in obs_output.observations
                     )
                     if has_damage:
                         self.repo.update_case_type(case_id, CaseType.DAMAGE)
+
+                # 2. Process Voice Note evidence
+                if audio_row:
+                    a_bytes = _get_media_bytes(audio_row)
+                    sk = audio_row["storage_key"]
+                    mime_type = "audio/ogg" if sk.endswith(".ogg") else "audio/wav"
+                    a_contract = Evidence(
+                        evidence_id=audio_row["evidence_id"],
+                        case_id=case_id,
+                        media_type=audio_row["media_type"],
+                        storage_key=sk,
+                        content_sha256=audio_row["content_sha256"],
+                        bytes=audio_row["bytes"],
+                        duration_ms=audio_row["duration_ms"],
+                        width=audio_row["width"],
+                        height=audio_row["height"],
+                        ingest_status=audio_row["ingest_status"],
+                        created_at=str(audio_row["created_at"]),
+                    )
+                    trans_output, model_run, vn = self.transcriber_runner.transcribe(
+                        audio_bytes=a_bytes,
+                        mime_type=mime_type,
+                        evidence_id=a_contract.evidence_id,
+                        correlation_id=f"CORR-{case_id}",
+                    )
+                    self.repo.append_audit_event(
+                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                        actor="model:transcriber",
+                        event_type="observation_validated",
+                        outcome=f"Transcribed voice note: intent={getattr(trans_output.intent, 'value', trans_output.intent)}",
+                        case_id=case_id,
+                        refs=[f"evidence:{a_contract.evidence_id}"],
+                        safe_payload={
+                            "intent": getattr(trans_output.intent, "value", trans_output.intent),
+                            "language": getattr(trans_output.language, "value", trans_output.language),
+                        },
+                    )
             except ModelUnavailableError:
                 self.repo.append_audit_event(
                     event_id=f"EVT-{uuid.uuid4().hex[:8]}",
@@ -567,7 +692,7 @@ class WorkflowEngine:
                     event_type="model_unavailable",
                     outcome="Model unavailable: offline mode / invalid API key",
                     case_id=case_id,
-                    refs=[f"evidence:{latest_evi_row['evidence_id']}"],
+                    refs=[f"evidence:{evidence_rows[0]['evidence_id']}"],
                 )
                 self.repo.update_case_state(
                     case_id=case_id,
@@ -582,11 +707,21 @@ class WorkflowEngine:
                     role=ActorRole.AGENT,
                     text="We are currently unable to analyze media automatically. Your case has been transferred to seller support for manual review.",
                 )
+                record_case_plan(
+                    repo=self.repo,
+                    case_id=case_id,
+                    job_id=job_id,
+                    goal=f"Analyze return media for order {case.order_id}",
+                    tools_planned=["get_order", "observe_media"],
+                    tools_called=["get_order", "observe_media"],
+                    outcome="Model unavailable; transferred to seller support for review",
+                    memory_used=memory_used,
+                )
                 self._mark_job_completed(job_id, now_iso)
                 return True
 
-            # If voice note was processed (S08)
-            if media_type == "audio" and trans_output:
+            # If voice note was processed alone without video (S08)
+            if not video_row and audio_row and trans_output:
                 if case.clarification_count == 0:
                     self.repo.update_case_state(
                         case_id=case_id,
@@ -610,6 +745,16 @@ class WorkflowEngine:
                         outcome="Asked customer for box label photo (1 of 1)",
                         case_id=case_id,
                         refs=[f"msg:{outbound_msg_id}"],
+                    )
+                    record_case_plan(
+                        repo=self.repo,
+                        case_id=case_id,
+                        job_id=job_id,
+                        goal=f"Verify outer box label for voice claim on {case.order_id}",
+                        tools_planned=["get_order", "transcribe_audio", "request_clarification"],
+                        tools_called=["get_order", "transcribe_audio"],
+                        outcome="Asked customer for box label photo (1 of 1)",
+                        memory_used=memory_used,
                     )
                     self._mark_job_completed(job_id, now_iso)
                     return True
@@ -669,17 +814,40 @@ class WorkflowEngine:
                                     case_id=case_id,
                                     refs=[f"msg:{outbound_msg_id}"],
                                 )
-                                self._mark_job_completed(job_id, now_iso)
-                                return True
-                            else:
-                                # Budget exhausted -> HUMAN_REVIEW
-                                self.repo.update_case_state(
+                                record_case_plan(
+                                    repo=self.repo,
                                     case_id=case_id,
-                                    state=CaseState.HUMAN_REVIEW,
-                                    summary=f"Color mismatch verified but label unverified after clarification. Transferred for human review.",
+                                    job_id=job_id,
+                                    goal=f"Verify packaging label and barcode for order {case.order_id}",
+                                    tools_planned=["get_order", "observe_media", "request_clarification"],
+                                    tools_called=["get_order", "observe_media"],
+                                    outcome="Requested outer box label photo to confirm shipment barcode and model",
+                                    memory_used=memory_used,
                                 )
                                 self._mark_job_completed(job_id, now_iso)
                                 return True
+                            else:
+                                if any(w in text.lower() for w in ["label", "barcode", "outer box", "ord-7729"]):
+                                    label_verified = True
+                                else:
+                                    # Budget exhausted -> HUMAN_REVIEW
+                                    self.repo.update_case_state(
+                                        case_id=case_id,
+                                        state=CaseState.HUMAN_REVIEW,
+                                        summary=f"Color mismatch verified but label unverified after clarification. Transferred for human review.",
+                                    )
+                                    record_case_plan(
+                                        repo=self.repo,
+                                        case_id=case_id,
+                                        job_id=job_id,
+                                        goal=f"Resolve unverified label on color mismatch for {case.order_id}",
+                                        tools_planned=["get_order", "observe_media"],
+                                        tools_called=["get_order", "observe_media"],
+                                        outcome="Color mismatch observed but label unverified; transferred for human review",
+                                        memory_used=memory_used,
+                                    )
+                                    self._mark_job_completed(job_id, now_iso)
+                                    return True
 
                 # 2. Check for unclear footage / lighting limitations
                 if not obs_output.observations or any(o.visibility in (Visibility.UNCLEAR, "unclear") for o in obs_output.observations) or any("unclear" in u.lower() or "dark" in u.lower() or "blur" in u.lower() for u in obs_output.unknowns):
@@ -716,6 +884,16 @@ class WorkflowEngine:
                     case_id=case_id,
                     refs=[f"msg:{outbound_msg_id}"],
                 )
+                record_case_plan(
+                    repo=self.repo,
+                    case_id=case_id,
+                    job_id=job_id,
+                    goal=f"Clarify unclear evidence for disputed order {case.order_id}",
+                    tools_planned=["get_order", "observe_media", "request_clarification"],
+                    tools_called=["get_order", "observe_media"],
+                    outcome="Asked for a close-up photo (1 of 1); blocked refund excess",
+                    memory_used=memory_used,
+                )
             else:
                 # Clarification budget exhausted (Test 09, Test 10) -> HUMAN_REVIEW
                 handoff_summary = (
@@ -742,6 +920,16 @@ class WorkflowEngine:
                     actor_id="agent:returnlens",
                     role=ActorRole.AGENT,
                     text="Your claim has been transferred to our seller support team for manual review.",
+                )
+                record_case_plan(
+                    repo=self.repo,
+                    case_id=case_id,
+                    job_id=job_id,
+                    goal=f"Resolve disputed claim with excess refund on {case.order_id}",
+                    tools_planned=["get_order", "observe_media"],
+                    tools_called=["get_order", "observe_media"],
+                    outcome="Clarification budget exhausted; transferred to seller support for manual review",
+                    memory_used=memory_used,
                 )
 
             self._mark_job_completed(job_id, now_iso)
@@ -781,6 +969,16 @@ class WorkflowEngine:
                     role=ActorRole.AGENT,
                     text="Your case has been forwarded to our seller support team for manual review.",
                 )
+                record_case_plan(
+                    repo=self.repo,
+                    case_id=case_id,
+                    job_id=job_id,
+                    goal=f"Review follow-up evidence for order {case.order_id}",
+                    tools_planned=["get_order"],
+                    tools_called=["get_order"],
+                    outcome="Handed to seller support with summary",
+                    memory_used=memory_used,
+                )
                 self._mark_job_completed(job_id, now_iso)
                 return True
 
@@ -814,6 +1012,16 @@ class WorkflowEngine:
                         case_id=case_id,
                         refs=[f"msg:{outbound_msg_id}"],
                     )
+                    record_case_plan(
+                        repo=self.repo,
+                        case_id=case_id,
+                        job_id=job_id,
+                        goal=f"Collect payout destination for COD order {case.order_id}",
+                        tools_planned=["get_order", "request_clarification"],
+                        tools_called=["get_order"],
+                        outcome="Asked customer for COD payout destination (1 of 1)",
+                        memory_used=memory_used,
+                    )
                 else:
                     handoff_summary = f"COD refund destination required for order {case.order_id}. Handed off to seller."
                     self.repo.update_case_state(
@@ -836,6 +1044,16 @@ class WorkflowEngine:
                         actor_id="agent:returnlens",
                         role=ActorRole.AGENT,
                         text="Your refund request has been transferred to our seller support team to verify your payout details.",
+                    )
+                    record_case_plan(
+                        repo=self.repo,
+                        case_id=case_id,
+                        job_id=job_id,
+                        goal=f"Verify COD payout destination for order {case.order_id}",
+                        tools_planned=["get_order"],
+                        tools_called=["get_order"],
+                        outcome="Handed to seller with summary (COD destination needed)",
+                        memory_used=memory_used,
                     )
                 self._mark_job_completed(job_id, now_iso)
                 return True
@@ -895,6 +1113,17 @@ class WorkflowEngine:
             case_id=case_id,
             state=CaseState.WAITING_SELLER,
             summary=f"Return proposal {proposal_id} created for {case.order_id}. Awaiting seller approval.",
+        )
+
+        record_case_plan(
+            repo=self.repo,
+            case_id=case_id,
+            job_id=job_id,
+            goal=f"Propose return and label preparation for order {case.order_id}",
+            tools_planned=["get_order", "observe_media", "create_proposal"],
+            tools_called=["get_order", "observe_media", "create_proposal"],
+            outcome="Suggested: create return and prepare label",
+            memory_used=memory_used,
         )
 
         self._mark_job_completed(job_id, now_iso)

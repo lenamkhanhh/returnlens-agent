@@ -613,6 +613,8 @@ class CreateCaseRequest(AppBaseModel):
     order_id: str
     initial_message: str
     client_message_id: Optional[str] = None
+    has_attachment: Optional[bool] = False
+    attachment_ids: Optional[List[str]] = Field(default_factory=list)
 
 
 class CreateCaseResponse(AppBaseModel):
