@@ -675,6 +675,29 @@ def generate_all_fixtures(media_dir: Path) -> dict:
         ],
     }
 
+    stock_manifest_path = media_dir / "stock" / "manifest.json"
+    if stock_manifest_path.exists():
+        with open(stock_manifest_path, "r", encoding="utf-8") as sf:
+            stock_data = json.load(sf)
+        manifest["stock_note"] = stock_data.get("note")
+        manifest["missing"] = stock_data.get("missing", [])
+        stock_assets = []
+        for asset in stock_data.get("assets", []):
+            item = dict(asset)
+            f_name = asset.get("file", "")
+            item["filename"] = f"stock/{f_name}"
+            item["file"] = f_name
+            target_path = media_dir / "stock" / f_name
+            if target_path.exists():
+                item["size_bytes"] = target_path.stat().st_size
+                item["content_sha256"] = compute_sha256(target_path)
+            if "duration_s" in asset:
+                item["duration_ms"] = int(asset["duration_s"] * 1000)
+            item["media_type"] = asset.get("kind", "video")
+            stock_assets.append(item)
+            manifest["fixtures"].append(item)
+        manifest["assets"] = stock_assets
+
     manifest_path = media_dir / "manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)

@@ -153,6 +153,267 @@
       "limitations": [
         "Customer voice note synthesized via Windows System.Speech"
       ]
+    },
+    {
+      "file": "stock_black_headphones_pexels_9130360.mp4",
+      "kind": "video",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.pexels.com/video/person-getting-headphones-9130360/",
+      "creator": "Dario Fernandez Ruz via Pexels",
+      "license": "https://www.pexels.com/license/",
+      "edits": "trimmed to 20 s, scaled to 720p, audio removed",
+      "duration_s": 20.0,
+      "use_for": [
+        "S04",
+        "S08",
+        "Case B"
+      ],
+      "ground_truth": "Hands open a white drawer and take out over-ear headphones that look black (visible roughly 00:04-00:16). No box, no shipping label, no readable model or barcode.",
+      "expected_unknowns": [
+        "barcode",
+        "exact_model",
+        "shipping_label"
+      ],
+      "filename": "stock/stock_black_headphones_pexels_9130360.mp4",
+      "size_bytes": 808330,
+      "content_sha256": "f885580c109ef9ca983e5c06436dd0095fc439d32c06a946a9eaf63016fd54ff",
+      "duration_ms": 20000,
+      "media_type": "video"
+    },
+    {
+      "file": "stock_dim_unboxing_pexels_40423563.mp4",
+      "kind": "video",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.pexels.com/video/unboxing-gear-in-a-dimly-lit-room-40423563/",
+      "creator": "Tom Shutkin via Pexels",
+      "license": "https://www.pexels.com/license/",
+      "edits": "scaled to 720p, audio removed",
+      "duration_s": 7.32,
+      "use_for": [
+        "S05",
+        "S09",
+        "Case C"
+      ],
+      "ground_truth": "Dim room at night; a person unwraps small items over a box of camera gear. Item type and colour are hard to tell; nothing about headphone damage can be confirmed.",
+      "expected_unknowns": [
+        "item_type",
+        "damage",
+        "color",
+        "barcode"
+      ],
+      "filename": "stock/stock_dim_unboxing_pexels_40423563.mp4",
+      "size_bytes": 483531,
+      "content_sha256": "53e70b5a3f97a075e9065c54f25524e59629d3a20f42c8e6c08eb0438d6b4d1e",
+      "duration_ms": 7320,
+      "media_type": "video"
+    },
+    {
+      "file": "stock_earbuds_unboxing_pexels_40558520.mp4",
+      "kind": "video",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.pexels.com/video/unboxing-wireless-earbuds-with-charging-case-40558520/",
+      "creator": "Nothing Ahead (ian-panelo) via Pexels",
+      "license": "https://www.pexels.com/license/",
+      "edits": "scaled to 720p, 30 fps, audio removed",
+      "duration_s": 14.4,
+      "use_for": [
+        "spare black-item clip"
+      ],
+      "ground_truth": "Close-up of hands opening a black earbud charging case; earbuds are black. Hands only.",
+      "expected_unknowns": [
+        "barcode",
+        "exact_model"
+      ],
+      "filename": "stock/stock_earbuds_unboxing_pexels_40558520.mp4",
+      "size_bytes": 426483,
+      "content_sha256": "c5a0b6fec5aa10d7c47098801db6da3aeeb8078c05674f9147fae614d9a09f3f",
+      "duration_ms": 14400,
+      "media_type": "video"
+    },
+    {
+      "file": "synthetic_voice_en_damage_ORD-1042.ogg",
+      "kind": "audio",
+      "origin": "synthetic_tts",
+      "synthetic": true,
+      "tool": "Windows System.Speech, voice Microsoft Zira Desktop",
+      "language": "en",
+      "transcript": "Hi, the headband on my headphones is cracked. It arrived four days ago. My order number is ORD-1042.",
+      "use_for": [
+        "voice path test, Case A"
+      ],
+      "filename": "stock/synthetic_voice_en_damage_ORD-1042.ogg",
+      "size_bytes": 25197,
+      "content_sha256": "d82d996843636cac6755ba71305ef546feb6b1d7dc170efbfab9d89780ac3051",
+      "media_type": "audio"
+    },
+    {
+      "file": "synthetic_voice_en_mismatch_ORD-7729.ogg",
+      "kind": "audio",
+      "origin": "synthetic_tts",
+      "synthetic": true,
+      "tool": "Windows System.Speech, voice Microsoft David Desktop",
+      "language": "en",
+      "transcript": "Hello. I ordered white headphones, but the box had black ones. My order is ORD-7729. I am sending a video.",
+      "use_for": [
+        "S08 voice path (English stand-in; Hindi voice still needs a human speaker)"
+      ],
+      "filename": "stock/synthetic_voice_en_mismatch_ORD-7729.ogg",
+      "size_bytes": 28910,
+      "content_sha256": "6a7ff5e09723dcd6e16bc8aadb31abe6f0032539baf080c966ad0544b4ea92ec",
+      "media_type": "audio"
+    },
+    {
+      "file": "synthetic_voice_en_overclaim_ORD-5150.ogg",
+      "kind": "audio",
+      "origin": "synthetic_tts",
+      "synthetic": true,
+      "tool": "Windows System.Speech, voice Microsoft David Desktop",
+      "language": "en",
+      "transcript": "I want a full refund of eighteen hundred rupees for order ORD-5150.",
+      "use_for": [
+        "test 47 spoken amount vs ledger"
+      ],
+      "filename": "stock/synthetic_voice_en_overclaim_ORD-5150.ogg",
+      "size_bytes": 17566,
+      "content_sha256": "65d015141f15a348469500a1e14ffe90e10971284bb971719abb3e28ddaac929",
+      "media_type": "audio"
+    }
+  ],
+  "stock_note": "Demo evidence for staged scenarios. Stock clips are third-party footage under the Pexels license (free use, modification allowed, attribution not required; credited anyway). They do not show the actual Dhun Audio product, so barcode and exact model must stay unverified. Voice notes are synthetic (Windows offline text-to-speech). None of this is real customer data.",
+  "missing": [
+    "Case A damage clip (cracked white headband): no free stock clip found; needs filming or stays on a synthetic dev fixture",
+    "Hindi voice note: no free offline Hindi voice on this machine; needs a human speaker"
+  ],
+  "assets": [
+    {
+      "file": "stock_black_headphones_pexels_9130360.mp4",
+      "kind": "video",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.pexels.com/video/person-getting-headphones-9130360/",
+      "creator": "Dario Fernandez Ruz via Pexels",
+      "license": "https://www.pexels.com/license/",
+      "edits": "trimmed to 20 s, scaled to 720p, audio removed",
+      "duration_s": 20.0,
+      "use_for": [
+        "S04",
+        "S08",
+        "Case B"
+      ],
+      "ground_truth": "Hands open a white drawer and take out over-ear headphones that look black (visible roughly 00:04-00:16). No box, no shipping label, no readable model or barcode.",
+      "expected_unknowns": [
+        "barcode",
+        "exact_model",
+        "shipping_label"
+      ],
+      "filename": "stock/stock_black_headphones_pexels_9130360.mp4",
+      "size_bytes": 808330,
+      "content_sha256": "f885580c109ef9ca983e5c06436dd0095fc439d32c06a946a9eaf63016fd54ff",
+      "duration_ms": 20000,
+      "media_type": "video"
+    },
+    {
+      "file": "stock_dim_unboxing_pexels_40423563.mp4",
+      "kind": "video",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.pexels.com/video/unboxing-gear-in-a-dimly-lit-room-40423563/",
+      "creator": "Tom Shutkin via Pexels",
+      "license": "https://www.pexels.com/license/",
+      "edits": "scaled to 720p, audio removed",
+      "duration_s": 7.32,
+      "use_for": [
+        "S05",
+        "S09",
+        "Case C"
+      ],
+      "ground_truth": "Dim room at night; a person unwraps small items over a box of camera gear. Item type and colour are hard to tell; nothing about headphone damage can be confirmed.",
+      "expected_unknowns": [
+        "item_type",
+        "damage",
+        "color",
+        "barcode"
+      ],
+      "filename": "stock/stock_dim_unboxing_pexels_40423563.mp4",
+      "size_bytes": 483531,
+      "content_sha256": "53e70b5a3f97a075e9065c54f25524e59629d3a20f42c8e6c08eb0438d6b4d1e",
+      "duration_ms": 7320,
+      "media_type": "video"
+    },
+    {
+      "file": "stock_earbuds_unboxing_pexels_40558520.mp4",
+      "kind": "video",
+      "origin": "stock",
+      "synthetic": false,
+      "source_url": "https://www.pexels.com/video/unboxing-wireless-earbuds-with-charging-case-40558520/",
+      "creator": "Nothing Ahead (ian-panelo) via Pexels",
+      "license": "https://www.pexels.com/license/",
+      "edits": "scaled to 720p, 30 fps, audio removed",
+      "duration_s": 14.4,
+      "use_for": [
+        "spare black-item clip"
+      ],
+      "ground_truth": "Close-up of hands opening a black earbud charging case; earbuds are black. Hands only.",
+      "expected_unknowns": [
+        "barcode",
+        "exact_model"
+      ],
+      "filename": "stock/stock_earbuds_unboxing_pexels_40558520.mp4",
+      "size_bytes": 426483,
+      "content_sha256": "c5a0b6fec5aa10d7c47098801db6da3aeeb8078c05674f9147fae614d9a09f3f",
+      "duration_ms": 14400,
+      "media_type": "video"
+    },
+    {
+      "file": "synthetic_voice_en_damage_ORD-1042.ogg",
+      "kind": "audio",
+      "origin": "synthetic_tts",
+      "synthetic": true,
+      "tool": "Windows System.Speech, voice Microsoft Zira Desktop",
+      "language": "en",
+      "transcript": "Hi, the headband on my headphones is cracked. It arrived four days ago. My order number is ORD-1042.",
+      "use_for": [
+        "voice path test, Case A"
+      ],
+      "filename": "stock/synthetic_voice_en_damage_ORD-1042.ogg",
+      "size_bytes": 25197,
+      "content_sha256": "d82d996843636cac6755ba71305ef546feb6b1d7dc170efbfab9d89780ac3051",
+      "media_type": "audio"
+    },
+    {
+      "file": "synthetic_voice_en_mismatch_ORD-7729.ogg",
+      "kind": "audio",
+      "origin": "synthetic_tts",
+      "synthetic": true,
+      "tool": "Windows System.Speech, voice Microsoft David Desktop",
+      "language": "en",
+      "transcript": "Hello. I ordered white headphones, but the box had black ones. My order is ORD-7729. I am sending a video.",
+      "use_for": [
+        "S08 voice path (English stand-in; Hindi voice still needs a human speaker)"
+      ],
+      "filename": "stock/synthetic_voice_en_mismatch_ORD-7729.ogg",
+      "size_bytes": 28910,
+      "content_sha256": "6a7ff5e09723dcd6e16bc8aadb31abe6f0032539baf080c966ad0544b4ea92ec",
+      "media_type": "audio"
+    },
+    {
+      "file": "synthetic_voice_en_overclaim_ORD-5150.ogg",
+      "kind": "audio",
+      "origin": "synthetic_tts",
+      "synthetic": true,
+      "tool": "Windows System.Speech, voice Microsoft David Desktop",
+      "language": "en",
+      "transcript": "I want a full refund of eighteen hundred rupees for order ORD-5150.",
+      "use_for": [
+        "test 47 spoken amount vs ledger"
+      ],
+      "filename": "stock/synthetic_voice_en_overclaim_ORD-5150.ogg",
+      "size_bytes": 17566,
+      "content_sha256": "65d015141f15a348469500a1e14ffe90e10971284bb971719abb3e28ddaac929",
+      "media_type": "audio"
     }
   ]
 }

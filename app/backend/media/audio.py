@@ -10,8 +10,9 @@ Card B15: Ingests and processes audio voice notes per 03 §2a, 17 §4, 17 §8.
 from __future__ import annotations
 
 import hashlib
-import wave
 import io
+import struct
+import wave
 from pathlib import Path
 from typing import Optional
 
@@ -36,7 +37,19 @@ def probe_audio_duration_ms(data: bytes, mime_type: str) -> Optional[int]:
                     return int((frames / float(rate)) * 1000)
         except Exception:
             pass
-    # For WebM / OGG, default estimate or None
+
+    # Inspect OGG Opus duration via last Ogg page granule position (48kHz clock)
+    if mime_type in ("audio/ogg", "audio/opus") and data.startswith(b"OggS"):
+        try:
+            last_pos = data.rfind(b"OggS")
+            if last_pos != -1 and len(data) >= last_pos + 14:
+                granule = struct.unpack("<q", data[last_pos + 6 : last_pos + 14])[0]
+                if granule > 0:
+                    return int((granule / 48000.0) * 1000)
+        except Exception:
+            pass
+
+    # For WebM / other containers, return None if not probed
     return None
 
 
