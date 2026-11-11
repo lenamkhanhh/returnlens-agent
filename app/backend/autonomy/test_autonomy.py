@@ -15,7 +15,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from fastapi import HTTPException
 
@@ -236,8 +236,10 @@ class TestAutonomyDecision(unittest.TestCase):
         self.assertEqual(res_bal.decision, AutonomyDecision.BLOCK)
         self.assertEqual(res_bal.reason_code, "exceeds_order_balance")
 
-    def test_40_put_autonomy_rejected_when_reliability_locked(self):
+    @patch("app.backend.autonomy.router.load_reliability_results")
+    def test_40_put_autonomy_rejected_when_reliability_locked(self, mock_load_rel):
         """Test 40: PUT /api/seller/autonomy returns HTTP 422 if reliability is not 5/5 on matching version."""
+        mock_load_rel.return_value = {}  # Empty/unpassed reliability data
         mock_repo = MagicMock()
         # Reliability is NOT passed (e.g. empty or missing results)
         req = UpdateAutonomyRequest(
