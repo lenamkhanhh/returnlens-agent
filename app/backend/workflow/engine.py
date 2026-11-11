@@ -829,6 +829,10 @@ class WorkflowEngine:
                             else:
                                 if any(w in text.lower() for w in ["label", "barcode", "outer box", "ord-7729"]):
                                     label_verified = True
+                                elif case.state == CaseState.WAITING_CUSTOMER:
+                                    # Case is already awaiting customer's outer-box label photo
+                                    self._mark_job_completed(job_id, now_iso)
+                                    return True
                                 else:
                                     # Budget exhausted -> HUMAN_REVIEW
                                     self.repo.update_case_state(

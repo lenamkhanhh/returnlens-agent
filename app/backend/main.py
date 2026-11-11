@@ -311,7 +311,12 @@ def create_app(
 
     # Serve production frontend build if dist exists (17 §1, Wave 2 §6)
     # MUST be registered at the very end so it acts as catch-all for SPA without shadowing /api/*
-    dist_dir = Path("app/web/dist")
+    candidates = [
+        Path("app/web/dist"),
+        Path(__file__).resolve().parents[1] / "web" / "dist",
+        Path(__file__).resolve().parents[2] / "app" / "web" / "dist",
+    ]
+    dist_dir = next((p for p in candidates if p.exists()), Path("app/web/dist"))
     if dist_dir.exists():
         from fastapi.responses import FileResponse
         from fastapi.staticfiles import StaticFiles
