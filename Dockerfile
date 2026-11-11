@@ -21,12 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
-
-# Copy application code
+# Copy application code, then install it (hatchling needs README.md and app/)
+COPY pyproject.toml README.md ./
 COPY app/ ./app/
+RUN pip install --no-cache-dir .
 COPY --from=frontend-builder /web/dist ./app/web/dist
 
 EXPOSE 8000
