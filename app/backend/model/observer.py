@@ -10,6 +10,7 @@ Card B05: Runs vision observer pipeline on uploaded evidence:
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
@@ -38,6 +39,24 @@ def load_observer_prompt() -> str:
         "Classify observed color, visible damage, and note timestamps in MM:SS format. "
         "List all unreadable labels or barcodes in unknowns."
     )
+
+
+def _normalize_raw_observer_json(raw_text: str) -> str:
+    """Normalize model variance in enum values to match Visibility contract (17 §2)."""
+    # Map non-standard visibility tokens to contract schema values
+    normalized = re.sub(
+        r'("visibility"\s*:\s*)"(partial|occluded)"',
+        r'\1"unclear"',
+        raw_text,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r'("visibility"\s*:\s*)"not_visible"',
+        r'\1"not_observed"',
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    return normalized
 
 
 class VisionObserverRunner:
@@ -90,8 +109,9 @@ class VisionObserverRunner:
         # Parse response into ObserverOutput
         raw_text = getattr(response, "text", "")
         if isinstance(raw_text, str) and raw_text:
+            cleaned_json = _normalize_raw_observer_json(raw_text)
             try:
-                parsed_output = ObserverOutput.model_validate_json(raw_text)
+                parsed_output = ObserverOutput.model_validate_json(cleaned_json)
             except ValidationError as err:
                 # Return safe fallback with unverified state
                 parsed_output = ObserverOutput(

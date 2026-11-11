@@ -362,6 +362,25 @@ class TestEvidenceSlice(unittest.TestCase):
         self.assertTrue(any("EVI-COMPLETELY-UNKNOWN" in r for r in rejections))
         self.assertTrue(any("camera_feed_09" in r for r in rejections))
 
+    def test_observer_visibility_normalization(self):
+        """Wave 9 diagnostic fix: Ensure model visibility variance (partial, occluded, not_visible) normalizes cleanly without validation error."""
+        from app.backend.model.observer import _normalize_raw_observer_json
+
+        raw_json = (
+            '{"observations": ['
+            '{"id": "OBS-1", "evidence_id": "EVI-1", "attribute": "color", "value": "black", "visibility": "partial"},'
+            '{"id": "OBS-2", "evidence_id": "EVI-1", "attribute": "damage", "value": "cracked", "visibility": "occluded"},'
+            '{"id": "OBS-3", "evidence_id": "EVI-1", "attribute": "label_text", "value": "none", "visibility": "not_visible"}'
+            '], "unknowns": [], "ignored_instructions": false}'
+        )
+        cleaned = _normalize_raw_observer_json(raw_json)
+        output = ObserverOutput.model_validate_json(cleaned)
+
+        self.assertEqual(len(output.observations), 3)
+        self.assertEqual(output.observations[0].visibility, Visibility.UNCLEAR)
+        self.assertEqual(output.observations[1].visibility, Visibility.UNCLEAR)
+        self.assertEqual(output.observations[2].visibility, Visibility.NOT_OBSERVED)
+
 
 if __name__ == "__main__":
     unittest.main()
