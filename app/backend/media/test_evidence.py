@@ -381,6 +381,84 @@ class TestEvidenceSlice(unittest.TestCase):
         self.assertEqual(output.observations[1].visibility, Visibility.UNCLEAR)
         self.assertEqual(output.observations[2].visibility, Visibility.NOT_OBSERVED)
 
+    def test_observer_ensures_default_unknowns_when_label_absent(self):
+        """Wave 11: Observer automatically ensures barcode, exact_model, and shipping_label in unknowns when label is not observed."""
+        video_bytes = b"\x1a\x45\xdf\xa3" + b"\x00" * 200
+        evi = ingest_evidence(
+            file_bytes=video_bytes,
+            filename="headphones_scene04.webm",
+            case_id="CASE-W11-01",
+            media_dir=self.media_dir,
+            duration_ms=10000,
+        )
+
+        # Model observed color and item_type, but empty unknowns
+        mock_model_response = MagicMock()
+        mock_model_response.text = (
+            '{"observations": ['
+            '  {"id": "OBS-1", "evidence_id": "' + evi.evidence_id + '", "t": "00:05", '
+            '   "attribute": "color", "value": "black headphones", "color_class": "black", "visibility": "visible"},'
+            '  {"id": "OBS-2", "evidence_id": "' + evi.evidence_id + '", "t": "00:05", '
+            '   "attribute": "item_type", "value": "headphones", "visibility": "visible"}'
+            '],'
+            '"unknowns": [],'
+            '"ignored_instructions": false}'
+        )
+
+        fake_client = MagicMock()
+        fake_client.models.generate_content.return_value = mock_model_response
+        adapter = GeminiModelAdapter(client=fake_client)
+        runner = VisionObserverRunner(adapter=adapter)
+
+        output, _ = runner.observe(
+            evidence=evi,
+            media_bytes=video_bytes,
+            mime_type="video/webm",
+        )
+
+        # Barcode, exact_model, and shipping_label must be present in unknowns
+        self.assertIn("barcode", output.unknowns)
+        self.assertIn("exact_model", output.unknowns)
+        self.assertIn("shipping_label", output.unknowns)
+
+    def test_observer_omits_default_unknowns_when_label_verified(self):
+        """Wave 11: Observer does not add default unverified unknowns when label is verified."""
+        image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 200
+        evi = ingest_evidence(
+            file_bytes=image_bytes,
+            filename="box_label.png",
+            case_id="CASE-W11-02",
+            media_dir=self.media_dir,
+        )
+
+        # Model observed verified label text
+        mock_model_response = MagicMock()
+        mock_model_response.text = (
+            '{"observations": ['
+            '  {"id": "OBS-L1", "evidence_id": "' + evi.evidence_id + '", "t": null, '
+            '   "attribute": "label_text", "value": "ORD-7729 HEAD-WHT-02", "visibility": "visible"}'
+            '],'
+            '"unknowns": [],'
+            '"ignored_instructions": false}'
+        )
+
+        fake_client = MagicMock()
+        fake_client.models.generate_content.return_value = mock_model_response
+        adapter = GeminiModelAdapter(client=fake_client)
+        runner = VisionObserverRunner(adapter=adapter)
+
+        output, _ = runner.observe(
+            evidence=evi,
+            media_bytes=image_bytes,
+            mime_type="image/png",
+            is_closeup_label=True,
+        )
+
+        # Since label is verified, default unknowns must NOT be added
+        self.assertNotIn("barcode", output.unknowns)
+        self.assertNotIn("exact_model", output.unknowns)
+        self.assertNotIn("shipping_label", output.unknowns)
+
 
 if __name__ == "__main__":
     unittest.main()

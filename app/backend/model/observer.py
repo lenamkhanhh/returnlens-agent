@@ -16,7 +16,12 @@ from typing import Any, List, Optional, Tuple
 
 from pydantic import ValidationError
 
-from app.backend.contracts import Evidence, ObserverOutput
+from app.backend.contracts import (
+    Evidence,
+    ObservationAttribute,
+    ObserverOutput,
+    Visibility,
+)
 from app.backend.media.evidence import validate_observations_grounding
 from app.backend.model.client import GeminiModelAdapter
 from app.backend.model.provenance import ModelRun
@@ -37,7 +42,7 @@ def load_observer_prompt() -> str:
     return (
         "Observe this customer return evidence neutrally. "
         "Classify observed color, visible damage, and note timestamps in MM:SS format. "
-        "List all unreadable labels or barcodes in unknowns."
+        "If shipping label, barcode, or exact model is not visible or verified, list them in unknowns."
     )
 
 
@@ -137,6 +142,17 @@ class VisionObserverRunner:
         unknowns = list(parsed_output.unknowns)
         for r in rejections:
             unknowns.append(f"unverified_observation: {r}")
+
+        # Ensure unverified fields are listed in unknowns when label/packaging is not observed (Wave 11)
+        has_verified_label = any(
+            o.attribute in (ObservationAttribute.LABEL_TEXT, "label_text")
+            and getattr(o.visibility, "value", o.visibility) in (Visibility.VISIBLE, "visible")
+            for o in valid_obs
+        )
+        if not has_verified_label:
+            for required_unk in ["barcode", "exact_model", "shipping_label"]:
+                if required_unk not in unknowns:
+                    unknowns.append(required_unk)
 
         final_output = ObserverOutput(
             observations=valid_obs,
