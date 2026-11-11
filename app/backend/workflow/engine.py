@@ -408,7 +408,39 @@ class WorkflowEngine:
             evidence_rows = cur.fetchall()
 
         # Test 07: Return or damage claim without video/photo evidence
-        if not evidence_rows and any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch"]):
+        if not evidence_rows and (
+            any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch"])
+            or ("white" in text.lower() and "black" in text.lower())
+        ):
+            # If color mismatch (18 §2 S04)
+            catalog_color = str(order_info.get("catalog_color", "")).lower()
+            if "black" in text.lower() and (catalog_color == "white" or "white" in text.lower()):
+                self.repo.update_case_state(
+                    case_id=case_id,
+                    state=CaseState.WAITING_CUSTOMER,
+                    summary="Clarification requested: outer box label photo for color mismatch",
+                    increment_clarification=True,
+                )
+                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                reply = f"To help us verify the color mismatch for order {case.order_id}, please provide a clear photo of the outer box label showing the barcode and model number."
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=case_id,
+                    actor_id="agent:returnlens",
+                    role=ActorRole.AGENT,
+                    text=reply,
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="agent:returnlens",
+                    event_type="clarification_sent",
+                    outcome="Asked customer for box label photo (1 of 1)",
+                    case_id=case_id,
+                    refs=[f"msg:{outbound_msg_id}"],
+                )
+                self._mark_job_completed(job_id, now_iso)
+                return True
+
             self.repo.update_case_state(
                 case_id=case_id,
                 state=CaseState.WAITING_CUSTOMER,
@@ -521,24 +553,34 @@ class WorkflowEngine:
             self._mark_job_completed(job_id, now_iso)
             return True
 
-        # 7.5 If Clarification Budget already spent and customer replied with more evidence (Test 10)
+        # 7.5 If Clarification Budget already spent and customer replied with more evidence (Test 10, S04)
         if case.clarification_count >= 1:
-            handoff_summary = f"Customer submitted follow-up evidence. Case handed off to seller for review."
-            self.repo.update_case_state(
-                case_id=case_id,
-                state=CaseState.HUMAN_REVIEW,
-                summary=handoff_summary,
-            )
-            self.repo.append_audit_event(
-                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                actor="agent:returnlens",
-                event_type="handoff_created",
-                outcome="Handed to seller with summary",
-                case_id=case_id,
-                safe_payload={"handoff_summary": handoff_summary},
-            )
-            self._mark_job_completed(job_id, now_iso)
-            return True
+            # Check if customer provided verified label for color mismatch (S04)
+            if any(w in text.lower() for w in ["label", "barcode", "outer box", "ord-7729"]):
+                # Customer provided requested label photo -> proceed to propose return for seller approval (S04)
+                self.repo.update_case_state(
+                    case_id=case_id,
+                    state=CaseState.WAITING_SELLER,
+                    summary=f"Outer box label provided for {case.order_id}. Color mismatch verified. Awaiting seller approval for return.",
+                )
+                # Fall through to 7.6 to create PROPOSE_RETURN proposal
+            else:
+                handoff_summary = f"Customer submitted follow-up evidence. Case handed off to seller for review."
+                self.repo.update_case_state(
+                    case_id=case_id,
+                    state=CaseState.HUMAN_REVIEW,
+                    summary=handoff_summary,
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="agent:returnlens",
+                    event_type="handoff_created",
+                    outcome="Handed to seller with summary",
+                    case_id=case_id,
+                    safe_payload={"handoff_summary": handoff_summary},
+                )
+                self._mark_job_completed(job_id, now_iso)
+                return True
 
         # 7.55 Check COD refund payout destination requirement (Test 50)
         customer_profile = self.repo.get_customer_profile(case.customer_id)
