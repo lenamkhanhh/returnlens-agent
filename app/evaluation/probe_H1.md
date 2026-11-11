@@ -1,6 +1,6 @@
-# ReturnLens Probe H1 Report (Card B01)
+# ReturnLens Probe H1 Report (Card B01 & B15)
 
-**Date**: 2026-11-11 11:40 (Vietnam Time)  
+**Date**: 2026-11-11 11:45 (Vietnam Time)  
 **Role**: B (Model adapter, evidence, voice)  
 **SDK**: `google-genai` 3.1.0  
 **Python Runtime**: CPython 3.12.13 (uv-managed virtual environment)  
@@ -55,3 +55,18 @@ In accordance with Brief B and 17 §8, synthetic development fixtures were gener
 - `synthetic_label_closeup.png` (200x200 PNG, SHA-256: `f4a20d79...`)
 
 All assets are strictly labeled `synthetic: true` in `manifest.json`. Real customer evidence clips will be recorded by the team during the official recording phase.
+
+---
+
+## 4. Voice Note & Hindi Language Probe Evaluation (Card B15 & Test 47)
+
+### Language Extraction & Devanagari Pipeline
+- **Schema & Prompt**: `app/backend/prompts/transcriber_v1.txt` instructs the model to preserve native spoken Hindi in Devanagari script (e.g. "मुझे सफ़ेद हेडफ़ोन चाहिए थे पर काले मिले"), produce an English translation in `translation_en`, detect the language (`Language.HI`, `Language.HINGLISH`, `Language.EN`), and classify intent.
+- **Hindi Capability Status (VN-HI)**:
+  - While live API transcription is blocked on `GEMINI_API_KEY`, the schema, audio input pipeline (WAV/WebM/OGG inline bytes), and structured response parsing have been fully validated with unit tests.
+  - Per Brief B and 15 B15: If live probes later show Hindi transcription accuracy below threshold, the README will constrain claims to English and Hinglish. If Gemini 3.8 Flash performs well, native Hindi + Hinglish will be claimed.
+  - Optional model `MODEL_TRANSCRIBE=gemini-3.5-transcribe` is supported as an override if dedicated transcription improves Hindi accuracy.
+
+### Test 47 Ledger Reconciliation Invariant
+- **Behavior**: When customer voice notes verbally mention an amount that conflicts with the database (e.g. customer verbally says ₹1.800 while the verified order ledger is ₹1.499), `reconcile_voice_claims()` marks the spoken amount as an unverified claim, logs a discrepancy audit flag, and strictly binds all financial mutations to the verified order balance from the domain DB.
+- **Proof**: Verified by `app/backend/model/test_transcriber.py::TestAudioTranscriber::test_47_voice_note_mentions_different_amount_than_ledger`.
