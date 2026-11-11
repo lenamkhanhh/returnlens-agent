@@ -83,9 +83,14 @@ def record_scene_01() -> Path:
         print(f"[01 API] Version: {autonomy_data.get('agent_version')[:8]}, DAMAGE eligible: {autonomy_data['lock_status']['DAMAGE']['eligible_for_l2_l3']}")
 
         # 2. Inspect Autonomy Bar
-        autonomy_bar = page.locator("#autonomy-bar")
-        smooth_move(page, autonomy_bar.first, steps=15)
-        ink_circle(page, autonomy_bar.first, text="Measured on this exact code", side="bottom", duration=2.0)
+        prov_text = page.locator("#autonomy-bar div:has-text('Measured on this exact code')").first
+        if prov_text.count() > 0:
+            smooth_move(page, prov_text, steps=15)
+            ink_circle(page, prov_text, text="Measured on this exact code", side="bottom", duration=2.0)
+        else:
+            code_chip = page.locator("#autonomy-bar code").first
+            smooth_move(page, code_chip, steps=15)
+            ink_circle(page, code_chip, text="Measured on this exact code", side="bottom", duration=2.0)
         time.sleep(1.2)
         ink_clear(page)
 
@@ -102,8 +107,8 @@ def record_scene_01() -> Path:
         }""")
         time.sleep(0.8)
 
-        # Verify refusal message on screen
-        lock_error_loc = page.locator("div:has-text('Missing run for scenario S10'), div:has-text('Reliability locked')")
+        # Verify refusal message on screen (plain words banner)
+        lock_error_loc = page.locator("#autonomy-bar div:has-text('synthetic'), #autonomy-bar div:has-text('Reliability locked'), #autonomy-bar div:has-text('go above L1')")
         if lock_error_loc.count() > 0:
             ink_arrow(page, lock_error_loc.first, text="refused: missing 5/5 run for S10", from_side="bottom", duration=2.5)
             time.sleep(1.2)
@@ -111,9 +116,14 @@ def record_scene_01() -> Path:
 
         # 4. Show MISMATCH locked 4/5
         print("[01] Highlighting locked MISMATCH...")
-        mismatch_col = page.locator("div:has-text('MISMATCH')").first
-        smooth_move(page, mismatch_col, steps=15)
-        ink_circle(page, mismatch_col, text="locked until 5/5", side="bottom", duration=2.0)
+        mismatch_card = page.locator("div:has-text('MISMATCH'):has-text('Locked')").first
+        if mismatch_card.count() > 0:
+            smooth_move(page, mismatch_card, steps=15)
+            ink_circle(page, mismatch_card, text="locked until 5/5", side="bottom", duration=2.0)
+        else:
+            mismatch_col = page.locator("div:has-text('MISMATCH')").first
+            smooth_move(page, mismatch_col, steps=15)
+            ink_circle(page, mismatch_col, text="locked until 5/5", side="bottom", duration=2.0)
         time.sleep(1.2)
         ink_clear(page)
 
@@ -166,11 +176,17 @@ def record_scene_01() -> Path:
         print(f"[01 API] Pending proposal: {pending_props[0]['action_type']} for {pending_props[0]['amount_minor']}")
 
         # Annotate PROPOSE_REFUND ₹1,299
-        prop_box = page.locator(".proposal-box:has-text('PROPOSE REFUND')")
-        if prop_box.count() > 0:
-            ink_circle(page, prop_box.first, text="PROPOSE_REFUND ₹1,299 created", side="left", duration=2.5)
+        prop_badge = page.locator(".proposal-box:has-text('PROPOSE REFUND') .badge, .proposal-box:has-text('PROPOSE REFUND') strong:has-text('₹1,299')").first
+        if prop_badge.count() > 0:
+            ink_circle(page, prop_badge, text="PROPOSE_REFUND ₹1,299 created", side="right", duration=2.5)
             time.sleep(1.2)
             ink_clear(page)
+        else:
+            prop_box = page.locator(".proposal-box:has-text('PROPOSE REFUND')").first
+            if prop_box.count() > 0:
+                ink_circle(page, prop_box, text="PROPOSE_REFUND ₹1,299 created", side="bottom", duration=2.5)
+                time.sleep(1.2)
+                ink_clear(page)
 
         # 7. Open "Why did it stop?"
         print("[01] Opening 'Why did it stop?' modal...")

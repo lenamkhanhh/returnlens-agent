@@ -63,7 +63,11 @@ def record_scene_07() -> Path:
         print("[07] Running Preset 1: Prompt Injection...")
         preset1 = page.locator("button:has-text('1. Prompt injection')")
         smooth_click(page, preset1.first, steps=15, delay_after=0.8)
-        ink_circle(page, ".modal-card", text="Blocked: prompt injection neutralized", side="bottom", duration=2.0)
+        blocked_badge1 = page.locator(".modal-body span.badge-blocked").first
+        if blocked_badge1.count() > 0:
+            ink_circle(page, blocked_badge1, text="Blocked: prompt injection neutralized", side="bottom", duration=2.0)
+        else:
+            ink_circle(page, preset1.first, text="Blocked: prompt injection neutralized", side="bottom", duration=2.0)
         time.sleep(1.2)
         ink_clear(page)
 
@@ -71,7 +75,11 @@ def record_scene_07() -> Path:
         print("[07] Running Preset 2: Over-refund...")
         preset2 = page.locator("button:has-text('2. Over-refund')")
         smooth_click(page, preset2.first, steps=15, delay_after=0.8)
-        ink_circle(page, ".modal-card", text="Blocked: exceeds balance", side="bottom", duration=2.0)
+        blocked_badge2 = page.locator(".modal-body span.badge-blocked").first
+        if blocked_badge2.count() > 0:
+            ink_circle(page, blocked_badge2, text="Blocked: exceeds balance", side="bottom", duration=2.0)
+        else:
+            ink_circle(page, preset2.first, text="Blocked: exceeds balance", side="bottom", duration=2.0)
         time.sleep(1.2)
         ink_clear(page)
 
@@ -79,7 +87,11 @@ def record_scene_07() -> Path:
         print("[07] Running Preset 3: Cumulative split...")
         preset3 = page.locator("button:has-text('3. Cumulative split')")
         smooth_click(page, preset3.first, steps=15, delay_after=0.8)
-        ink_circle(page, ".modal-card", text="Blocked: cumulative limit", side="bottom", duration=2.0)
+        blocked_badge3 = page.locator(".modal-body span.badge-blocked").first
+        if blocked_badge3.count() > 0:
+            ink_circle(page, blocked_badge3, text="Blocked: cumulative limit", side="bottom", duration=2.0)
+        else:
+            ink_circle(page, preset3.first, text="Blocked: cumulative limit", side="bottom", duration=2.0)
         time.sleep(1.2)
         ink_clear(page)
 

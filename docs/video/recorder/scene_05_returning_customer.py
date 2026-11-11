@@ -132,12 +132,18 @@ def record_scene_05() -> Path:
         if ord_item.count() > 0:
             smooth_click(page, ord_item.first, steps=15, delay_after=0.8)
 
-        # Highlight Plan Card with Memory
-        plan_card = page.locator(".plan-card")
-        if plan_card.count() > 0:
-            smooth_move(page, plan_card.first, steps=15)
-            ink_arrow(page, plan_card.first, text="Remembers language & context - never asks twice", from_side="left", duration=2.5)
+        # Highlight Plan Card with Memory (preferred_language=hinglish chip)
+        memory_chip = page.locator(".plan-card .memory-chip, .plan-card .badge:has-text('preferred_language'), .plan-card .badge").first
+        if memory_chip.count() > 0:
+            smooth_move(page, memory_chip, steps=15)
+            ink_arrow(page, memory_chip, text="Remembers language & context - never asks twice", from_side="bottom", duration=2.5)
             time.sleep(1.5)
+        else:
+            plan_card = page.locator(".plan-card").first
+            if plan_card.count() > 0:
+                smooth_move(page, plan_card, steps=15)
+                ink_arrow(page, plan_card, text="Remembers language & context - never asks twice", from_side="bottom", duration=2.5)
+                time.sleep(1.5)
 
         ink_clear(page)
         time.sleep(0.4)

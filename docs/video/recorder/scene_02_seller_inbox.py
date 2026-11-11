@@ -77,10 +77,10 @@ def record_scene_02() -> Path:
 
         # Hover over Triad Facts Panel and annotate
         print("[02] Highlighting Triad Facts Panel...")
-        facts_panel = page.locator(".facts-panel, .seller-col:has-text('Order facts')")
+        facts_panel = page.locator(".triad-group:has-text('Order facts'), .facts-panel h3, .seller-col:has-text('Order facts') h3").first
         if facts_panel.count() > 0:
-            smooth_move(page, facts_panel.first, steps=15)
-            ink_circle(page, facts_panel.first, text="3-group triad: facts, seen, unverified", side="bottom", duration=2.5)
+            smooth_move(page, facts_panel, steps=15)
+            ink_circle(page, facts_panel, text="3-group triad: facts, seen, unverified", side="bottom", duration=2.5)
             time.sleep(1.4)
 
         # 4. Open Timeline Drawer
@@ -90,8 +90,12 @@ def record_scene_02() -> Path:
             smooth_click(page, timeline_btn.first, steps=15, delay_after=0.8)
             page.wait_for_selector(".timeline-drawer", timeout=3000)
 
-            # Draw ink arrow to timeline
-            ink_arrow(page, ".timeline-drawer", text="Immutable event log", from_side="left", duration=2.5)
+            # Draw ink arrow to timeline header
+            drawer_head = page.locator(".timeline-drawer .drawer-header, .timeline-drawer h3").first
+            if drawer_head.count() > 0:
+                ink_arrow(page, drawer_head, text="Immutable event log", from_side="left", duration=2.5)
+            else:
+                ink_arrow(page, ".timeline-drawer", text="Immutable event log", from_side="left", duration=2.5)
             time.sleep(1.2)
 
             # Scroll timeline drawer down smoothly

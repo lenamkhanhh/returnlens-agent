@@ -58,9 +58,14 @@ def record_scene_06() -> Path:
         time.sleep(0.8)
 
         # Inspect Autonomy Bar
-        autonomy_bar = page.locator("#autonomy-bar")
-        smooth_move(page, autonomy_bar.first, steps=15)
-        ink_circle(page, autonomy_bar.first, text="Measured on this exact code", side="bottom", duration=2.0)
+        prov_text = page.locator("#autonomy-bar div:has-text('Measured on this exact code')").first
+        if prov_text.count() > 0:
+            smooth_move(page, prov_text, steps=15)
+            ink_circle(page, prov_text, text="Measured on this exact code", side="bottom", duration=2.0)
+        else:
+            code_chip = page.locator("#autonomy-bar code").first
+            smooth_move(page, code_chip, steps=15)
+            ink_circle(page, code_chip, text="Measured on this exact code", side="bottom", duration=2.0)
         time.sleep(1.2)
         ink_clear(page)
 
@@ -70,10 +75,16 @@ def record_scene_06() -> Path:
         smooth_click(page, op_tab, steps=15, delay_after=0.6)
         setup_page_cursor_and_ink(page)
 
-        provenance_card = page.locator(".seller-col:has-text('System provenance')")
-        if provenance_card.count() > 0:
-            smooth_move(page, provenance_card.first, steps=15)
-            ink_circle(page, provenance_card.first, text="9 of 10 pass 5/5", side="left", duration=2.0)
+        reliability_row = page.locator(".fact-row:has-text('Reliability:')").first
+        if reliability_row.count() > 0:
+            smooth_move(page, reliability_row, steps=15)
+            ink_circle(page, reliability_row, text="9 of 10 pass 5/5", side="bottom", duration=2.0)
+            time.sleep(1.2)
+            ink_clear(page)
+        else:
+            provenance_card = page.locator(".seller-col:has-text('System provenance')").first
+            smooth_move(page, provenance_card, steps=15)
+            ink_circle(page, provenance_card, text="9 of 10 pass 5/5", side="bottom", duration=2.0)
             time.sleep(1.2)
             ink_clear(page)
 

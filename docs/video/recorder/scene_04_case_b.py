@@ -145,22 +145,26 @@ def record_scene_04() -> Path:
 
         # 3. Inspect Triad Facts Panel
         print("[04] Highlighting Triad Facts Panel...")
-        seen_section = page.locator(".triad-group:has-text('What the agent saw')")
+        seen_section = page.locator(".triad-group:has-text('What the agent saw') button:has-text('00:10'), .triad-group:has-text('What the agent saw') li:has-text('00:10'), .triad-group:has-text('What the agent saw')").first
         if seen_section.count() > 0:
-            smooth_move(page, seen_section.first, steps=15)
-            ink_circle(page, seen_section.first, text="black at 00:05", side="left", duration=2.5)
+            smooth_move(page, seen_section, steps=15)
+            ink_circle(page, seen_section, text="black at 00:10", side="bottom", duration=2.5)
             time.sleep(1.4)
 
-        unverified_section = page.locator(".triad-group:has-text('Still unverified')")
+        unverified_section = page.locator(".triad-group:has-text('Still unverified') .unverified-item, .triad-group:has-text('Still unverified') li, .triad-group:has-text('Still unverified')").first
         if unverified_section.count() > 0:
-            ink_arrow(page, unverified_section.first, text="Still unverified", from_side="bottom", duration=2.5)
+            ink_arrow(page, unverified_section, text="Still unverified", from_side="bottom", duration=2.5)
             time.sleep(1.4)
 
-        # 4. Click Timestamp button to seek video
+        # 4. Click Timestamp button to seek video (00:10 timestamp)
         print("[04] Clicking timestamp button to seek video...")
-        timestamp_btn = page.locator("button.timestamp-pill, button:has-text('00:05'), button:has-text('00:07')")
+        timestamp_btn = page.locator("button.timestamp-pill:has-text('00:10'), button:has-text('00:10')")
         if timestamp_btn.count() > 0:
             smooth_click(page, timestamp_btn.first, steps=15, delay_after=0.8)
+        else:
+            any_time_btn = page.locator("button.timestamp-pill").first
+            if any_time_btn.count() > 0:
+                smooth_click(page, any_time_btn, steps=15, delay_after=0.8)
 
             # Move cursor to video player to show seeked frame
             video_player = page.locator("video.video-player")
