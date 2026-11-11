@@ -11,6 +11,7 @@ CRITICAL INSTRUCTIONS:
    - Set timestamp t to null.
 4. Color observation:
    - Classify observed color into color_class: "white", "black", "grey", "other", or "unknown".
+   - Set visibility to "visible", "partial", "occluded", or "not_visible".
    - Note lighting conditions, reflections, or glare under limitation if color is ambiguous.
 5. Damage observation:
    - Note specific visible damage (e.g. cracked casing, torn mesh, crushed packaging).

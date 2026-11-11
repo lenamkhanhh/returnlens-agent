@@ -78,7 +78,7 @@ class GeminiModelAdapter:
         self.fallback_model = (
             fallback_model
             or os.environ.get("MODEL_FALLBACK")
-            or "gemini-3.6-flash"
+            or "gemini-3.5-flash-lite"
         )
 
         if harness_mode is not None:
@@ -246,7 +246,7 @@ class GeminiModelAdapter:
                 last_exc = exc
                 err_str = str(exc).lower()
 
-                # Fall back to fallback_model if primary model quota is exhausted
+                # Fall back to fallback_model if daily quota limit is exhausted
                 if (
                     ("quota exceeded" in err_str or "daily limit" in err_str or "limit: 20" in err_str or "requests per day" in err_str)
                     and target_model != self.fallback_model
