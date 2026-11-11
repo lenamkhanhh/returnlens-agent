@@ -24,9 +24,9 @@ def clean_model_key(monkeypatch):
 
 
 @pytest.fixture(scope="function")
-def harness_runner():
-    """Harness runner instance configured for k=1 evaluation."""
-    return HarnessRunner(k=1)
+def harness_runner(tmp_path: Path):
+    """Harness runner instance configured for k=1 evaluation in isolated tmp directory."""
+    return HarnessRunner(k=1, output_path=tmp_path / "test_reliability.json")
 
 
 @pytest.mark.asyncio

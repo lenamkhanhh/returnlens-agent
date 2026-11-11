@@ -11,9 +11,15 @@ import os
 # Per 17 §1 & 18 §1: HARNESS_MODE=1 disables dev cache and auto-dotenv in app factory
 os.environ["HARNESS_MODE"] = "1"
 
-# Per Wave 4: load .env for runner execution
+from pathlib import Path
+# Explicit absolute path to returnlens-agent/.env (Wave 7 per WAVE7.md)
+ROOT_DIR = Path(__file__).resolve().parents[3]
+ENV_PATH = ROOT_DIR / ".env"
 from dotenv import load_dotenv
-load_dotenv()
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
+else:
+    load_dotenv()
 
 import argparse
 import asyncio
@@ -21,7 +27,6 @@ import json
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.backend.autonomy.version import compute_agent_version
@@ -274,6 +279,18 @@ async def _main():
     parser.add_argument("-o", "--output", type=str, default=None, help="Output path for reliability.json")
     parser.add_argument("--k5-passed", action="store_true", help="Run k=1 for all scenarios, then k=5 for all scenarios that pass k=1")
     args = parser.parse_args()
+
+    targets = [s.strip().upper() for s in args.scenario.split(",") if s.strip()] if args.scenario else None
+
+    # Wave 7 per WAVE7.md: Fail loudly at start if key is missing for model scenarios
+    target_sids = targets or list(ALL_SCENARIOS.keys())
+    model_sids = [sid for sid in target_sids if ALL_SCENARIOS.get(sid) and ALL_SCENARIOS[sid].requires_model]
+    if model_sids and not os.environ.get("GEMINI_API_KEY"):
+        raise RuntimeError(
+            f"FATAL: GEMINI_API_KEY is not set in {ENV_PATH}! "
+            f"Model scenarios {model_sids} require a live GEMINI_API_KEY. "
+            "Aborting evaluation immediately without generating unmeasured results."
+        )
 
     out_path = Path(args.output) if args.output else DEFAULT_RELIABILITY_JSON
     runner = HarnessRunner(k=args.trials, output_path=out_path)
