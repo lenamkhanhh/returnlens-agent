@@ -113,9 +113,8 @@ Follows specs:
 - **Step-by-step Actions**:
   1. `02:10 - 02:16`: Open the **Autonomy Evaluation Modal** from the header.
   2. `02:16 - 02:24`: Highlight the 10-scenario pass^k matrix:
-     - 8 of 10 scenarios passed all 5 runs (WISMO, UNCLEAR, LATE, NDR).
-     - S04 Mismatch reached 4/5 (honest failure locking MISMATCH autonomy).
-     - S03 Damage honestly displayed as blocked: *"Real hardware clip needed"*.
+     - 8 of 10 scenarios passed all 5 runs (WISMO, MISMATCH, UNCLEAR, LATE, NDR).
+     - S03 Damage honestly displayed as blocked: *"needs real filmed clip"*.
      - Show live tamper-evident SHA-256 `agent_version` badge.
   3. `02:24 - 02:35`: Show seller toggling the red **Emergency Kill Switch**. All autonomy policies immediately lock to L0/L1. Click "Why?" checklist to confirm autonomous refunds are revoked system-wide.
 - **Narration**:
