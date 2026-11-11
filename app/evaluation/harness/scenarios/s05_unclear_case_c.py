@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 from typing import Optional
 
 from app.backend.contracts import CaseState, CaseType
@@ -43,7 +44,12 @@ class Scenario05UnclearCaseC(BaseScenario):
         assert env.client is not None
         assert env.repo is not None
 
-        # 1. Customer sends over-balance claim with blurry footage
+        # Point to stock dim unboxing clip (Wave 6)
+        clip_c_path = Path("app/demo/media/stock/stock_dim_unboxing_pexels_40423563.mp4")
+        if not clip_c_path.exists():
+            clip_c_path = Path("app/demo/media/stock_dim_unboxing_pexels_40423563.mp4")
+
+        # 1. Customer sends over-balance claim with blurry footage (18 §2 line 50)
         res1 = await env.client.post(
             "/api/cases",
             json={
@@ -63,6 +69,15 @@ class Scenario05UnclearCaseC(BaseScenario):
             )
 
         case_id = res1.json()["case_id"]
+
+        # Upload CLIP-C (dim unboxing clip) per 18 §2 line 50
+        if clip_c_path.exists():
+            with open(clip_c_path, "rb") as f:
+                await env.client.post(
+                    f"/api/cases/{case_id}/evidence",
+                    files={"file": (clip_c_path.name, f, "video/mp4")},
+                    headers={"X-Customer-Id": "CUS-04"},
+                )
 
         # 2. Customer replies with second still unclear evidence
         res2 = await env.client.post(

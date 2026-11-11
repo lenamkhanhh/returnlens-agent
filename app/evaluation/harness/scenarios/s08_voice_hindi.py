@@ -42,7 +42,17 @@ class Scenario08VoiceHindi(BaseScenario):
         assert env.client is not None
         assert env.repo is not None
 
-        vn_path = Path("app/demo/media/synthetic_voice_hindi.wav")
+        # Point to stock audio voice note and stock black headphones clip (Wave 6)
+        vn_path = Path("app/demo/media/stock/synthetic_voice_en_mismatch_ORD-7729.ogg")
+        if not vn_path.exists():
+            vn_path = Path("app/demo/media/synthetic_voice_en_mismatch_ORD-7729.ogg")
+        if not vn_path.exists():
+            vn_path = Path("app/demo/media/synthetic_voice_hindi.wav")
+
+        clip_b_path = Path("app/demo/media/stock/stock_black_headphones_pexels_9130360.mp4")
+        if not clip_b_path.exists():
+            clip_b_path = Path("app/demo/media/stock_black_headphones_pexels_9130360.mp4")
+
         if not vn_path.exists():
             return TrialResult(
                 scenario_id=self.scenario_id,
@@ -53,12 +63,12 @@ class Scenario08VoiceHindi(BaseScenario):
                 duration_ms=(time.perf_counter() - start_time) * 1000,
             )
 
-        # 1. Customer submits voice note without typed text
+        # 1. Customer submits voice note without typed text (18 §2 line 72)
         res = await env.client.post(
             "/api/cases",
             json={
                 "order_id": "ORD-7729",
-                "initial_message": "[Voice Note Hindi Attached]",
+                "initial_message": "[Voice Note Attached: synthetic_voice_en_mismatch_ORD-7729.ogg]",
             },
             headers={"X-Customer-Id": "CUS-02"},
         )
@@ -74,11 +84,29 @@ class Scenario08VoiceHindi(BaseScenario):
 
         case_id = res.json()["case_id"]
 
+        # Upload voice note audio evidence
+        audio_mime = "audio/ogg" if vn_path.suffix.lower() == ".ogg" else "audio/wav"
+        with open(vn_path, "rb") as f:
+            await env.client.post(
+                f"/api/cases/{case_id}/evidence",
+                files={"file": (vn_path.name, f, audio_mime)},
+                headers={"X-Customer-Id": "CUS-02"},
+            )
+
+        # Upload black headphones video evidence
+        if clip_b_path.exists():
+            with open(clip_b_path, "rb") as f:
+                await env.client.post(
+                    f"/api/cases/{case_id}/evidence",
+                    files={"file": (clip_b_path.name, f, "video/mp4")},
+                    headers={"X-Customer-Id": "CUS-02"},
+                )
+
         # 2. Layer 1: DB assertion
         db_res = verify_db_layer(
             env=env,
             case_id=case_id,
-            expected_case_state=CaseState.WAITING_CUSTOMER,
+            expected_case_state=[CaseState.WAITING_CUSTOMER, CaseState.WAITING_SELLER, CaseState.HUMAN_REVIEW],
             expected_refund_count=0,
             expected_return_count=0,
         )

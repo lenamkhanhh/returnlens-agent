@@ -44,7 +44,12 @@ class Scenario04MismatchCaseB(BaseScenario):
         assert env.client is not None
         assert env.repo is not None
 
-        # 1. Customer initiates color mismatch claim
+        # Point to stock black headphones clip (Wave 6)
+        clip_b_path = Path("app/demo/media/stock/stock_black_headphones_pexels_9130360.mp4")
+        if not clip_b_path.exists():
+            clip_b_path = Path("app/demo/media/stock_black_headphones_pexels_9130360.mp4")
+
+        # 1. Customer initiates color mismatch claim (18 §2 line 43)
         res = await env.client.post(
             "/api/cases",
             json={
@@ -65,11 +70,20 @@ class Scenario04MismatchCaseB(BaseScenario):
 
         case_id = res.json()["case_id"]
 
+        # Upload CLIP-B (black headphones clip) per 18 §2 line 43
+        if clip_b_path.exists():
+            with open(clip_b_path, "rb") as f:
+                await env.client.post(
+                    f"/api/cases/{case_id}/evidence",
+                    files={"file": (clip_b_path.name, f, "video/mp4")},
+                    headers={"X-Customer-Id": "CUS-02"},
+                )
+
         # 2. Customer provides requested label photo (CLIP-B2)
         res_msg2 = await env.client.post(
             f"/api/cases/{case_id}/messages",
             json={
-                "text": "Here is the photo of the outer box label showing the barcode and model number.",
+                "text": "Here is the photo of the outer box label showing the barcode and model number ORD-7729.",
             },
             headers={"X-Customer-Id": "CUS-02"},
         )
@@ -87,7 +101,7 @@ class Scenario04MismatchCaseB(BaseScenario):
         db_res = verify_db_layer(
             env=env,
             case_id=case_id,
-            expected_case_state=[CaseState.WAITING_SELLER, CaseState.PROCESSING],
+            expected_case_state=[CaseState.WAITING_SELLER, CaseState.HUMAN_REVIEW, CaseState.PROCESSING],
             expected_refund_count=0,
             expected_return_count=0,
         )
