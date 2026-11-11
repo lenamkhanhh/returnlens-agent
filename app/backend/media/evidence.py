@@ -15,7 +15,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from app.backend.contracts import (
     ColorClass,
@@ -36,6 +36,28 @@ ALLOWED_IMAGE_MIMES = {"image/jpeg", "image/png", "image/webp"}
 ALLOWED_AUDIO_MIMES = {"audio/ogg", "audio/opus", "audio/webm", "audio/wav", "audio/mp4"}
 
 TIMESTAMP_REGEX = re.compile(r"^(?:(\d{1,2}):)?([0-5]?\d):([0-5]\d)$")
+
+# Generic evidence identifiers that models output when referencing single input items
+GENERIC_EVIDENCE_TOKENS = {
+    "",
+    "1",
+    "video_1",
+    "video-1",
+    "video1",
+    "image_1",
+    "image-1",
+    "image1",
+    "clip_1",
+    "clip-1",
+    "media_1",
+    "media-1",
+    "evidence_1",
+    "evidence-1",
+    "photo_1",
+    "photo-1",
+    "file_1",
+    "file-1",
+}
 
 
 class MediaValidationError(Exception):
@@ -204,10 +226,17 @@ def ingest_evidence(
 
 def validate_observations_grounding(
     observations: List[ObservationItem],
-    evidence_id: str,
+    evidence_id: Union[str, List[str]],
     duration_ms: Optional[int] = None,
+    known_evidence_ids: Optional[List[str]] = None,
 ) -> Tuple[List[ObservationItem], List[str]]:
     """Validate that observations are grounded in the evidence and timestamps are within bounds.
+
+    Per Wave 7:
+    - Generic ID binding (e.g. 'video_1', 'image_1', '') ONLY applies when exactly one evidence
+      item was sent in that call.
+    - If multiple evidence items were sent, generic IDs are ambiguous and must be rejected.
+    - Unknown or mismatched IDs (e.g. 'EVI-WRONG', 'device_99') must always be rejected.
 
     Returns:
         (valid_observations, rejection_reasons)
@@ -215,25 +244,41 @@ def validate_observations_grounding(
     valid: List[ObservationItem] = []
     rejections: List[str] = []
 
-    generic_prefixes = ("video", "image", "media", "evidence", "clip", "photo", "file")
+    # Determine all target evidence IDs in this call
+    if isinstance(evidence_id, list):
+        target_ids = list(evidence_id)
+        primary_id = target_ids[0] if len(target_ids) == 1 else None
+    elif known_evidence_ids is not None:
+        target_ids = list(known_evidence_ids)
+        primary_id = evidence_id if len(target_ids) == 1 else None
+    else:
+        target_ids = [evidence_id] if evidence_id else []
+        primary_id = evidence_id
+
+    is_single_evidence = (len(target_ids) == 1)
 
     for obs in observations:
-        # 1. Evidence ID binding
-        # If the model returns a generic evidence_id like "video_1", "image_1", "evidence_1", "",
-        # or matches evidence_id, bind it to evidence_id.
         obs_eid = (obs.evidence_id or "").strip()
-        is_generic = (
-            not obs_eid
-            or obs_eid.lower().startswith(generic_prefixes)
-            or obs_eid.isdigit()
-        )
 
-        if obs_eid == evidence_id or is_generic:
-            # Bind to true evidence_id
-            obs.evidence_id = evidence_id
-        else:
+        # 1. Evidence ID verification & binding
+        if obs_eid in target_ids:
+            # Explicit match with known evidence
+            obs.evidence_id = obs_eid
+        elif is_single_evidence and primary_id and obs_eid.lower() in GENERIC_EVIDENCE_TOKENS:
+            # Exactly one evidence item was sent -> safe to bind generic ID
+            obs.evidence_id = primary_id
+        elif not is_single_evidence and obs_eid.lower() in GENERIC_EVIDENCE_TOKENS:
+            # Multiple evidence items were sent -> generic ID is ambiguous
             rejections.append(
-                f"Observation {obs.id} references evidence '{obs.evidence_id}', expected '{evidence_id}'."
+                f"Observation {obs.id} has ambiguous generic evidence ID '{obs_eid}' "
+                f"when multiple evidence items were sent ({target_ids})."
+            )
+            continue
+        else:
+            # Unknown or mismatched ID (keep test 11 meaningful)
+            expected_desc = primary_id if is_single_evidence else str(target_ids)
+            rejections.append(
+                f"Observation {obs.id} references evidence '{obs_eid}', expected '{expected_desc}'."
             )
             continue
 

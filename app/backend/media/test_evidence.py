@@ -257,7 +257,7 @@ class TestEvidenceSlice(unittest.TestCase):
         self.assertEqual(parse_timestamp_ms("00:07.500"), 7000)
 
     def test_generic_evidence_id_bound_to_target(self):
-        """Test generic evidence_id like 'video_1' or 'image_1' is bound to target evidence_id."""
+        """Test generic evidence_id like 'video_1' or 'image_1' is bound when exactly one evidence item was sent."""
         target_evi_id = "EVI-TARGET-1234"
         obs_generic = ObservationItem(
             id="OBS-GEN-1",
@@ -296,6 +296,71 @@ class TestEvidenceSlice(unittest.TestCase):
         self.assertEqual(valid[1].evidence_id, target_evi_id)
         self.assertEqual(len(rejections), 1)
         self.assertIn("EVI-ANOTHER-9999", rejections[0])
+
+    def test_generic_id_rejected_when_multiple_evidence_items_sent(self):
+        """Wave 7: Generic-ID binding must NOT apply when multiple evidence items were sent."""
+        evi_a = "EVI-ITEM-A"
+        evi_b = "EVI-ITEM-B"
+        obs_generic = ObservationItem(
+            id="OBS-M-1",
+            evidence_id="video_1",
+            t="00:02",
+            attribute=ObservationAttribute.COLOR,
+            value="black",
+            visibility=Visibility.VISIBLE,
+        )
+        obs_matched_a = ObservationItem(
+            id="OBS-M-2",
+            evidence_id=evi_a,
+            t="00:03",
+            attribute=ObservationAttribute.DAMAGE,
+            value="crack",
+            visibility=Visibility.VISIBLE,
+        )
+
+        valid, rejections = validate_observations_grounding(
+            [obs_generic, obs_matched_a],
+            evidence_id=evi_a,
+            known_evidence_ids=[evi_a, evi_b],
+            duration_ms=10000,
+        )
+
+        # Matched ID is valid, ambiguous generic ID must be rejected
+        self.assertEqual(len(valid), 1)
+        self.assertEqual(valid[0].id, "OBS-M-2")
+        self.assertEqual(len(rejections), 1)
+        self.assertIn("ambiguous generic evidence ID", rejections[0])
+
+    def test_unknown_evidence_id_rejected_in_single_evidence(self):
+        """Wave 7: Unknown ID that does not match the evidence sent must be rejected (keeping test 11 meaningful)."""
+        single_evi_id = "EVI-SINGLE-42"
+        obs_unknown = ObservationItem(
+            id="OBS-U-1",
+            evidence_id="EVI-COMPLETELY-UNKNOWN",
+            t="00:02",
+            attribute=ObservationAttribute.COLOR,
+            value="black",
+            visibility=Visibility.VISIBLE,
+        )
+        obs_other_device = ObservationItem(
+            id="OBS-U-2",
+            evidence_id="camera_feed_09",
+            t="00:03",
+            attribute=ObservationAttribute.ITEM_TYPE,
+            value="phone",
+            visibility=Visibility.VISIBLE,
+        )
+
+        valid, rejections = validate_observations_grounding(
+            [obs_unknown, obs_other_device],
+            evidence_id=single_evi_id,
+            duration_ms=10000,
+        )
+
+        self.assertEqual(len(valid), 0)
+        self.assertEqual(len(rejections), 2)
+        self.assertTrue(any("EVI-COMPLETELY-UNKNOWN" in r for r in rejections))
+        self.assertTrue(any("camera_feed_09" in r for r in rejections))
 
 
 if __name__ == "__main__":
