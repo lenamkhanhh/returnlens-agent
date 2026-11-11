@@ -387,6 +387,7 @@ export const api = {
     return {
       store_id: res.store_id,
       version: res.version,
+      agent_version: res.agent_version,
       model_id: res.model_id,
       levels: res.levels,
       per_order_cap_minor: res.per_order_cap_minor,

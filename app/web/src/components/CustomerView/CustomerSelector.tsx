@@ -20,71 +20,63 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
   onSelectOrder,
 }) => {
   return (
-    <div className="customer-sidebar">
-      <div className="sidebar-title">Customer profile</div>
-      <select
-        className="select-field"
-        value={selectedCustomer?.customer_id || ''}
-        onChange={(e) => {
-          const found = customers.find((c) => c.customer_id === e.target.value);
-          if (found) onSelectCustomer(found);
-        }}
-      >
-        {customers.map((c) => (
-          <option key={c.customer_id} value={c.customer_id}>
-            {c.customer_id}: {c.name} ({c.language})
-          </option>
-        ))}
-      </select>
-
-      {selectedCustomer && (
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '14px' }}>
-          <div>📍 {selectedCustomer.city_pin}</div>
-          <div>📞 {selectedCustomer.phone}</div>
-        </div>
-      )}
-
-      <div className="sidebar-title" style={{ marginTop: '10px' }}>
-        Order details
+    <div className="demo-order-strip">
+      <div className="demo-strip-label">
+        <span className="demo-tag">DEMO</span>
+        <span>Choose customer & order:</span>
       </div>
-      <select
-        className="select-field"
-        value={selectedOrder?.order_id || ''}
-        onChange={(e) => {
-          const found = orders.find((o) => o.order_id === e.target.value);
-          if (found) onSelectOrder(found);
-        }}
-      >
-        {orders.map((o) => (
-          <option key={o.order_id} value={o.order_id}>
-            {o.order_id} — {o.item_name} ({formatPaise(o.paid_minor)})
-          </option>
-        ))}
-      </select>
 
-      {selectedOrder && (
-        <div className="order-card-preview">
-          <div className="order-id">
-            <span>{selectedOrder.order_id}</span>
-            <span>{formatPaise(selectedOrder.paid_minor)}</span>
-          </div>
-          <div className="order-details">
-            <div><strong>Product:</strong> {selectedOrder.item_name}</div>
-            <div><strong>Color:</strong> {selectedOrder.catalog_color}</div>
-            <div><strong>SKU:</strong> {selectedOrder.sku}</div>
-            <div><strong>Shipment status:</strong> <span style={{ fontWeight: 600, color: selectedOrder.shipping_status.toLowerCase().includes('transit') ? 'var(--pine-green)' : 'inherit' }}>{selectedOrder.shipping_status}</span></div>
-            {selectedOrder.delivered_date && (
-              <div><strong>Delivered date:</strong> {selectedOrder.delivered_date}</div>
-            )}
-            {selectedOrder.eta_days_relative && (
-              <div><strong>Estimated arrival:</strong> {typeof selectedOrder.eta_days_relative === 'number' ? `in ${selectedOrder.eta_days_relative} days` : selectedOrder.eta_days_relative}</div>
-            )}
-            <div style={{ marginTop: '6px', color: 'var(--pine-green)', fontWeight: 600 }}>
-              Case type: {selectedOrder.scenario_tag}
-            </div>
-          </div>
+      <div className="demo-strip-controls">
+        <div className="demo-control-group">
+          <label>Customer:</label>
+          <select
+            className="select-field demo-select"
+            value={selectedCustomer?.customer_id || ''}
+            onChange={(e) => {
+              const found = customers.find((c) => c.customer_id === e.target.value);
+              if (found) onSelectCustomer(found);
+            }}
+          >
+            {customers.map((c) => (
+              <option key={c.customer_id} value={c.customer_id}>
+                {c.customer_id}: {c.name} ({c.language})
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        <div className="demo-control-group">
+          <label>Order:</label>
+          <select
+            className="select-field demo-select"
+            value={selectedOrder?.order_id || ''}
+            onChange={(e) => {
+              const found = orders.find((o) => o.order_id === e.target.value);
+              if (found) onSelectOrder(found);
+            }}
+          >
+            {orders.map((o) => (
+              <option key={o.order_id} value={o.order_id}>
+                {o.order_id} — {o.item_name} ({formatPaise(o.paid_minor)})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedOrder && (
+          <div className="demo-order-info">
+            <span className="info-badge">
+              📦 <strong>{selectedOrder.item_name}</strong> ({selectedOrder.catalog_color})
+            </span>
+            <span className="info-badge">
+              🚚 <strong>{selectedOrder.shipping_status}</strong>
+            </span>
+            <span className="info-badge scenario-badge">
+              {selectedOrder.scenario_tag}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

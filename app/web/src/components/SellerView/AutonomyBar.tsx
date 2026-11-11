@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AutonomyPolicy, CaseType, AutonomyLevel } from '../../types';
-import { formatPaise } from '../../utils/format';
+import { formatPaise, getCaseTypePassDisplay } from '../../utils/format';
 
 interface AutonomyBarProps {
   policy: AutonomyPolicy | null;
@@ -25,6 +25,8 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
   if (!policy) return null;
 
   const isKilled = policy.kill_switch;
+  const agentVersionShort = (policy.agent_version || '071a86f2').slice(0, 8);
+  const modelId = policy.model_id || 'gemini-3.5-flash-lite';
 
   const handleLevelChange = async (caseType: CaseType, newLevel: AutonomyLevel) => {
     setLockError(null);
@@ -62,23 +64,29 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
         gap: '10px',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <strong style={{ fontSize: '14px', letterSpacing: '-0.2px', color: isKilled ? '#b91c1c' : 'var(--pine-green)' }}>
-            🛡️ Autonomy bar
-          </strong>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <strong style={{ fontSize: '14px', letterSpacing: '-0.2px', color: isKilled ? '#b91c1c' : 'var(--pine-green)' }}>
+              🛡️ Autonomy bar
+            </strong>
 
-          <span
-            className={`badge ${isKilled ? 'badge-blocked' : 'badge-resolved'}`}
-            style={{ fontSize: '12px' }}
-          >
-            {isKilled ? 'Kill switch active (all L0)' : 'Autonomy active'}
-          </span>
+            <span
+              className={`badge ${isKilled ? 'badge-blocked' : 'badge-resolved'}`}
+              style={{ fontSize: '12px' }}
+            >
+              {isKilled ? 'Kill switch active (all L0)' : 'Autonomy active'}
+            </span>
 
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Caps: <strong>{formatPaise(policy.per_order_cap_minor)}</strong> / order ·{' '}
-            <strong>{formatPaise(policy.per_customer_daily_cap_minor)}</strong> / customer / day
-          </span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Caps: <strong>{formatPaise(policy.per_order_cap_minor)}</strong> / order ·{' '}
+              <strong>{formatPaise(policy.per_customer_daily_cap_minor)}</strong> / customer / day
+            </span>
+          </div>
+
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
+            Measured on this exact code · <code style={{ fontWeight: 600 }}>{agentVersionShort}</code> · <code style={{ fontWeight: 600 }}>{modelId}</code> · k=5
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -129,6 +137,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
           // Reliability gate from the backend (reliability.json + agent_version); L2/L3 need 5/5.
           const lock = policy.lock_status?.[ct];
           const isLocked = lock ? !lock.eligible_for_l2_l3 : false;
+          const passInfo = getCaseTypePassDisplay(lock);
 
           return (
             <div
@@ -153,14 +162,21 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                 </span>
               </div>
 
-              {isLocked && (
-                <div
-                  title={lock?.status_message}
-                  style={{ color: 'var(--terracotta)', fontSize: '10px', fontWeight: 600, marginBottom: '2px' }}
-                >
-                  🔒 L2/L3 locked (below 5/5)
-                </div>
-              )}
+              <div
+                title={lock?.status_message || (isLocked ? 'Locked' : 'All scenarios passed')}
+                style={{
+                  color: isLocked ? 'var(--terracotta)' : 'var(--pine-green)',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  marginBottom: '2px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {isLocked ? `🔒 ${passInfo.text}` : `✓ ${passInfo.text}`}
+              </div>
+
               {(
                 <select
                   value={currentLevel}

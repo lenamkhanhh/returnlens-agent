@@ -45,10 +45,21 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({ onFileSelected, di
         type="button"
         onClick={handleTrigger}
         disabled={disabled}
-        style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+        className="icon-action-btn"
+        title="Upload video or photo"
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '6px 8px',
+          fontSize: '18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-muted)',
+        }}
       >
         <span>📎</span>
-        <span>Upload Video / Photo</span>
       </button>
 
       {selectedFileName && (

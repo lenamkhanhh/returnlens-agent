@@ -85,6 +85,24 @@ export function formatDate(isoString?: string): string {
 }
 
 /**
+ * Formats ISO timestamp to short messaging time (e.g. "12:03 am").
+ */
+export function formatMessageTime(isoString?: string): string {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }).toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Formats transcriber detected language into human-friendly label.
  * Defaults to 'English' for stock English voice notes if unspecified or 'en'.
  */
@@ -174,5 +192,45 @@ export function formatObservationAttribute(attr?: string | null): string {
   if (normalized === 'damage') return 'Damage';
   const spaced = attr.replace(/_/g, ' ').trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+/**
+ * Calculates real scenario passes display for Autonomy Bar.
+ * E.g. "5/5" (unlocked), "4/5 locked", "0/5 locked".
+ */
+export function getCaseTypePassDisplay(lock?: {
+  eligible_for_l2_l3?: boolean;
+  status_message?: string;
+  metrics?: Record<string, any>;
+}): { text: string; isLocked: boolean; passCount: string } {
+  if (!lock) return { text: '', isLocked: false, passCount: '' };
+  const isLocked = !lock.eligible_for_l2_l3;
+  const metrics = lock.metrics;
+
+  if (!metrics || Object.keys(metrics).length === 0) {
+    const defaultText = isLocked ? 'locked' : '5/5';
+    return { text: defaultText, isLocked, passCount: isLocked ? '' : '5/5' };
+  }
+
+  const scenarioValues = Object.values(metrics);
+  let minPasses = 5;
+  let maxK = 5;
+
+  for (const m of scenarioValues) {
+    if (!m || m.status === 'MISSING') {
+      minPasses = Math.min(minPasses, 0);
+    } else if (typeof m.passes === 'number') {
+      minPasses = Math.min(minPasses, m.passes);
+      if (typeof m.k === 'number') maxK = m.k;
+    } else {
+      minPasses = Math.min(minPasses, 0);
+    }
+  }
+
+  const passCount = `${minPasses}/${maxK}`;
+  if (isLocked) {
+    return { text: `${passCount} locked`, isLocked: true, passCount };
+  }
+  return { text: passCount, isLocked: false, passCount };
 }
 

@@ -67,6 +67,33 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan }) => {
           </div>
         </div>
       )}
+
+      {plan.model_proposed_step && (
+        <div className="plan-field" style={{ marginTop: '8px', borderTop: '1px dashed #e2e0db', paddingTop: '6px' }}>
+          <div className="plan-field-label">Model proposal & code gate</div>
+          <div style={{ marginTop: '4px', fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Model proposed: </span>
+              <strong>{plan.model_proposed_step.replace(/_/g, ' ')}</strong>
+              {plan.model_reason ? (
+                <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}> ({plan.model_reason})</span>
+              ) : null}
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Code gate: </span>
+              {plan.agreed ? (
+                <span style={{ color: 'var(--pine-green)', fontWeight: 600 }}>
+                  allowed{plan.gate_reason ? ` (${plan.gate_reason})` : ''}
+                </span>
+              ) : (
+                <span style={{ color: 'var(--terracotta)', fontWeight: 600 }}>
+                  overrode{plan.gate_reason ? ` (${plan.gate_reason})` : (plan.code_decision ? ` (${plan.code_decision.replace(/_/g, ' ')})` : '')}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

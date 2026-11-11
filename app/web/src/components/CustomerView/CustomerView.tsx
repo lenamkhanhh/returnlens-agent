@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Customer, Order, CaseDetail, CustomerFacingStatus } from '../../types';
 import { api } from '../../api/client';
-import { mapCaseStateToCustomerStatus } from '../../utils/format';
+import { mapCaseStateToCustomerStatus, formatSecondsToTimestamp } from '../../utils/format';
 import { CustomerSelector } from './CustomerSelector';
 import { CaseStatusBar } from './CaseStatusBar';
 import { ChatThread } from './ChatThread';
@@ -167,7 +167,8 @@ export const CustomerView: React.FC = () => {
   };
 
   return (
-    <div className="customer-layout">
+    <div className="customer-layout messaging-portal-layout">
+      {/* 1. Small "demo: choose customer/order" strip above the phone */}
       <CustomerSelector
         customers={customers}
         selectedCustomer={selectedCustomer}
@@ -185,27 +186,101 @@ export const CustomerView: React.FC = () => {
         }}
       />
 
-      <div className="customer-main">
+      {/* 2. Phone-width chat column centred on the page */}
+      <div className="messaging-phone-frame">
+        {/* Header with shop name "Dhun Audio" + "online" */}
+        <div className="phone-header">
+          <div className="phone-header-left">
+            <div className="phone-avatar">
+              <span className="avatar-icon">🎧</span>
+              <span className="avatar-status-dot" />
+            </div>
+            <div className="phone-meta">
+              <div className="phone-shop-name">Dhun Audio</div>
+              <div className="phone-shop-status">
+                <span className="online-dot" /> online
+              </div>
+            </div>
+          </div>
+
+          <div className="phone-header-right">
+            {activeCase?.case_id ? (
+              <span className="case-id-chip">
+                {activeCase.case_id}
+              </span>
+            ) : (
+              <span className="case-id-chip">Verified Shop</span>
+            )}
+          </div>
+        </div>
+
+        {/* Case Status Notice */}
         <CaseStatusBar
           status={status}
           caseId={activeCase?.case_id}
           errorMessage={errorMessage}
         />
 
+        {/* Message bubbles list */}
         <ChatThread
           messages={activeCase?.messages || []}
           evidenceList={activeCase?.evidence || []}
+          isProcessing={status === 'processing' || status === 'sending'}
         />
 
-        <div className="customer-input-area">
-          <div className="input-row">
+        {/* Pending media preview chips */}
+        {(pendingFile || pendingAudio) && (
+          <div className="staged-media-bar">
+            {pendingFile && (
+              <div className="staged-chip">
+                <span>📎 {pendingFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setPendingFile(null)}
+                  className="chip-remove-btn"
+                  title="Remove attachment"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            {pendingAudio && (
+              <div className="staged-chip">
+                <span>🎙️ Voice Note ({formatSecondsToTimestamp(pendingAudio.durationSeconds)})</span>
+                <button
+                  type="button"
+                  onClick={() => setPendingAudio(null)}
+                  className="chip-remove-btn"
+                  title="Discard voice note"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bottom messaging input bar */}
+        <div className="customer-input-area messaging-input-area">
+          <div className="messaging-input-row">
+            <div className="messaging-action-buttons">
+              <MediaUploader
+                onFileSelected={(file) => setPendingFile(file)}
+                disabled={status === 'sending'}
+              />
+              <VoiceRecorder
+                onAudioReady={(audio) => setPendingAudio(audio)}
+                disabled={status === 'sending'}
+              />
+            </div>
+
             <input
               type="text"
-              className="text-input"
+              className="text-input messaging-input-field"
               placeholder={
                 activeCase
-                  ? 'Type your reply or question…'
-                  : 'Describe your issue (e.g. "Where is my order?")…'
+                  ? 'Type a message…'
+                  : 'Type a message (e.g. "Where is my order?")…'
               }
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -217,32 +292,16 @@ export const CustomerView: React.FC = () => {
               }}
               disabled={status === 'sending'}
             />
+
             <button
               type="button"
-              className="btn-primary"
+              className="btn-primary messaging-send-btn"
               onClick={handleSend}
               disabled={status === 'sending' || (!inputText.trim() && !pendingFile && !pendingAudio)}
+              title="Send message"
             >
-              Send
+              ➤
             </button>
-          </div>
-
-          <div className="input-actions-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <VoiceRecorder
-                onAudioReady={(audio) => setPendingAudio(audio)}
-                disabled={status === 'sending'}
-              />
-              <MediaUploader
-                onFileSelected={(file) => setPendingFile(file)}
-                disabled={status === 'sending'}
-              />
-            </div>
-            {pendingAudio && (
-              <span style={{ fontSize: '11px', color: 'var(--pine-green)', fontWeight: 600 }}>
-                🎙️ Voice note ready
-              </span>
-            )}
           </div>
         </div>
       </div>

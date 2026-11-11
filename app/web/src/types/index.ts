@@ -118,6 +118,12 @@ export interface PlanRecord {
   tools: string[];
   outcome: string;
   memory_used?: string[];
+  model_proposed_step?: string | null;
+  model_reason?: string | null;
+  code_decision?: string | null;
+  agreed?: boolean | null;
+  gate_reason?: string | null;
+  planner_status?: string | null;
 }
 
 export interface Proposal {
@@ -143,6 +149,7 @@ export interface AutonomyInfo {
 export interface AutonomyPolicy {
   store_id: string;
   version: string;
+  agent_version?: string;
   model_id?: string;
   levels: Record<CaseType, AutonomyLevel>;
   per_order_cap_minor: number;
@@ -150,7 +157,7 @@ export interface AutonomyPolicy {
   kill_switch: boolean;
   changed_by?: string;
   changed_at?: string;
-  lock_status?: Record<string, { eligible_for_l2_l3: boolean; status_message: string }>;
+  lock_status?: Record<string, { eligible_for_l2_l3: boolean; status_message: string; metrics?: Record<string, any> }>;
 }
 
 export interface AutonomyStepCheck {

@@ -25,6 +25,7 @@ class DevMockService {
   private autonomyPolicy: AutonomyPolicy = {
     store_id: 'store_dhun',
     version: '1.0',
+    agent_version: '071a86f22d0690bb23e49f5fb1fc7cd794066b3c2edbb48495eb3be502bc4382',
     model_id: 'gemini-3.5-flash-lite',
     levels: {
       WISMO: 'L1',
@@ -39,6 +40,14 @@ class DevMockService {
     kill_switch: false,
     changed_by: 'seller',
     changed_at: '2026-11-11T11:30:00Z',
+    lock_status: {
+      WISMO: { eligible_for_l2_l3: true, status_message: 'WISMO passed reliability gate', metrics: { S01: { k: 5, passes: 5 }, S02: { k: 5, passes: 5 } } },
+      DAMAGE: { eligible_for_l2_l3: false, status_message: 'Missing run for scenario S10', metrics: { S03: { k: 5, passes: 5 }, S10: { status: 'MISSING' } } },
+      MISMATCH: { eligible_for_l2_l3: false, status_message: 'S08 is failed (4/5 passes)', metrics: { S04: { k: 5, passes: 5 }, S08: { k: 5, passes: 4 } } },
+      UNCLEAR: { eligible_for_l2_l3: false, status_message: 'S09 is failed (1/5 passes)', metrics: { S05: { k: 5, passes: 5 }, S09: { k: 5, passes: 1 } } },
+      LATE: { eligible_for_l2_l3: true, status_message: 'LATE passed reliability gate', metrics: { S06: { k: 5, passes: 5 } } },
+      NDR: { eligible_for_l2_l3: true, status_message: 'NDR passed reliability gate', metrics: { S07: { k: 5, passes: 5 } } },
+    },
   };
 
   constructor() {

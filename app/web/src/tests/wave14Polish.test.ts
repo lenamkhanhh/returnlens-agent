@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeVisibleText, getStatusBadge, formatObservationAttribute } from '../utils/format';
+import {
+  sanitizeVisibleText,
+  getStatusBadge,
+  formatObservationAttribute,
+  getCaseTypePassDisplay,
+  formatMessageTime,
+} from '../utils/format';
 
 describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
   describe('1. Removal of internal references from visible text', () => {
@@ -104,6 +110,59 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
       expect(hasPreview('   ')).toBe(false);
       expect(hasPreview(null)).toBe(false);
       expect(hasPreview('We have initiated your return label.')).toBe(true);
+    });
+  });
+
+  describe('5. Wave 15 Track W: Real pass display and messaging helpers', () => {
+    it('computes 5/5 for unlocked case type where all scenarios pass', () => {
+      const lock = {
+        eligible_for_l2_l3: true,
+        metrics: {
+          S01: { k: 5, passes: 5 },
+          S02: { k: 5, passes: 5 },
+        },
+      };
+      expect(getCaseTypePassDisplay(lock)).toEqual({
+        text: '5/5',
+        isLocked: false,
+        passCount: '5/5',
+      });
+    });
+
+    it('computes 4/5 locked when bottleneck scenario is 4/5', () => {
+      const lock = {
+        eligible_for_l2_l3: false,
+        metrics: {
+          S04: { k: 5, passes: 5 },
+          S08: { k: 5, passes: 4 },
+        },
+      };
+      expect(getCaseTypePassDisplay(lock)).toEqual({
+        text: '4/5 locked',
+        isLocked: true,
+        passCount: '4/5',
+      });
+    });
+
+    it('computes 0/5 locked when scenario is missing or failed with 0', () => {
+      const lock = {
+        eligible_for_l2_l3: false,
+        metrics: {
+          S03: { k: 5, passes: 5 },
+          S10: { status: 'MISSING' },
+        },
+      };
+      expect(getCaseTypePassDisplay(lock)).toEqual({
+        text: '0/5 locked',
+        isLocked: true,
+        passCount: '0/5',
+      });
+    });
+
+    it('formats ISO timestamps to short messaging time string', () => {
+      const timeStr = formatMessageTime('2026-11-12T00:03:00Z');
+      expect(timeStr.length).toBeGreaterThan(0);
+      expect(timeStr).toMatch(/\d{1,2}:\d{2}\s*(am|pm)/i);
     });
   });
 });

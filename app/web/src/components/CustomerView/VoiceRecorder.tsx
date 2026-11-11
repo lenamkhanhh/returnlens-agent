@@ -41,6 +41,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onAudioReady, disa
       const audio = await sessionRef.current.stop();
       setIsRecording(false);
       setRecordedAudio(audio);
+      onAudioReady(audio);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to finish recording');
       setIsRecording(false);
@@ -71,11 +72,21 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onAudioReady, disa
             type="button"
             onClick={handleStart}
             disabled={disabled}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            className="icon-action-btn"
             title="Record voice note"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '6px 8px',
+              fontSize: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-muted)',
+            }}
           >
             <span>🎙️</span>
-            <span>Record Voice Note</span>
           </button>
         )}
 
