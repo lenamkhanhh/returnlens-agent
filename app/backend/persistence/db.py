@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS returns (
     quantity INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'requested',
     label_id TEXT,
-    created_action_id TEXT NOT NULL REFERENCES actions(action_id),
+    created_action_id TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -196,7 +196,7 @@ CREATE TABLE IF NOT EXISTS refunds (
     amount_minor INTEGER NOT NULL,
     currency TEXT NOT NULL DEFAULT 'INR',
     status TEXT NOT NULL DEFAULT 'processed',
-    created_action_id TEXT NOT NULL REFERENCES actions(action_id),
+    created_action_id TEXT,
     created_at TEXT NOT NULL
 );
 

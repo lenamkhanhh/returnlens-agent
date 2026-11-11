@@ -17,12 +17,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.backend.contracts import ErrorShape
+from app.backend.domain.executor import ActionExecutor
 from app.backend.mock.tools import MockToolService
 from app.backend.persistence.db import Database
 from app.backend.persistence.repository import Repository
 from app.backend.persistence.seed import seed_database, reset_database
 from app.backend.workflow.engine import WorkflowEngine
 from app.backend.api.cases import router as cases_router
+from app.backend.api.proposals import router as proposals_router
 
 load_dotenv()
 
@@ -67,6 +69,7 @@ def create_app(
     db = Database(db_path)
     repo = Repository(db)
     mock_service = MockToolService(repo)
+    executor = ActionExecutor(repo, mock_service)
     engine = WorkflowEngine(repo, mock_service)
 
     # Auto-seed if stores table is empty
@@ -89,10 +92,12 @@ def create_app(
     app.state.db = db
     app.state.repo = repo
     app.state.mock_service = mock_service
+    app.state.executor = executor
     app.state.engine = engine
 
     # Include modular routers
     app.include_router(cases_router)
+    app.include_router(proposals_router)
 
     # CORS configuration
     app.add_middleware(

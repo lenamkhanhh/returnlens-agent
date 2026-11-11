@@ -6,11 +6,15 @@ Contract-faithful write tools for domain mutations (Shopify returnCreate, Razorp
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from app.backend.contracts import (
     CustomerProfile,
     Order,
+    RefundStatus,
+    ReturnStatus,
     Shipment,
     StorePolicy,
 )
@@ -102,4 +106,97 @@ class MockToolService:
             "refund_destination": profile.refund_destination,
             "open_case_ids": profile.open_case_ids,
             "prior_case_count": profile.prior_case_count,
+        }
+
+    # =========================================================================
+    # Write Tools (02 §4b: contract-faithful mocks)
+    # =========================================================================
+
+    def create_return(
+        self,
+        order_id: str,
+        item_id: str,
+        quantity: int = 1,
+        return_reason: str = "DEFECTIVE",
+        action_id: str = "",
+    ) -> Dict[str, Any]:
+        """Contract-faithful mock following Shopify Admin GraphQL `returnCreate` (02 §4b).
+
+        Invariants:
+        - Only fulfilled line items can be returned.
+        - Cannot exceed line item quantity or return already returned line items.
+        - Errors returned in Shopify GraphQL `userErrors` format: [{"field": [...], "message": "..."}].
+        - Generates return_id and mock shipping label_id atomically.
+        """
+        order = self.repo.get_order(order_id)
+        if not order:
+            return {
+                "return": None,
+                "userErrors": [{"field": ["orderId"], "message": f"Order {order_id} not found"}],
+            }
+
+        if order.line_item.item_id != item_id:
+            return {
+                "return": None,
+                "userErrors": [{"field": ["returnLineItems", "itemId"], "message": f"Line item {item_id} not found in order"}],
+            }
+
+        # Check existing active returns for this item in SQLite (Test 38)
+        with self.repo.db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COALESCE(SUM(quantity), 0) AS returned_qty
+                FROM returns
+                WHERE order_id = ? AND item_id = ? AND status IN ('requested', 'received')
+                """,
+                (order_id, item_id),
+            )
+            row = cur.fetchone()
+            existing_returned = int(row["returned_qty"]) if row else 0
+
+        if existing_returned + quantity > order.line_item.quantity:
+            return {
+                "return": None,
+                "userErrors": [
+                    {
+                        "field": ["returnLineItems"],
+                        "message": "Line item has already been returned or requested quantity exceeds available",
+                    }
+                ],
+            }
+
+        # Generate return record and mock shipping label
+        return_id = f"RET-{uuid.uuid4().hex[:8].upper()}"
+        label_id = f"LBL-RET-{uuid.uuid4().hex[:8].upper()}"
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        with self.repo.db.transaction() as conn:
+            conn.execute(
+                """
+                INSERT INTO returns (return_id, order_id, item_id, quantity, status, label_id, created_action_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    return_id,
+                    order_id,
+                    item_id,
+                    quantity,
+                    ReturnStatus.REQUESTED.value,
+                    label_id,
+                    action_id,
+                    now_iso,
+                ),
+            )
+
+        return {
+            "return": {
+                "return_id": return_id,
+                "order_id": order_id,
+                "item_id": item_id,
+                "quantity": quantity,
+                "status": ReturnStatus.REQUESTED.value,
+                "label_id": label_id,
+                "return_reason": return_reason,
+            },
+            "userErrors": [],
         }
