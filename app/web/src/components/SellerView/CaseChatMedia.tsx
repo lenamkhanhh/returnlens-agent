@@ -17,6 +17,10 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
   const videoEvidence = evidenceList.find((e) => e.media_type === 'video');
   const audioEvidenceList = evidenceList.filter((e) => e.media_type === 'audio');
 
+  const videoUrl = videoEvidence
+    ? (videoEvidence.evidence_id ? `/api/media/${videoEvidence.evidence_id}` : videoEvidence.url)
+    : '';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       {/* 1. Evidence Video Player */}
@@ -34,7 +38,7 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
               ref={videoRef}
               controls
               playsInline
-              src={videoEvidence.url}
+              src={videoUrl}
               className="video-player"
             />
           </div>
@@ -45,22 +49,25 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
       )}
 
       {/* 2. Audio Voice Notes */}
-      {audioEvidenceList.map((audio) => (
-        <div key={audio.evidence_id} style={{ background: '#fbfbfa', padding: '10px', borderRadius: '4px', border: 'var(--border-thin)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600 }}>
-              🎙️ Voice Note ({audio.language_detected || 'Hindi'})
-            </span>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>{audio.filename}</span>
-          </div>
-          <audio controls src={audio.url} style={{ width: '100%', height: '32px' }} />
-          {audio.transcript && (
-            <div style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '6px', color: 'var(--text-main)', background: '#ffffff', padding: '6px', borderRadius: '3px', border: '1px solid #eeede8' }}>
-              "{audio.transcript}"
+      {audioEvidenceList.map((audio) => {
+        const audioUrl = audio.evidence_id ? `/api/media/${audio.evidence_id}` : audio.url;
+        return (
+          <div key={audio.evidence_id} style={{ background: '#fbfbfa', padding: '10px', borderRadius: '4px', border: 'var(--border-thin)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600 }}>
+                🎙️ Voice Note ({audio.language_detected || 'Hindi'})
+              </span>
+              <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>{audio.filename}</span>
             </div>
-          )}
-        </div>
-      ))}
+            <audio controls src={audioUrl} style={{ width: '100%', height: '32px' }} />
+            {audio.transcript && (
+              <div style={{ fontSize: '12px', fontStyle: 'italic', marginTop: '6px', color: 'var(--text-main)', background: '#ffffff', padding: '6px', borderRadius: '3px', border: '1px solid #eeede8' }}>
+                "{audio.transcript}"
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* 3. Case Chat History */}
       <div>

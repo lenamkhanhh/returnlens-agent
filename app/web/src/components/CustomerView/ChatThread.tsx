@@ -35,45 +35,48 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ messages, evidenceList }
             >
               <div>{m.text}</div>
 
-              {attached.map((evi) => (
-                <div key={evi.evidence_id} className="chat-attachment">
-                  {evi.media_type === 'audio' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '11px', opacity: 0.9 }}>
-                        🎙️ Voice Note {evi.language_detected ? `(${evi.language_detected})` : ''}
-                      </span>
-                      <audio controls src={evi.url} style={{ width: '100%', height: '30px' }} />
-                      {evi.transcript && (
-                        <div style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '2px' }}>
-                          "{evi.transcript}"
-                        </div>
-                      )}
-                    </div>
-                  )}
+              {attached.map((evi) => {
+                const mediaUrl = evi.evidence_id ? `/api/media/${evi.evidence_id}` : evi.url;
+                return (
+                  <div key={evi.evidence_id} className="chat-attachment">
+                    {evi.media_type === 'audio' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', opacity: 0.9 }}>
+                          🎙️ Voice Note {evi.language_detected ? `(${evi.language_detected})` : ''}
+                        </span>
+                        <audio controls src={mediaUrl} style={{ width: '100%', height: '30px' }} />
+                        {evi.transcript && (
+                          <div style={{ fontSize: '11px', fontStyle: 'italic', marginTop: '2px' }}>
+                            "{evi.transcript}"
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                  {evi.media_type === 'video' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <span style={{ fontSize: '11px', opacity: 0.9 }}>🎥 Attached Clip: {evi.filename}</span>
-                      <video
-                        controls
-                        src={evi.url}
-                        style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '4px' }}
-                      />
-                    </div>
-                  )}
+                    {evi.media_type === 'video' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', opacity: 0.9 }}>🎥 Attached Clip: {evi.filename}</span>
+                        <video
+                          controls
+                          src={mediaUrl}
+                          style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '4px' }}
+                        />
+                      </div>
+                    )}
 
-                  {evi.media_type === 'image' && (
-                    <div>
-                      <span style={{ fontSize: '11px', opacity: 0.9 }}>🖼️ Image: {evi.filename}</span>
-                      <img
-                        src={evi.url}
-                        alt="Evidence"
-                        style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '4px', display: 'block', marginTop: '4px' }}
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {evi.media_type === 'image' && (
+                      <div>
+                        <span style={{ fontSize: '11px', opacity: 0.9 }}>🖼️ Image: {evi.filename}</span>
+                        <img
+                          src={mediaUrl}
+                          alt="Evidence"
+                          style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '4px', display: 'block', marginTop: '4px' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               <div className="msg-time">{formatDate(m.created_at)}</div>
             </div>

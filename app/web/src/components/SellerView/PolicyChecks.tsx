@@ -6,6 +6,7 @@ interface PolicyChecksProps {
 }
 
 export const PolicyChecks: React.FC<PolicyChecksProps> = ({ checks }) => {
+  const safeChecks = checks || [];
   return (
     <div style={{ marginTop: '12px' }}>
       <div className="col-header" style={{ marginBottom: '8px' }}>
@@ -16,12 +17,12 @@ export const PolicyChecks: React.FC<PolicyChecksProps> = ({ checks }) => {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {checks.length === 0 ? (
+        {safeChecks.length === 0 ? (
           <div style={{ fontSize: '12px', color: 'var(--text-light)', fontStyle: 'italic' }}>
             No policy checks evaluated yet.
           </div>
         ) : (
-          checks.map((pc) => {
+          safeChecks.map((pc) => {
             const badgeClass =
               pc.result === 'PASS'
                 ? 'badge-pass'

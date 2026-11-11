@@ -13,8 +13,20 @@ import {
   Message,
 } from '../types';
 import { devMockService } from '../devmock';
+import { evaluateBreakItTest, BreakItResult } from '../utils/breakItPresets';
 
-const USE_DEVMOCK = !import.meta.env.PROD && import.meta.env.VITE_DEVMOCK === '1';
+let devmockOverride: boolean | null = null;
+
+export function setDevmockOverride(override: boolean | null): void {
+  devmockOverride = override;
+}
+
+export function isDevmockEnabled(): boolean {
+  if (devmockOverride !== null) {
+    return devmockOverride;
+  }
+  return !import.meta.env.PROD && import.meta.env.VITE_DEVMOCK === '1';
+}
 
 export class ApiError extends Error {
   status: number;
@@ -64,230 +76,196 @@ function normalizeShippingStatus(rawStatus?: string): string {
   return rawStatus;
 }
 
+const CANONICAL_CUSTOMERS: Customer[] = [
+  { customer_id: 'CUS-01', name: 'Priya Sharma', language: 'English', city_pin: 'Bengaluru 560034', phone: '+91 90000 00001' },
+  { customer_id: 'CUS-02', name: 'Arjun Mehta', language: 'Hindi', city_pin: 'Mumbai 400001', phone: '+91 90000 00002' },
+  { customer_id: 'CUS-03', name: 'Sneha Iyer', language: 'English', city_pin: 'Delhi 110001', phone: '+91 90000 00003' },
+  { customer_id: 'CUS-04', name: 'Rahul Verma', language: 'Hinglish', city_pin: 'Bengaluru 560001', phone: '+91 90000 00004' },
+  { customer_id: 'CUS-05', name: 'Vikram Malhotra', language: 'English', city_pin: 'Pune 411001', phone: '+91 90000 00005' },
+];
+
 export const api = {
   async getCustomers(): Promise<Customer[]> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.getCustomers();
     }
-    try {
-      return await request<Customer[]>('/api/demo/customers');
-    } catch {
-      // Default fake fixtures per 14 §5
-      return devMockService.getCustomers();
-    }
+    return CANONICAL_CUSTOMERS;
   },
 
   async getOrders(customerId?: string): Promise<Order[]> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.getOrders(customerId);
     }
-    try {
-      const url = customerId ? `/api/orders?customer_id=${encodeURIComponent(customerId)}` : '/api/orders';
-      const rawOrders = await request<any[]>(url);
+    const url = customerId ? `/api/orders?customer_id=${encodeURIComponent(customerId)}` : '/api/orders';
+    const rawOrders = await request<any[]>(url);
 
-      // Enrich orders with actual shipment details from /api/orders/{order_id}
-      const enriched = await Promise.all(
-        rawOrders.map(async (o) => {
-          try {
-            const detail = await request<any>(`/api/orders/${encodeURIComponent(o.order_id)}`);
-            const shp = detail.shipment;
-            return {
-              order_id: o.order_id,
-              customer_id: o.customer_id,
-              sku: o.line_item?.sku || o.sku,
-              item_name: o.line_item?.display_name || o.item_name || o.sku,
-              catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
-              paid_minor: o.paid_minor,
-              currency: o.currency || 'INR',
-              payment_method: o.payment_method || 'Prepaid',
-              shipping_status: normalizeShippingStatus(shp?.status || o.shipping_status),
-              delivered_date: shp?.delivered_at || o.delivered_date,
-              eta_days_relative: shp?.eta ? shp.eta : o.eta_days_relative,
-              scenario_tag: o.scenario_tag || (shp?.status === 'IN_TRANSIT' ? 'WISMO + counterfactual' : 'Standard order'),
-              line_item: o.line_item,
-            };
-          } catch {
-            return {
-              order_id: o.order_id,
-              customer_id: o.customer_id,
-              sku: o.line_item?.sku || o.sku,
-              item_name: o.line_item?.display_name || o.item_name || o.sku,
-              catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
-              paid_minor: o.paid_minor,
-              currency: o.currency || 'INR',
-              payment_method: o.payment_method || 'Prepaid',
-              shipping_status: normalizeShippingStatus(o.shipping_status),
-              delivered_date: o.delivered_date,
-              eta_days_relative: o.eta_days_relative,
-              scenario_tag: o.scenario_tag || 'Standard order',
-              line_item: o.line_item,
-            };
-          }
-        })
-      );
-      return enriched;
-    } catch (err) {
-      console.warn('Real /api/orders request failed, falling back to mock:', err);
-      return devMockService.getOrders(customerId);
-    }
+    // Enrich orders with actual shipment details from /api/orders/{order_id}
+    const enriched = await Promise.all(
+      rawOrders.map(async (o) => {
+        try {
+          const detail = await request<any>(`/api/orders/${encodeURIComponent(o.order_id)}`);
+          const shp = detail.shipment;
+          return {
+            order_id: o.order_id,
+            customer_id: o.customer_id,
+            sku: o.line_item?.sku || o.sku,
+            item_name: o.line_item?.display_name || o.item_name || o.sku,
+            catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
+            paid_minor: o.paid_minor,
+            currency: o.currency || 'INR',
+            payment_method: o.payment_method || 'Prepaid',
+            shipping_status: normalizeShippingStatus(shp?.status || o.shipping_status),
+            delivered_date: shp?.delivered_at || o.delivered_date,
+            eta_days_relative: shp?.eta ? shp.eta : o.eta_days_relative,
+            scenario_tag: o.scenario_tag || (shp?.status === 'IN_TRANSIT' ? 'WISMO + counterfactual' : 'Standard order'),
+            line_item: o.line_item,
+          };
+        } catch {
+          return {
+            order_id: o.order_id,
+            customer_id: o.customer_id,
+            sku: o.line_item?.sku || o.sku,
+            item_name: o.line_item?.display_name || o.item_name || o.sku,
+            catalog_color: o.line_item?.catalog_color || o.catalog_color || 'unknown',
+            paid_minor: o.paid_minor,
+            currency: o.currency || 'INR',
+            payment_method: o.payment_method || 'Prepaid',
+            shipping_status: normalizeShippingStatus(o.shipping_status),
+            delivered_date: o.delivered_date,
+            eta_days_relative: o.eta_days_relative,
+            scenario_tag: o.scenario_tag || 'Standard order',
+            line_item: o.line_item,
+          };
+        }
+      })
+    );
+    return enriched;
   },
 
   async getSellerCases(): Promise<SellerCaseSummary[]> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.getSellerCases();
     }
-    try {
-      const rawCases = await request<any[]>('/api/seller/cases');
-      const liveList = rawCases.map((c) => ({
-        case_id: c.case_id,
-        order_id: c.order_id,
-        customer_name: c.customer_name || c.customer_id || 'Customer',
-        case_type: c.case_type,
-        state: c.state,
-        pending_amount_minor: c.pending_amount_minor || 0,
-        currency: c.currency || 'INR',
-        last_updated: c.updated_at || new Date().toISOString(),
-        summary: c.summary || `${c.case_type} inquiry`,
-      }));
-
-      // Also include standard canonical fixture cases if not already present
-      try {
-        const devCases = await devMockService.getSellerCases();
-        for (const dc of devCases) {
-          if (!liveList.some((lc) => lc.order_id === dc.order_id)) {
-            liveList.push(dc);
-          }
-        }
-      } catch {
-        // ignore
-      }
-
-      return liveList;
-    } catch (err) {
-      console.warn('Real /api/seller/cases request failed, falling back to mock:', err);
-      return devMockService.getSellerCases();
-    }
+    const rawCases = await request<any[]>('/api/seller/cases');
+    return rawCases.map((c) => ({
+      case_id: c.case_id,
+      order_id: c.order_id,
+      customer_name: c.customer_name || c.customer_id || 'Customer',
+      case_type: c.case_type,
+      state: c.state,
+      pending_amount_minor: c.pending_amount_minor || 0,
+      currency: c.currency || 'INR',
+      last_updated: c.updated_at || new Date().toISOString(),
+      summary: c.summary || `${c.case_type} inquiry`,
+    }));
   },
 
   async getCase(caseId: string): Promise<CaseDetail> {
-    if (USE_DEVMOCK || caseId.startsWith('CASE-00')) {
+    if (isDevmockEnabled()) {
       return devMockService.getCase(caseId);
     }
+    const snap = await request<any>(`/api/cases/${encodeURIComponent(caseId)}`);
+    let messages: Message[] = snap.messages || [];
+
+    // 1. If snapshot has no messages, check /api/cases/{caseId}/messages
+    if (messages.length === 0) {
+      try {
+        const rawMsgs = await request<any[]>(`/api/cases/${encodeURIComponent(caseId)}/messages`);
+        if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
+          messages = rawMsgs.map((m) => ({
+            message_id: m.message_id || `msg-${Math.random().toString(16).slice(2, 8)}`,
+            case_id: caseId,
+            role: (m.role?.value || m.role || 'agent').toLowerCase(),
+            text: m.text,
+            attachment_ids: m.attachment_ids || [],
+            created_at: m.created_at || new Date().toISOString(),
+          }));
+        }
+      } catch {
+        // Optional endpoint
+      }
+    }
+
+    // 2. Load audit events for event timeline and extract real observations if snap.observations is empty
+    let events: AuditEvent[] = [];
     try {
-      const snap = await request<any>(`/api/cases/${encodeURIComponent(caseId)}`);
-      let messages: Message[] = snap.messages || [];
-
-      // 1. If snapshot has no messages, check /api/cases/{caseId}/messages
-      if (messages.length === 0) {
-        try {
-          const rawMsgs = await request<any[]>(`/api/cases/${encodeURIComponent(caseId)}/messages`);
-          if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
-            messages = rawMsgs.map((m) => ({
-              message_id: m.message_id || `msg-${Math.random().toString(16).slice(2, 8)}`,
-              case_id: caseId,
-              role: (m.role?.value || m.role || 'agent').toLowerCase(),
-              text: m.text,
-              attachment_ids: m.attachment_ids || [],
-              created_at: m.created_at || new Date().toISOString(),
-            }));
-          }
-        } catch {
-          // Endpoint might not exist yet
-        }
-      }
-
-      // 2. If messages are still empty, reconstruct from audit events (Bug 1 fix)
-      if (messages.length === 0) {
-        try {
-          const events = await this.getEvents(caseId);
-          for (const ev of events) {
-            if (ev.event_type === 'message_received' && ev.safe_payload?.text) {
-              messages.push({
-                message_id: ev.event_id || `msg-in-${ev.seq}`,
-                case_id: caseId,
-                role: 'customer',
-                text: ev.safe_payload.text,
-                attachment_ids: ev.safe_payload.attachment_ids || [],
-                created_at: ev.recorded_at,
-              });
-            } else if (ev.event_type === 'customer_reply_delivered' && (ev.safe_payload?.reply || ev.outcome)) {
-              messages.push({
-                message_id: ev.event_id || `msg-out-${ev.seq}`,
-                case_id: caseId,
-                role: 'agent',
-                text: ev.safe_payload?.reply || ev.outcome,
-                created_at: ev.recorded_at,
-              });
-            } else if (ev.event_type === 'clarification_sent' && (ev.safe_payload?.template || ev.outcome)) {
-              messages.push({
-                message_id: ev.event_id || `msg-clarify-${ev.seq}`,
-                case_id: caseId,
-                role: 'agent',
-                text: ev.safe_payload?.template || ev.outcome,
-                created_at: ev.recorded_at,
-              });
-            } else if (ev.event_type === 'handoff_created') {
-              messages.push({
-                message_id: ev.event_id || `msg-handoff-${ev.seq}`,
-                case_id: caseId,
-                role: 'agent',
-                text: ev.safe_payload?.summary || ev.outcome || 'Case handed off to merchant support.',
-                created_at: ev.recorded_at,
-              });
-            }
-          }
-        } catch (e) {
-          console.warn('Failed to load events for messages reconstruction:', e);
-        }
-      }
-
-      let observations = snap.observations || [];
-      if (observations.length === 0 && snap.case_type === 'MISMATCH') {
-        observations = [
-          {
-            id: 'OBS-1',
-            evidence_id: snap.evidence?.[0]?.evidence_id || 'EVI-001',
-            t: '00:07',
-            attribute: 'color',
-            value: 'black headphones',
-            color_class: 'black',
-            visibility: 'visible',
-            limitation: null,
-          },
-          {
-            id: 'OBS-2',
-            evidence_id: snap.evidence?.[0]?.evidence_id || 'EVI-001',
-            t: '00:03',
-            attribute: 'item_type',
-            value: 'over-ear headband headphones',
-            visibility: 'visible',
-            limitation: null,
-          },
-        ];
-      }
-
-      let unknowns = snap.unknowns || [];
-      if (unknowns.length === 0 && snap.case_type === 'MISMATCH') {
-        unknowns = ['barcode', 'exact_model'];
-      }
-
-      return {
-        ...snap,
-        messages,
-        evidence: snap.evidence || [],
-        observations,
-        unknowns,
-        policy_checks: snap.policy_checks || [],
-        proposals: snap.proposals || [],
-      } as CaseDetail;
-    } catch (err) {
-      console.warn(`Real /api/cases/${caseId} failed, falling back to mock:`, err);
-      return devMockService.getCase(caseId);
+      events = await this.getEvents(caseId);
+    } catch (e) {
+      console.warn('Failed to load events for case:', e);
     }
+
+    if (messages.length === 0 && events.length > 0) {
+      for (const ev of events) {
+        if (ev.event_type === 'message_received' && ev.safe_payload?.text) {
+          messages.push({
+            message_id: ev.event_id || `msg-in-${ev.seq}`,
+            case_id: caseId,
+            role: 'customer',
+            text: ev.safe_payload.text,
+            attachment_ids: ev.safe_payload.attachment_ids || [],
+            created_at: ev.recorded_at,
+          });
+        } else if (ev.event_type === 'customer_reply_delivered' && (ev.safe_payload?.reply || ev.outcome)) {
+          messages.push({
+            message_id: ev.event_id || `msg-out-${ev.seq}`,
+            case_id: caseId,
+            role: 'agent',
+            text: ev.safe_payload?.reply || ev.outcome,
+            created_at: ev.recorded_at,
+          });
+        } else if (ev.event_type === 'clarification_sent' && (ev.safe_payload?.template || ev.outcome)) {
+          messages.push({
+            message_id: ev.event_id || `msg-clarify-${ev.seq}`,
+            case_id: caseId,
+            role: 'agent',
+            text: ev.safe_payload?.template || ev.outcome,
+            created_at: ev.recorded_at,
+          });
+        } else if (ev.event_type === 'handoff_created') {
+          messages.push({
+            message_id: ev.event_id || `msg-handoff-${ev.seq}`,
+            case_id: caseId,
+            role: 'agent',
+            text: ev.safe_payload?.summary || ev.outcome || 'Case handed off to merchant support.',
+            created_at: ev.recorded_at,
+          });
+        }
+      }
+    }
+
+    let observations = snap.observations || [];
+    let unknowns = snap.unknowns || [];
+
+    // Extract real grounded observations from audit events if not in snapshot
+    if (observations.length === 0 && events.length > 0) {
+      for (const ev of events) {
+        if (ev.event_type === 'observation_validated' && ev.safe_payload?.observations) {
+          observations = ev.safe_payload.observations;
+          if (ev.safe_payload.unknowns) {
+            unknowns = ev.safe_payload.unknowns;
+          }
+        }
+      }
+    }
+
+    const evidence = (snap.evidence || []).map((e: any) => ({
+      ...e,
+      url: e.evidence_id ? `/api/media/${e.evidence_id}` : e.url,
+    }));
+
+    return {
+      ...snap,
+      messages,
+      evidence,
+      observations,
+      unknowns,
+      policy_checks: snap.policy_checks || [],
+      proposals: snap.proposals || [],
+    } as CaseDetail;
   },
 
   async createCase(orderId: string, initialMessage: string, clientMessageId?: string): Promise<CreateCaseResponse> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.createCase(orderId, initialMessage, clientMessageId);
     }
     return request<CreateCaseResponse>('/api/cases', {
@@ -301,7 +279,7 @@ export const api = {
   },
 
   async sendMessage(caseId: string, text: string, attachmentIds: string[] = []): Promise<void> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.sendMessage(caseId, text, attachmentIds);
     }
     await request(`/api/cases/${encodeURIComponent(caseId)}/messages`, {
@@ -315,48 +293,40 @@ export const api = {
   },
 
   async uploadEvidence(caseId: string, file: File, clientUploadId?: string): Promise<Evidence> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.uploadEvidence(caseId, file, clientUploadId);
     }
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (clientUploadId) formData.append('client_upload_id', clientUploadId);
+    const formData = new FormData();
+    formData.append('file', file);
+    if (clientUploadId) formData.append('client_upload_id', clientUploadId);
 
-      const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`, {
-        method: 'POST',
-        body: formData,
-      });
+    const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`, {
+      method: 'POST',
+      body: formData,
+    });
 
-      if (!res.ok) {
-        if (res.status === 404) {
-          // Backend has not mounted /evidence endpoint yet; fall back gracefully
-          return devMockService.uploadEvidence(caseId, file, clientUploadId);
-        }
-        let errBody: any = null;
-        try {
-          errBody = await res.json();
-        } catch {
-          // ignore
-        }
-        throw new ApiError(res.status, errBody?.user_message || 'Evidence upload failed', errBody?.code);
+    if (!res.ok) {
+      let errBody: any = null;
+      try {
+        errBody = await res.json();
+      } catch {
+        // ignore
       }
-
-      return (await res.json()) as Evidence;
-    } catch {
-      return devMockService.uploadEvidence(caseId, file, clientUploadId);
+      throw new ApiError(res.status, errBody?.user_message || 'Evidence upload failed', errBody?.code);
     }
+
+    const data = (await res.json()) as Evidence;
+    return {
+      ...data,
+      url: data.evidence_id ? `/api/media/${data.evidence_id}` : data.url,
+    };
   },
 
   async getEvents(caseId: string, afterSeq = 0): Promise<AuditEvent[]> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.getEvents(caseId, afterSeq);
     }
-    try {
-      return await request<AuditEvent[]>(`/api/cases/${encodeURIComponent(caseId)}/events?after_seq=${afterSeq}`);
-    } catch {
-      return devMockService.getEvents(caseId, afterSeq);
-    }
+    return await request<AuditEvent[]>(`/api/cases/${encodeURIComponent(caseId)}/events?after_seq=${afterSeq}`);
   },
 
   async decideProposal(
@@ -366,7 +336,7 @@ export const api = {
     idempotencyKey?: string
   ): Promise<ProposalDecisionResponse> {
     const key = idempotencyKey || `d-${Math.random().toString(16).slice(2, 8)}`;
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.decideProposal(proposalId, decision, payloadHash, key);
     }
     return request<ProposalDecisionResponse>(`/api/proposals/${encodeURIComponent(proposalId)}/decisions`, {
@@ -386,123 +356,96 @@ export const api = {
   // =========================================================================
 
   async getAutonomyPolicy(): Promise<AutonomyPolicy> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.getAutonomyPolicy();
     }
-    try {
-      const res = await request<any>('/api/seller/autonomy');
-      return {
-        store_id: res.store_id,
-        version: res.version,
-        levels: res.levels,
-        per_order_cap_minor: res.per_order_cap_minor,
-        per_customer_daily_cap_minor: res.per_customer_daily_cap_minor,
-        kill_switch: res.kill_switch,
-        changed_by: res.changed_by,
-        changed_at: res.changed_at,
-      };
-    } catch {
-      return devMockService.getAutonomyPolicy();
-    }
+    const res = await request<any>('/api/seller/autonomy');
+    return {
+      store_id: res.store_id,
+      version: res.version,
+      levels: res.levels,
+      per_order_cap_minor: res.per_order_cap_minor,
+      per_customer_daily_cap_minor: res.per_customer_daily_cap_minor,
+      kill_switch: res.kill_switch,
+      changed_by: res.changed_by,
+      changed_at: res.changed_at,
+    };
   },
 
   async updateAutonomyPolicy(policy: Partial<AutonomyPolicy>): Promise<AutonomyPolicy> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.updateAutonomyPolicy(policy);
     }
-    try {
-      await request<any>('/api/seller/autonomy', {
-        method: 'PUT',
-        body: JSON.stringify(policy),
-      });
-      return this.getAutonomyPolicy();
-    } catch (err: any) {
-      if (err.status === 422) throw err;
-      return devMockService.updateAutonomyPolicy(policy);
-    }
+    await request<any>('/api/seller/autonomy', {
+      method: 'PUT',
+      body: JSON.stringify(policy),
+    });
+    return this.getAutonomyPolicy();
   },
 
   async killAutonomy(reason = 'Seller kill switch'): Promise<void> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.killAutonomy(reason);
     }
-    try {
-      await request('/api/seller/autonomy/kill', {
-        method: 'POST',
-        body: JSON.stringify({ reason }),
-      });
-    } catch {
-      await devMockService.killAutonomy(reason);
-    }
+    await request('/api/seller/autonomy/kill', {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
   },
 
   async getAutonomyExplanation(caseId: string): Promise<AutonomyExplanation> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.getAutonomyExplanation(caseId);
     }
-    try {
-      // Backend router endpoint: /api/seller/autonomy/why/{case_id}
-      const res = await request<any>(`/api/seller/autonomy/why/${encodeURIComponent(caseId)}`);
-      const checks = (res.checklist || res.checks || []).map((item: any) => ({
-        step: item.step_no || item.step,
-        title: item.title,
-        passed: item.passed,
-        detail: item.details || item.detail,
-      }));
-      return {
-        case_id: caseId,
-        case_type: res.case_type || 'MISMATCH',
-        action_type: res.action_type || 'PROPOSE_RETURN',
-        decision: res.decision,
-        reason_code: res.reason_code,
-        checks,
-      };
-    } catch {
-      return devMockService.getAutonomyExplanation(caseId);
-    }
+    const res = await request<any>(`/api/seller/autonomy/why/${encodeURIComponent(caseId)}`);
+    const checks = (res.checklist || res.checks || []).map((item: any) => ({
+      step: item.step_no || item.step,
+      title: item.title,
+      passed: item.passed,
+      detail: item.details || item.detail,
+    }));
+    return {
+      case_id: caseId,
+      case_type: res.case_type || 'MISMATCH',
+      action_type: res.action_type || 'PROPOSE_RETURN',
+      decision: res.decision,
+      reason_code: res.reason_code,
+      checks,
+    };
   },
 
   async fireCourierEvent(req: CourierEventRequest): Promise<{ status: string; event_id: string }> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.fireCourierEvent(req);
     }
-    try {
-      return await request('/api/operator/courier-events', {
-        method: 'POST',
-        body: JSON.stringify(req),
-      });
-    } catch {
-      return devMockService.fireCourierEvent(req);
-    }
+    return await request('/api/operator/courier-events', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    });
   },
 
   async changeTracking(orderId: string, status: string, deliveredDate?: string): Promise<void> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       return devMockService.changeTracking(orderId, status, deliveredDate);
     }
-    try {
-      await request('/api/operator/tracking', {
-        method: 'POST',
-        body: JSON.stringify({ order_id: orderId, status, delivered_date: deliveredDate }),
-      });
-    } catch {
-      await devMockService.changeTracking(orderId, status, deliveredDate);
-    }
+    await request('/api/operator/tracking', {
+      method: 'POST',
+      body: JSON.stringify({ order_id: orderId, status, delivered_date: deliveredDate }),
+    });
   },
 
   async resetDemo(): Promise<void> {
-    if (USE_DEVMOCK) {
+    if (isDevmockEnabled()) {
       devMockService.resetDemo();
       return;
     }
-    try {
-      await request('/api/operator/reset', { method: 'POST' });
-    } catch {
-      devMockService.resetDemo();
-    }
+    await request('/api/operator/reset', { method: 'POST' });
   },
 
-  async executeBreakItTest(presetId: string, customText?: string): Promise<any> {
-    return devMockService.executeBreakItTest(presetId, customText);
+  async executeBreakItTest(presetId: string, customText?: string): Promise<BreakItResult> {
+    if (isDevmockEnabled()) {
+      return devMockService.executeBreakItTest(presetId, customText);
+    }
+    return evaluateBreakItTest(presetId, customText);
   },
 };

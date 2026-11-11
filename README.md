@@ -62,7 +62,7 @@ When accessing the running application at `http://localhost:8000`:
 - Supports regional customer communication in English, Hindi, and Hinglish with automatic currency localization in Indian Rupees (₹ Paise ledger).
 
 ### 2. Autonomous Agent Design & Architecture (Weight: 25%)
-- **Model Adapter:** Integrates Google Gemini (`gemini-3.5-flash-lite` primary with `gemini-3.8-flash` / `gemini-3.6-flash` support) via the official `google-genai` SDK with strict JSON schema cleaning.
+- **Model Adapter:** Integrates Google Gemini (`gemini-3.5-flash-lite` primary with automatic fallback to `gemini-3.6-flash` if free-tier rate limits are reached) via the official `google-genai` SDK with strict JSON schema cleaning.
 - **Fail-Closed Principle:** When the model is unavailable or rate-limited, the system defers to safe merchant review rather than guessing or approving ungrounded claims.
 - **Explainability:** Interactive 7-step *"Why?"* checklist modal breaks down exact criteria (kill switch, prohibited list, configured level, reliability benchmark, visual grounding, loss limit, policy match).
 
@@ -85,24 +85,27 @@ When accessing the running application at `http://localhost:8000`:
 
 All benchmark metrics are recorded directly by running `python -m app.evaluation.harness.runner --k5-passed` against the live backend:
 
-* **Evaluation Model:** `gemini-3.8-flash` / `gemini-3.5-flash-lite`
-* **Agent Version Hash:** `d17b3f3f` (Deterministic SHA-256 CRLF->LF normalized)
+* **Evaluation Model:** `gemini-3.5-flash-lite` (Free Tier quota: 15 RPM / 1,500 RPD)
+* **Agent Version Hash:** `5b1e4f68` (Deterministic SHA-256 CRLF->LF normalized)
 * **Measurement Source:** [`app/evaluation/reliability.json`](app/evaluation/reliability.json) & [`H0_DISPATCH/STATUS_C.md`](../returnlens-planning/H0_DISPATCH/STATUS_C.md)
 
 | Scenario | Case Type | Scenario Description | k | Passes | Pass@1 | Pass^k | Status | Model ID | Evaluation Details |
 |:---:|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---|
-| `S01` | `WISMO` | Standard Tracking Status Inquiry | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | Verified tracking query & customer delivery |
-| `S02` | `WISMO` | Counterfactual Live Tracking Update | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | Reactive courier event response |
-| `S03` | `DAMAGE` | Case A Headband Damage (Clip-A) | 1 | 0 | 0.00 | 0.00 | 🔒 BLOCKED | null | *Awaiting real filmed cracked headband video* |
-| `S04` | `MISMATCH` | Case B Wrong Color Delivered (Clip-B) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.8-flash` | Model identified black headphones @00:07 |
-| `S05` | `UNCLEAR` | Case C Dim Lighting + Excess Amount | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.8-flash` | Two separate blockers: ₹1,800 cap & unclear video |
-| `S06` | `LATE` | Return Window Exceeded (>7 Days) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | P_WINDOW rule block; no auto-rejection sent |
-| `S07` | `NDR` | Courier NDR Address Correction (COD) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | Updated address Flat 12B -> 14B; pincode preserved |
-| `S08` | `MISMATCH` | Voice Note Claim with Video (VN-HI) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.8-flash` | Voice audio claim reconciled with stock video |
-| `S09` | `UNCLEAR` | Customer Return After Server Restart | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.8-flash` | Preserved clarification count & memory state |
-| `S10` | `DAMAGE` | Cumulative Daily Velocity Limit Gate | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | ₹2,000 daily limit enforced; proposal deferred |
+| `S01` | `WISMO` | Standard Tracking Status Inquiry | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | All 5 trial(s) passed 3-layer verification |
+| `S02` | `WISMO` | Counterfactual Live Tracking Update | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | All 5 trial(s) passed 3-layer verification |
+| `S03` | `DAMAGE` | Case A Headband Damage (Clip-A) | 1 | 0 | 0.00 | 0.00 | 🔒 BLOCKED | null | needs real filmed clip (synthetic media cannot show cracked headband) |
+| `S04` | `MISMATCH` | Case B Wrong Color Delivered (Clip-B) | 5 | 4 | 0.80 | 0.00 | ❌ FAIL | `gemini-3.5-flash-lite` | DB: Case state WAITING_CUSTOMER not in expected ['WAITING_SELLER', 'HUMAN_REVIEW', 'PROCESSING'] |
+| `S05` | `UNCLEAR` | Case C Dim Lighting + Excess Amount | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.5-flash-lite` | All 5 trial(s) passed 3-layer verification |
+| `S06` | `LATE` | Return Window Exceeded (>7 Days) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | All 5 trial(s) passed 3-layer verification |
+| `S07` | `NDR` | Courier NDR Address Correction (COD) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | All 5 trial(s) passed 3-layer verification |
+| `S08` | `MISMATCH` | Voice Note Claim with Video (VN-HI) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.5-flash-lite` | All 5 trial(s) passed 3-layer verification |
+| `S09` | `UNCLEAR` | Customer Return After Server Restart | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.5-flash-lite` | All 5 trial(s) passed 3-layer verification |
+| `S10` | `DAMAGE` | Cumulative Daily Velocity Limit Gate | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | All 5 trial(s) passed 3-layer verification |
 
-**Benchmark Summary:** **9 / 10 scenarios passed $pass^5 = 1.00$ ($k=5$)**, **1 scenario honestly blocked** (`S03` awaiting real filmed damage clip), **0 unexpected failures**.
+**Benchmark Summary:**
+- **8 / 10 scenarios passed at $k=5$ ($pass^5 = 1.00$)**
+- **1 honestly blocked** (`S03` awaiting real filmed damage clip; synthetic media cannot show physical cracks)
+- **1 measured failure at $k=5$** (`S04`: 4/5 passed, $pass@1 = 0.80$, $pass^5 = 0.00$ on `gemini-3.5-flash-lite` due to real-world vision model variance across multi-turn clarification). Because $pass^5 < 1.00$, the Earned Autonomy gate safely locks Case B (`MISMATCH`) to human seller review.
 
 ---
 
@@ -152,7 +155,7 @@ All benchmark metrics are recorded directly by running `python -m app.evaluation
 
 ```bash
 # 1. Clone repository and install Python dependencies
-git clone https://github.com/TODO_ORG/returnlens-agent.git
+git clone https://github.com/lenamkhanhh/returnlens-agent.git
 cd returnlens-agent
 python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
@@ -176,8 +179,9 @@ Open `http://localhost:8000` in any web browser.
 ## 9. Honest Limitations & Staged Data Disclosure
 
 1. **Scenario S03 Status:** Scenario S03 (Case A Headband Damage) is recorded as `BLOCKED`. The synthetic solid-color video clip used in early development cannot visually demonstrate a cracked headband to a real vision model. The system correctly refuses to hallucinate damage, keeping the scenario blocked until real unboxing footage is filmed.
-2. **Synthetic Voice Audio:** Voice notes (`synthetic_voice_*.ogg`) were generated using offline Windows System.Speech text-to-speech to enable deterministic, zero-cost unit testing without consuming paid cloud API calls.
-3. **Demo Orders & Store Data:** Order fixtures for store *Dhun Audio* are pre-seeded relative to `DEMO_TODAY = 2026-11-11` per the hackathon prototype specification.
+2. **Scenario S04 Model Variance:** In the live benchmark against `gemini-3.5-flash-lite`, S04 achieved 4/5 passes ($pass@1 = 0.80$, $pass^5 = 0.00$). In 1 trial the model requested box label clarification rather than immediately transitioning to seller review. Because $pass^5 < 1.00$, the system honestly keeps `MISMATCH` autonomy locked to human review per the Earned Autonomy gate.
+3. **Synthetic Voice Audio:** Voice notes (`synthetic_voice_*.ogg`) were generated using offline Windows System.Speech text-to-speech to enable deterministic, zero-cost unit testing without consuming paid cloud API calls.
+4. **Demo Orders & Store Data:** Order fixtures for store *Dhun Audio* are pre-seeded relative to `DEMO_TODAY = 2026-11-11` per the hackathon prototype specification.
 
 ---
 
@@ -186,7 +190,7 @@ Open `http://localhost:8000` in any web browser.
 ### Built With:
 - **Language & Runtime:** Python 3.12, Node.js 20, TypeScript 5.9
 - **Backend Framework:** FastAPI, Uvicorn, SQLite3, Pydantic v2, Python-Dotenv
-- **AI / LLM Integration:** Google GenAI SDK (`google-genai`), Gemini 3.5 Flash Lite (`gemini-3.5-flash-lite`), Gemini 3.8 Flash (`gemini-3.8-flash`)
+- **AI / LLM Integration:** Google GenAI SDK (`google-genai`), Gemini 3.5 Flash Lite (`gemini-3.5-flash-lite`), Gemini 3.6 Flash fallback (`gemini-3.6-flash`)
 - **Frontend Console:** React 18, Vite 5.4, Vanilla CSS (Design Tokens inspired by Indian botanical aesthetics)
 - **Testing & Verification:** Pytest, Vitest, Microsoft Edge Headless Automation
 

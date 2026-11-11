@@ -22,6 +22,8 @@ export const SellerView: React.FC = () => {
   const [activeCase, setActiveCase] = useState<CaseDetail | null>(null);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [caseError, setCaseError] = useState<string | null>(null);
+  const [inboxError, setInboxError] = useState<string | null>(null);
 
   // Autonomy state
   const [autonomyPolicy, setAutonomyPolicy] = useState<AutonomyPolicy | null>(null);
@@ -35,6 +37,7 @@ export const SellerView: React.FC = () => {
   // 1. Fetch Autonomy Policy & Inbox list
   const refreshInbox = useCallback(async () => {
     try {
+      setInboxError(null);
       const [list, policy] = await Promise.all([
         api.getSellerCases(),
         api.getAutonomyPolicy(),
@@ -45,8 +48,9 @@ export const SellerView: React.FC = () => {
         const found = paramCaseId ? list.find(c => c.case_id === paramCaseId) : null;
         setSelectedCaseId(found ? found.case_id : list[0].case_id);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load seller inbox:', err);
+      setInboxError(err?.userMessage || err?.message || 'Failed to load seller inbox');
     }
   }, [selectedCaseId, paramCaseId]);
 
@@ -67,14 +71,17 @@ export const SellerView: React.FC = () => {
   // 2. Fetch Active Case detail & events
   const refreshActiveCase = useCallback(async (caseId: string) => {
     try {
+      setCaseError(null);
       const [detail, evts] = await Promise.all([
         api.getCase(caseId),
         api.getEvents(caseId),
       ]);
       setActiveCase(detail);
       setEvents(evts);
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Failed to load case ${caseId}:`, err);
+      setActiveCase(null);
+      setCaseError(err?.userMessage || err?.message || `Failed to load case ${caseId}`);
     }
   }, []);
 
@@ -211,6 +218,25 @@ export const SellerView: React.FC = () => {
             onFilterChange={(f) => setInboxFilter(f)}
           />
 
+          {inboxError && (
+            <div
+              className="error-banner"
+              data-testid="inbox-error-state"
+              role="alert"
+              style={{
+                padding: '10px',
+                background: '#fef2f2',
+                border: '1px solid #f87171',
+                borderRadius: '4px',
+                color: '#b91c1c',
+                fontSize: '12px',
+                marginTop: '8px',
+              }}
+            >
+              {inboxError}
+            </div>
+          )}
+
           {activeCase && (
             <CaseChatMedia
               messages={activeCase.messages}
@@ -239,6 +265,25 @@ export const SellerView: React.FC = () => {
               </span>
             )}
           </div>
+
+          {caseError && (
+            <div
+              className="error-banner"
+              data-testid="case-error-state"
+              role="alert"
+              style={{
+                padding: '14px',
+                background: '#fef2f2',
+                border: '1px solid #f87171',
+                borderRadius: '6px',
+                color: '#b91c1c',
+                fontSize: '13px',
+                marginBottom: '12px',
+              }}
+            >
+              <strong>Error Loading Case:</strong> {caseError}
+            </div>
+          )}
 
           {activeCase ? (
             <>

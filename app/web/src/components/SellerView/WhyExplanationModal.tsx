@@ -79,7 +79,7 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
           </div>
 
           <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {explanation.checks.map((chk) => (
+            {(explanation.checks || []).map((chk) => (
               <div
                 key={chk.step}
                 style={{

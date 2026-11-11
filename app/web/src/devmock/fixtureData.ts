@@ -177,7 +177,7 @@ export const INITIAL_DEV_CASES: Record<string, CaseDetail> = {
         evidence_id: 'EVI-001',
         case_id: 'CASE-0012',
         media_type: 'video',
-        url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm',
+        url: '/api/media/EVI-001',
         filename: 'stock_black_headphones_pexels_9130360.mp4',
         duration_s: 20,
         created_at: '2026-11-11T11:00:10Z',
