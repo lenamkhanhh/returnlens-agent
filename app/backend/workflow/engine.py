@@ -19,6 +19,7 @@ from app.backend.contracts import (
     CaseState,
     CaseType,
     ColorClass,
+    Evidence,
     Intent,
     JobStatus,
     JobTrigger,
@@ -412,68 +413,11 @@ class WorkflowEngine:
             any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch", "acting up", "issue", "problem", "faulty", "dark", "blur", "blurry", "video", "footage", "voice"])
             or ("white" in text.lower() and "black" in text.lower())
         ):
-            # If voice note claim (18 §2 S08)
-            if any(w in text.lower() for w in ["voice", "[voice note"]):
-                self.repo.update_case_state(
-                    case_id=case_id,
-                    state=CaseState.WAITING_CUSTOMER,
-                    summary="Clarification requested: outer box label photo for voice note claim",
-                    increment_clarification=True,
-                )
-                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
-                reply = f"To help us process your request for order {case.order_id}, please provide a clear photo of the outer box label showing the barcode and model number."
-                self.repo.add_message(
-                    message_id=outbound_msg_id,
-                    case_id=case_id,
-                    actor_id="agent:returnlens",
-                    role=ActorRole.AGENT,
-                    text=reply,
-                )
-                self.repo.append_audit_event(
-                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                    actor="agent:returnlens",
-                    event_type="clarification_sent",
-                    outcome="Asked customer for box label photo (1 of 1)",
-                    case_id=case_id,
-                    refs=[f"msg:{outbound_msg_id}"],
-                )
-                self._mark_job_completed(job_id, now_iso)
-                return True
-
-            # If color mismatch (18 §2 S04)
-            catalog_color = str(order_info.get("catalog_color", "")).lower()
-            if "black" in text.lower() and (catalog_color == "white" or "white" in text.lower()):
-                self.repo.update_case_state(
-                    case_id=case_id,
-                    state=CaseState.WAITING_CUSTOMER,
-                    summary="Clarification requested: outer box label photo for color mismatch",
-                    increment_clarification=True,
-                )
-                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
-                reply = f"To help us verify the color mismatch for order {case.order_id}, please provide a clear photo of the outer box label showing the barcode and model number."
-                self.repo.add_message(
-                    message_id=outbound_msg_id,
-                    case_id=case_id,
-                    actor_id="agent:returnlens",
-                    role=ActorRole.AGENT,
-                    text=reply,
-                )
-                self.repo.append_audit_event(
-                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                    actor="agent:returnlens",
-                    event_type="clarification_sent",
-                    outcome="Asked customer for box label photo (1 of 1)",
-                    case_id=case_id,
-                    refs=[f"msg:{outbound_msg_id}"],
-                )
-                self._mark_job_completed(job_id, now_iso)
-                return True
-
             self.repo.update_case_state(
                 case_id=case_id,
                 state=CaseState.WAITING_CUSTOMER,
                 summary="Evidence requested: please share photo or unboxing video of item",
-                increment_clarification=True if any(w in text.lower() for w in ["dark", "blur", "blurry", "acting up"]) else False,
+                increment_clarification=False,
             )
             outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
             reply = f"To help us process your return request for order {case.order_id}, please provide a clear photo or unboxing video of the item."
@@ -496,29 +440,200 @@ class WorkflowEngine:
             return True
 
         if evidence_rows:
-            # Model execution block with graceful fallback (Test 12)
+            latest_evi_row = evidence_rows[0]
+            storage_key = latest_evi_row["storage_key"]
+            media_type = latest_evi_row["media_type"]
+
+            # Locate media file on disk
+            media_candidates = [
+                Path(self.repo.db.db_path).parent / "media" / storage_key,
+                Path("data/media") / storage_key,
+                Path("app/demo/media") / storage_key,
+                Path("app/demo/media/stock") / storage_key,
+            ]
+            media_path = next((p for p in media_candidates if p.exists()), None)
+            media_bytes = media_path.read_bytes() if media_path else b""
+
+            evi_contract = Evidence(
+                evidence_id=latest_evi_row["evidence_id"],
+                case_id=case_id,
+                media_type=media_type,
+                storage_key=storage_key,
+                content_sha256=latest_evi_row["content_sha256"],
+                bytes=latest_evi_row["bytes"],
+                duration_ms=latest_evi_row["duration_ms"],
+                width=latest_evi_row["width"],
+                height=latest_evi_row["height"],
+                ingest_status=latest_evi_row["ingest_status"],
+                created_at=str(latest_evi_row["created_at"]),
+            )
+
+            obs_output = None
+            trans_output = None
             try:
-                # We attempt model observer runner
-                # If key missing or model unavailable, ModelUnavailableError will be caught
-                latest_evi_row = evidence_rows[0]
-                storage_key = latest_evi_row["storage_key"]
-                # In mock/offline without key, B's adapter raises ModelUnavailableError
-                # which we catch cleanly
+                if media_type == "audio":
+                    trans_output, model_run, vn = self.transcriber_runner.transcribe(
+                        audio_bytes=media_bytes,
+                        mime_type="audio/ogg" if storage_key.endswith(".ogg") else "audio/wav",
+                        evidence_id=evi_contract.evidence_id,
+                        correlation_id=f"CORR-{case_id}",
+                    )
+                    self.repo.append_audit_event(
+                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                        actor="model:transcriber",
+                        event_type="observation_validated",
+                        outcome=f"Transcribed voice note: intent={getattr(trans_output.intent, 'value', trans_output.intent)}",
+                        case_id=case_id,
+                        refs=[f"evidence:{evi_contract.evidence_id}"],
+                        safe_payload={
+                            "intent": getattr(trans_output.intent, "value", trans_output.intent),
+                            "language": getattr(trans_output.language, "value", trans_output.language),
+                        },
+                    )
+                else:
+                    mime_type = "video/mp4" if storage_key.endswith(".mp4") else "video/webm" if storage_key.endswith(".webm") else "image/png"
+                    obs_output, model_run = self.observer_runner.observe(
+                        evidence=evi_contract,
+                        media_bytes=media_bytes,
+                        mime_type=mime_type,
+                        correlation_id=f"CORR-{case_id}",
+                    )
+                    self.repo.append_audit_event(
+                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                        actor="model:observer",
+                        event_type="observation_validated",
+                        outcome=f"Vision model observed {len(obs_output.observations)} items",
+                        case_id=case_id,
+                        refs=[f"evidence:{evi_contract.evidence_id}"],
+                        safe_payload={
+                            "observations": [o.model_dump() for o in obs_output.observations],
+                            "unknowns": obs_output.unknowns,
+                            "model_id": getattr(model_run, "model_id", None) if model_run else None,
+                        },
+                    )
             except ModelUnavailableError:
                 self.repo.append_audit_event(
                     event_id=f"EVT-{uuid.uuid4().hex[:8]}",
                     actor="agent:returnlens",
                     event_type="model_unavailable",
-                    outcome="Model unavailable: offline mode / no API key",
+                    outcome="Model unavailable: offline mode / invalid API key",
                     case_id=case_id,
+                    refs=[f"evidence:{latest_evi_row['evidence_id']}"],
                 )
                 self.repo.update_case_state(
                     case_id=case_id,
                     state=CaseState.HUMAN_REVIEW,
                     summary=f"Model unavailable. Handed off with verified facts for order {case.order_id}.",
                 )
+                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=case_id,
+                    actor_id="agent:returnlens",
+                    role=ActorRole.AGENT,
+                    text="We are currently unable to analyze media automatically. Your case has been transferred to seller support for manual review.",
+                )
                 self._mark_job_completed(job_id, now_iso)
                 return True
+
+            # If voice note was processed (S08)
+            if media_type == "audio" and trans_output:
+                if case.clarification_count == 0:
+                    self.repo.update_case_state(
+                        case_id=case_id,
+                        state=CaseState.WAITING_CUSTOMER,
+                        summary="Clarification requested: outer box label photo for voice note claim",
+                        increment_clarification=True,
+                    )
+                    outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                    reply = f"To help us process your request for order {case.order_id}, please provide a clear photo of the outer box label showing the barcode and model number."
+                    self.repo.add_message(
+                        message_id=outbound_msg_id,
+                        case_id=case_id,
+                        actor_id="agent:returnlens",
+                        role=ActorRole.AGENT,
+                        text=reply,
+                    )
+                    self.repo.append_audit_event(
+                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                        actor="agent:returnlens",
+                        event_type="clarification_sent",
+                        outcome="Asked customer for box label photo (1 of 1)",
+                        case_id=case_id,
+                        refs=[f"msg:{outbound_msg_id}"],
+                    )
+                    self._mark_job_completed(job_id, now_iso)
+                    return True
+
+            # If visual observations are present
+            if obs_output:
+                # 1. Color mismatch check using evaluate_color_match (17 §2)
+                color_obs = next((o for o in obs_output.observations if o.attribute in (ObservationAttribute.COLOR, "color")), None)
+                if color_obs:
+                    raw_obs_col = getattr(color_obs.color_class, "value", color_obs.color_class)
+                    try:
+                        obs_color_enum = ColorClass(str(raw_obs_col).lower())
+                    except ValueError:
+                        obs_color_enum = ColorClass.UNKNOWN
+
+                    raw_cat_col = order_info.get("line_item", {}).get("catalog_color") or order_info.get("catalog_color", "unknown")
+                    try:
+                        cat_color_enum = ColorClass(str(raw_cat_col).lower())
+                    except ValueError:
+                        cat_color_enum = ColorClass.UNKNOWN
+
+                    match_status, reason_code = evaluate_color_match(
+                        observed_color=obs_color_enum,
+                        catalog_color=cat_color_enum,
+                        visibility=color_obs.visibility if isinstance(color_obs.visibility, Visibility) else Visibility.VISIBLE,
+                    )
+
+                    if match_status == "MISMATCH":
+                        # Grounded color mismatch verified!
+                        # Check if outer box label photo with barcode has been provided
+                        label_obs = next((o for o in obs_output.observations if o.attribute in (ObservationAttribute.LABEL_TEXT, "label_text")), None)
+                        label_verified = bool(label_obs and case.order_id.lower() in str(label_obs.value).lower())
+
+                        if not label_verified:
+                            if case.clarification_count == 0:
+                                self.repo.update_case_state(
+                                    case_id=case_id,
+                                    state=CaseState.WAITING_CUSTOMER,
+                                    summary="Clarification requested: outer box label photo for color mismatch",
+                                    increment_clarification=True,
+                                )
+                                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                                reply = f"To help us verify the color mismatch for order {case.order_id}, please provide a clear photo of the outer box label showing the barcode and model number."
+                                self.repo.add_message(
+                                    message_id=outbound_msg_id,
+                                    case_id=case_id,
+                                    actor_id="agent:returnlens",
+                                    role=ActorRole.AGENT,
+                                    text=reply,
+                                )
+                                self.repo.append_audit_event(
+                                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                                    actor="agent:returnlens",
+                                    event_type="clarification_sent",
+                                    outcome="Asked customer for box label photo (1 of 1)",
+                                    case_id=case_id,
+                                    refs=[f"msg:{outbound_msg_id}"],
+                                )
+                                self._mark_job_completed(job_id, now_iso)
+                                return True
+                            else:
+                                # Budget exhausted -> HUMAN_REVIEW
+                                self.repo.update_case_state(
+                                    case_id=case_id,
+                                    state=CaseState.HUMAN_REVIEW,
+                                    summary=f"Color mismatch verified but label unverified after clarification. Transferred for human review.",
+                                )
+                                self._mark_job_completed(job_id, now_iso)
+                                return True
+
+                # 2. Check for unclear footage / lighting limitations
+                if not obs_output.observations or any(o.visibility in (Visibility.UNCLEAR, "unclear") for o in obs_output.observations) or any("unclear" in u.lower() or "dark" in u.lower() or "blur" in u.lower() for u in obs_output.unknowns):
+                    evidence_unclear = True
 
         # Check if text describes blurry/unclear footage or Case C
         if any(w in text.lower() for w in ["unclear", "dark", "blur", "room", "video"]):
