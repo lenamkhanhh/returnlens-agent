@@ -124,7 +124,9 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
       >
         {CASE_TYPES.map((ct) => {
           const currentLevel = policy.levels[ct] || 'L0';
-          const isLocked = ct === 'UNCLEAR'; // Locked by reliability gate per 17 §2 (pass^5 = 3/5 < 5/5)
+          // Reliability gate from the backend (reliability.json + agent_version); L2/L3 need 5/5.
+          const lock = policy.lock_status?.[ct];
+          const isLocked = lock ? !lock.eligible_for_l2_l3 : false;
 
           return (
             <div
@@ -149,11 +151,15 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                 </span>
               </div>
 
-              {isLocked ? (
-                <div style={{ color: 'var(--terracotta)', fontSize: '10px', fontWeight: 600 }}>
-                  🔒 Locked (3/5)
+              {isLocked && (
+                <div
+                  title={lock?.status_message}
+                  style={{ color: 'var(--terracotta)', fontSize: '10px', fontWeight: 600, marginBottom: '2px' }}
+                >
+                  🔒 L2/L3 locked (below 5/5)
                 </div>
-              ) : (
+              )}
+              {(
                 <select
                   value={currentLevel}
                   onChange={(e) => handleLevelChange(ct, e.target.value as AutonomyLevel)}
@@ -168,8 +174,8 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                 >
                   <option value="L0">L0 (Draft)</option>
                   <option value="L1">L1 (Inform)</option>
-                  <option value="L2">L2 (Act)</option>
-                  <option value="L3">L3 (Refund)</option>
+                  <option value="L2" disabled={isLocked}>L2 (Act)</option>
+                  <option value="L3" disabled={isLocked}>L3 (Refund)</option>
                 </select>
               )}
             </div>

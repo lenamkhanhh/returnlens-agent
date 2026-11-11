@@ -149,6 +149,7 @@ export interface AutonomyPolicy {
   kill_switch: boolean;
   changed_by?: string;
   changed_at?: string;
+  lock_status?: Record<string, { eligible_for_l2_l3: boolean; status_message: string }>;
 }
 
 export interface AutonomyStepCheck {

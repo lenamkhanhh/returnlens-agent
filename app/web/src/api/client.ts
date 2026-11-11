@@ -393,6 +393,7 @@ export const api = {
       kill_switch: res.kill_switch,
       changed_by: res.changed_by,
       changed_at: res.changed_at,
+      lock_status: res.lock_status,
     };
   },
 
@@ -402,7 +403,7 @@ export const api = {
     }
     await request<any>('/api/seller/autonomy', {
       method: 'PUT',
-      body: JSON.stringify(policy),
+      body: JSON.stringify((({ lock_status: _ls, ...rest }) => rest)(policy)),
     });
     return this.getAutonomyPolicy();
   },
