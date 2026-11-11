@@ -21,6 +21,10 @@ export type NextStep =
   | 'PROPOSE_NDR_REATTEMPT'
   | 'HANDOFF';
 
+export type AutonomyLevel = 'L0' | 'L1' | 'L2' | 'L3';
+
+export type AutonomyDecision = 'AUTO' | 'DEFER_TO_SELLER' | 'BLOCK';
+
 export type ColorClass = 'white' | 'black' | 'grey' | 'other' | 'unknown';
 
 export type Visibility = 'visible' | 'unclear' | 'not_observed';
@@ -37,6 +41,15 @@ export interface Customer {
   phone: string;
 }
 
+export interface LineItem {
+  item_id: string;
+  sku: string;
+  catalog_color: ColorClass | string;
+  display_name: string;
+  quantity: number;
+  refundable_item_minor: number;
+}
+
 export interface Order {
   order_id: string;
   customer_id: string;
@@ -44,12 +57,13 @@ export interface Order {
   item_name: string;
   catalog_color: string;
   paid_minor: number; // Integer paise (e.g. 149900 = ₹1,499)
-  currency: 'INR';
-  payment_method: 'Prepaid' | 'COD';
-  shipping_status: 'Delivered' | 'In transit' | 'NDR attempt 1';
+  currency: 'INR' | string;
+  payment_method: 'Prepaid' | 'COD' | string;
+  shipping_status: 'Delivered' | 'In transit' | 'NDR attempt 1' | string;
   delivered_date?: string; // YYYY-MM-DD
   eta_days_relative?: number; // e.g. +2
   scenario_tag: string;
+  line_item?: LineItem;
 }
 
 export interface Message {
@@ -114,6 +128,36 @@ export interface Proposal {
 export interface AutonomyInfo {
   case_type_level: string; // e.g. "L1", "L0"
   locked_reason: string | null;
+  kill_switch?: boolean;
+  per_order_cap_minor?: number;
+  per_customer_daily_cap_minor?: number;
+}
+
+export interface AutonomyPolicy {
+  store_id: string;
+  version: string;
+  levels: Record<CaseType, AutonomyLevel>;
+  per_order_cap_minor: number;
+  per_customer_daily_cap_minor: number;
+  kill_switch: boolean;
+  changed_by?: string;
+  changed_at?: string;
+}
+
+export interface AutonomyStepCheck {
+  step: number;
+  title: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface AutonomyExplanation {
+  case_id: string;
+  case_type: CaseType;
+  action_type: string;
+  decision: AutonomyDecision;
+  reason_code: string;
+  checks: AutonomyStepCheck[];
 }
 
 export interface CaseDetail {
@@ -186,4 +230,19 @@ export interface ProposalDecisionResponse {
   status?: string;
   code?: string;
   user_message?: string;
+}
+
+export interface CourierEventRequest {
+  shipment_id: string;
+  type: 'NDR' | 'RETURN_RECEIVED' | 'DELAYED';
+  attempt_no: number;
+  reason?: string;
+}
+
+export interface BreakItPreset {
+  id: string;
+  title: string;
+  description: string;
+  attackVector: string;
+  expectedResult: string;
 }

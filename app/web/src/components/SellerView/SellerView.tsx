@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { SellerCaseSummary, CaseDetail, AuditEvent } from '../../types';
+import { SellerCaseSummary, CaseDetail, AuditEvent, AutonomyPolicy, AutonomyExplanation } from '../../types';
 import { api } from '../../api/client';
+import { AutonomyBar } from './AutonomyBar';
+import { WhyExplanationModal } from './WhyExplanationModal';
 import { InboxList } from './InboxList';
 import { CaseChatMedia } from './CaseChatMedia';
 import { TriadFactsPanel } from './TriadFactsPanel';
@@ -17,16 +19,24 @@ export const SellerView: React.FC = () => {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
 
+  // Autonomy state
+  const [autonomyPolicy, setAutonomyPolicy] = useState<AutonomyPolicy | null>(null);
+  const [whyExplanation, setWhyExplanation] = useState<AutonomyExplanation | null>(null);
+  const [isWhyOpen, setIsWhyOpen] = useState(false);
+
   const [activeSeekSeconds, setActiveSeekSeconds] = useState<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const pollingTimerRef = useRef<number | null>(null);
 
-  // 1. Fetch Inbox list
+  // 1. Fetch Autonomy Policy & Inbox list
   const refreshInbox = useCallback(async () => {
     try {
-      const list = await api.getSellerCases();
+      const [list, policy] = await Promise.all([
+        api.getSellerCases(),
+        api.getAutonomyPolicy(),
+      ]);
       setInboxCases(list);
-      // Auto-select first case if none selected
+      setAutonomyPolicy(policy);
       if (!selectedCaseId && list.length > 0) {
         setSelectedCaseId(list[0].case_id);
       }
@@ -94,9 +104,7 @@ export const SellerView: React.FC = () => {
     setActiveSeekSeconds(seconds);
     if (videoRef.current) {
       videoRef.current.currentTime = seconds;
-      videoRef.current.play().catch(() => {
-        // Autoplay policy or video not ready
-      });
+      videoRef.current.play().catch(() => {});
     }
   };
 
@@ -108,7 +116,6 @@ export const SellerView: React.FC = () => {
     idempotencyKey: string
   ) => {
     const res = await api.decideProposal(proposalId, decision, payloadHash, idempotencyKey);
-    // Refresh both case and inbox to reflect committed state (No optimistic UI!)
     if (selectedCaseId) {
       await refreshActiveCase(selectedCaseId);
     }
@@ -116,8 +123,43 @@ export const SellerView: React.FC = () => {
     return res;
   };
 
+  // 6. Autonomy Handlers
+  const handleUpdateAutonomy = async (policyUpdate: Partial<AutonomyPolicy>) => {
+    const updated = await api.updateAutonomyPolicy(policyUpdate);
+    setAutonomyPolicy(updated);
+  };
+
+  const handleKillSwitch = async () => {
+    await api.killAutonomy('Seller manual kill switch');
+    const updated = await api.getAutonomyPolicy();
+    setAutonomyPolicy(updated);
+    if (selectedCaseId) {
+      await refreshActiveCase(selectedCaseId);
+    }
+  };
+
+  const handleOpenWhy = async () => {
+    if (!selectedCaseId) return;
+    try {
+      const expl = await api.getAutonomyExplanation(selectedCaseId);
+      setWhyExplanation(expl);
+      setIsWhyOpen(true);
+    } catch (err) {
+      console.error('Failed to get autonomy explanation:', err);
+    }
+  };
+
   return (
     <div>
+      {/* Autonomy Bar per 17 §6 (trên cùng seller) */}
+      <AutonomyBar
+        policy={autonomyPolicy}
+        onUpdatePolicy={handleUpdateAutonomy}
+        onKillSwitch={handleKillSwitch}
+        onOpenWhy={handleOpenWhy}
+        activeCaseId={selectedCaseId || undefined}
+      />
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--pine-green)' }}>
@@ -226,6 +268,13 @@ export const SellerView: React.FC = () => {
           onClose={() => setIsTimelineOpen(false)}
           events={events}
           caseId={activeCase.case_id}
+        />
+      )}
+
+      {isWhyOpen && (
+        <WhyExplanationModal
+          explanation={whyExplanation}
+          onClose={() => setIsWhyOpen(false)}
         />
       )}
     </div>
