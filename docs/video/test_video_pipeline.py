@@ -23,7 +23,7 @@ class TestVideoPipeline(unittest.TestCase):
         self.assertNotIn("[MEASURED:", content, "narration.srt still contains unresolved [MEASURED: ...] placeholder!")
 
         # Verify contains the measured pass^k result from reliability.json
-        self.assertIn("9 of 10 scenarios passed all five runs", content)
+        self.assertIn("8 of 10 scenarios passed all five runs", content)
 
         # Count subtitle blocks
         blocks = re.findall(r"^\d+\s*$", content, re.MULTILINE)

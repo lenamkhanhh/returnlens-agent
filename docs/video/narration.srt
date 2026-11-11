@@ -83,7 +83,7 @@ the procedure and the message.
 
 19
 00:02:24,400 --> 00:02:29,200
-9 of 10 scenarios passed all five runs.
+8 of 10 scenarios passed all five runs.
 
 20
 00:02:29,600 --> 00:02:34,800

@@ -113,12 +113,13 @@ Follows specs:
 - **Step-by-step Actions**:
   1. `02:10 - 02:16`: Open the **Autonomy Evaluation Modal** from the header.
   2. `02:16 - 02:24`: Highlight the 10-scenario pass^k matrix:
-     - 9 of 10 scenarios passed all 5 runs (WISMO, MISMATCH, UNCLEAR, LATE, NDR).
+     - 8 of 10 scenarios passed all 5 runs (WISMO, UNCLEAR, LATE, NDR).
+     - S04 Mismatch reached 4/5 (honest failure locking MISMATCH autonomy).
      - S03 Damage honestly displayed as blocked: *"Real hardware clip needed"*.
      - Show live tamper-evident SHA-256 `agent_version` badge.
   3. `02:24 - 02:35`: Show seller toggling the red **Emergency Kill Switch**. All autonomy policies immediately lock to L0/L1. Click "Why?" checklist to confirm autonomous refunds are revoked system-wide.
 - **Narration**:
-  > *"Autonomy is not a setting we hand out. Every case type runs five times in a harness that checks the database, the procedure and the message. 9 of 10 scenarios passed all five runs. Anything below five out of five stays locked. And one switch takes all autonomy back."*
+  > *"Autonomy is not a setting we hand out. Every case type runs five times in a harness that checks the database, the procedure and the message. 8 of 10 scenarios passed all five runs. Anything below five out of five stays locked. And one switch takes all autonomy back."*
 
 ---
 
@@ -158,7 +159,7 @@ Follows specs:
 ## Production & Assembly Checklist
 
 1. [x] Subtitles timed and aligned (`docs/video/narration.srt`).
-2. [x] Measured pass^k data verified (`9 of 10 scenarios passed all five runs`).
+2. [x] Measured pass^k data verified (`8 of 10 scenarios passed all five runs`).
 3. [x] Shotlist detailed with explicit timestamps and UI actions (`docs/video/SHOTLIST.md`).
 4. [x] Assembly pipeline script created (`docs/video/assemble.py`).
 5. [x] End-to-end dry run verified with synthetic test clips (`python docs/video/assemble.py --test`).
