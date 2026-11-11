@@ -56,7 +56,20 @@ class Scenario03DamageCaseA(BaseScenario):
                 duration_ms=(time.perf_counter() - start_time) * 1000,
             )
 
-        # 1. Customer initiates damage claim with CLIP-A
+        # Cause 1 (media-limited per WAVE5_DIAGNOSE.md):
+        # synthetic_damaged_item.webm is a solid-color synthetic clip.
+        # A vision model cannot see a cracked headband in it; real filmed clip is required.
+        if "synthetic" in clip_a_path.name.lower():
+            return TrialResult(
+                scenario_id=self.scenario_id,
+                trial_no=trial_no,
+                passed=False,
+                status="BLOCKED",
+                reason="needs real filmed clip (synthetic media cannot show cracked headband)",
+                duration_ms=(time.perf_counter() - start_time) * 1000,
+            )
+
+        # 1. Customer initiates damage claim with CLIP-A (18 §2 line 36)
         res = await env.client.post(
             "/api/cases",
             json={
@@ -77,9 +90,29 @@ class Scenario03DamageCaseA(BaseScenario):
 
         case_id = res.json()["case_id"]
 
+        # Upload CLIP-A evidence per 18 §2 line 36
+        with open(clip_a_path, "rb") as f:
+            res_evi = await env.client.post(
+                f"/api/cases/{case_id}/evidence",
+                files={"file": (clip_a_path.name, f, "video/webm")},
+                headers={"X-Customer-Id": "CUS-03"},
+            )
+        if res_evi.status_code != 201:
+            return TrialResult(
+                scenario_id=self.scenario_id,
+                trial_no=trial_no,
+                passed=False,
+                status="FAIL",
+                reason=f"Evidence upload failed: {res_evi.text}",
+                duration_ms=(time.perf_counter() - start_time) * 1000,
+            )
+
         # 2. Harness acting as seller: approve return proposal
         proposals = env.repo.list_case_proposals(case_id)
-        return_prop = next((p for p in proposals if p.action_type.value == "propose_return"), None)
+        return_prop = next(
+            (p for p in proposals if str(p.action_type.value).lower() == "propose_return"),
+            None,
+        )
         if not return_prop:
             return TrialResult(
                 scenario_id=self.scenario_id,
@@ -125,7 +158,10 @@ class Scenario03DamageCaseA(BaseScenario):
 
         # 4. Harness acting as seller: approve refund proposal
         proposals_v2 = env.repo.list_case_proposals(case_id)
-        refund_prop = next((p for p in proposals_v2 if p.action_type.value == "propose_refund"), None)
+        refund_prop = next(
+            (p for p in proposals_v2 if str(p.action_type.value).lower() == "propose_refund"),
+            None,
+        )
         if not refund_prop:
             return TrialResult(
                 scenario_id=self.scenario_id,

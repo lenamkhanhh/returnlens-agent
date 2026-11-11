@@ -1,229 +1,229 @@
 {
   "metadata": {
-    "generated_at": "2026-11-11T06:11:25.354111+00:00",
-    "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
+    "generated_at": "2026-11-11T06:52:40.189544+00:00",
+    "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
     "model_id": "gemini-3.8-flash",
-    "k": 5
+    "k": 1
   },
   "results": [
     {
-      "run_id": "RUN-S01-1794377485",
+      "run_id": "RUN-S01-1794379960",
       "scenario_id": "S01",
       "case_type": "WISMO",
-      "k": 5,
-      "passes": 5,
+      "k": 1,
+      "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
       "model_id": null,
-      "ran_at": "2026-11-11T06:11:19.004510+00:00",
+      "ran_at": "2026-11-11T06:52:37.992604+00:00",
       "synthetic": false,
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification"
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S02-1794377485",
+      "run_id": "RUN-S02-1794379960",
       "scenario_id": "S02",
       "case_type": "WISMO",
-      "k": 5,
-      "passes": 5,
+      "k": 1,
+      "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
       "model_id": null,
-      "ran_at": "2026-11-11T06:11:19.972912+00:00",
+      "ran_at": "2026-11-11T06:52:38.326864+00:00",
       "synthetic": false,
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification"
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S03-1794377485",
+      "run_id": "RUN-S03-1794379960",
       "scenario_id": "S03",
       "case_type": "DAMAGE",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T06:11:16.910075+00:00",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
+      "model_id": null,
+      "ran_at": "2026-11-11T06:52:38.795766+00:00",
       "synthetic": false,
-      "status": "failed",
-      "reason": "Return proposal not created by agent"
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S04-1794377485",
+      "run_id": "RUN-S04-1794379960",
       "scenario_id": "S04",
       "case_type": "MISMATCH",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T06:11:17.095567+00:00",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
+      "model_id": null,
+      "ran_at": "2026-11-11T06:52:38.796778+00:00",
       "synthetic": false,
-      "status": "failed",
-      "reason": "Message: No agent reply messages delivered to customer"
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S05-1794377485",
+      "run_id": "RUN-S05-1794379960",
       "scenario_id": "S05",
       "case_type": "UNCLEAR",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T06:11:17.386949+00:00",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
+      "model_id": null,
+      "ran_at": "2026-11-11T06:52:38.796778+00:00",
       "synthetic": false,
-      "status": "failed",
-      "reason": "Message: Required substring 'review' not found in agent reply"
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S06-1794377485",
+      "run_id": "RUN-S06-1794379960",
       "scenario_id": "S06",
       "case_type": "LATE",
-      "k": 5,
-      "passes": 5,
+      "k": 1,
+      "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
       "model_id": null,
-      "ran_at": "2026-11-11T06:11:21.375714+00:00",
+      "ran_at": "2026-11-11T06:52:38.796778+00:00",
       "synthetic": false,
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification"
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S07-1794377485",
+      "run_id": "RUN-S07-1794379960",
       "scenario_id": "S07",
       "case_type": "NDR",
-      "k": 5,
-      "passes": 5,
+      "k": 1,
+      "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
       "model_id": null,
-      "ran_at": "2026-11-11T06:11:22.373222+00:00",
+      "ran_at": "2026-11-11T06:52:39.128569+00:00",
       "synthetic": false,
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification"
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S08-1794377485",
+      "run_id": "RUN-S08-1794379960",
       "scenario_id": "S08",
       "case_type": "MISMATCH",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T06:11:18.177373+00:00",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
+      "model_id": null,
+      "ran_at": "2026-11-11T06:52:39.722430+00:00",
       "synthetic": false,
-      "status": "failed",
-      "reason": "DB: Case state WAITING_SELLER not in expected ['WAITING_CUSTOMER'] | Message: No agent reply messages delivered to customer"
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S09-1794377485",
+      "run_id": "RUN-S09-1794379960",
       "scenario_id": "S09",
       "case_type": "UNCLEAR",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T06:11:18.363193+00:00",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
+      "model_id": null,
+      "ran_at": "2026-11-11T06:52:39.722430+00:00",
       "synthetic": false,
-      "status": "failed",
-      "reason": "Message: No agent reply messages delivered to customer"
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S10-1794377485",
+      "run_id": "RUN-S10-1794379960",
       "scenario_id": "S10",
       "case_type": "DAMAGE",
-      "k": 5,
-      "passes": 5,
+      "k": 1,
+      "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "372a6e51e441f560384e7df43e275797960b0be6e13a804832573ed6e6961298",
+      "agent_version": "55326b73367b1ee740819c45fa219f7073fa8c0da7a49baeb3329bf7d9deb010",
       "model_id": null,
-      "ran_at": "2026-11-11T06:11:24.027174+00:00",
+      "ran_at": "2026-11-11T06:52:39.722430+00:00",
       "synthetic": true,
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification"
+      "reason": "All 1 trial(s) passed 3-layer verification"
     }
   ],
   "scenario_metadata": {
     "S01": {
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification",
+      "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "WISMO",
       "synthetic": false,
       "model_id": null
     },
     "S02": {
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification",
+      "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "WISMO",
       "synthetic": false,
       "model_id": null
     },
     "S03": {
-      "status": "failed",
-      "reason": "Return proposal not created by agent",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "DAMAGE",
       "synthetic": false,
-      "model_id": "gemini-3.8-flash"
+      "model_id": null
     },
     "S04": {
-      "status": "failed",
-      "reason": "Message: No agent reply messages delivered to customer",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "MISMATCH",
       "synthetic": false,
-      "model_id": "gemini-3.8-flash"
+      "model_id": null
     },
     "S05": {
-      "status": "failed",
-      "reason": "Message: Required substring 'review' not found in agent reply",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "UNCLEAR",
       "synthetic": false,
-      "model_id": "gemini-3.8-flash"
+      "model_id": null
     },
     "S06": {
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification",
+      "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "LATE",
       "synthetic": false,
       "model_id": null
     },
     "S07": {
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification",
+      "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "NDR",
       "synthetic": false,
       "model_id": null
     },
     "S08": {
-      "status": "failed",
-      "reason": "DB: Case state WAITING_SELLER not in expected ['WAITING_CUSTOMER'] | Message: No agent reply messages delivered to customer",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "MISMATCH",
       "synthetic": false,
-      "model_id": "gemini-3.8-flash"
+      "model_id": null
     },
     "S09": {
-      "status": "failed",
-      "reason": "Message: No agent reply messages delivered to customer",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "UNCLEAR",
       "synthetic": false,
-      "model_id": "gemini-3.8-flash"
+      "model_id": null
     },
     "S10": {
       "status": "passed",
-      "reason": "All 5 trial(s) passed 3-layer verification",
+      "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "DAMAGE",
       "synthetic": true,
       "model_id": null
