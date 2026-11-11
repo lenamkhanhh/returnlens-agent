@@ -12,8 +12,9 @@ Verifies all Card B02 requirements:
 
 from __future__ import annotations
 
+import os
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from google.genai import types
 
@@ -25,17 +26,18 @@ from app.backend.model.exceptions import ModelUnavailableError
 class TestGeminiModelAdapter(unittest.TestCase):
     def test_missing_api_key_raises_model_unavailable(self):
         """Adapter without API key or client must fail cleanly with MODEL_UNAVAILABLE."""
-        adapter = GeminiModelAdapter(api_key=None, client=None)
-        self.assertFalse(adapter.is_available)
+        with patch.dict(os.environ, {"GEMINI_API_KEY": ""}):
+            adapter = GeminiModelAdapter(api_key=None, client=None)
+            self.assertFalse(adapter.is_available)
 
-        with self.assertRaises(ModelUnavailableError) as ctx:
-            adapter.generate("Hello test", correlation_id="CORR-123")
+            with self.assertRaises(ModelUnavailableError) as ctx:
+                adapter.generate("Hello test", correlation_id="CORR-123")
 
-        err = ctx.exception
-        self.assertEqual(err.code, "MODEL_UNAVAILABLE")
-        self.assertFalse(err.retryable)
-        self.assertEqual(err.correlation_id, "CORR-123")
-        self.assertIn("not configured", err.user_message)
+            err = ctx.exception
+            self.assertEqual(err.code, "MODEL_UNAVAILABLE")
+            self.assertFalse(err.retryable)
+            self.assertEqual(err.correlation_id, "CORR-123")
+            self.assertIn("not configured", err.user_message)
 
     def test_fake_client_structured_output_and_provenance(self):
         """Adapter with fake client generates valid ModelRun provenance."""

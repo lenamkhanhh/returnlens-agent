@@ -67,19 +67,24 @@ def create_app(
 
     # Support DEMO_SNAPSHOT loading on boot (17 §9, 18 §3)
     demo_snapshot_env = os.environ.get("DEMO_SNAPSHOT")
-    if demo_snapshot_env and Path(demo_snapshot_env).exists():
+    if demo_snapshot_env:
         snapshot_p = Path(demo_snapshot_env)
-        meta_p = snapshot_p.with_suffix(".json")
-        if meta_p.exists():
-            try:
-                meta = json.loads(meta_p.read_text(encoding="utf-8"))
-                if "demo_today" in meta and demo_today is None:
-                    demo_today = meta["demo_today"]
-            except Exception:
-                pass
-        if not db_path.exists() or db_path.stat().st_size == 0:
-            import shutil
-            shutil.copyfile(snapshot_p, db_path)
+        if not snapshot_p.is_absolute() and not snapshot_p.exists():
+            candidate = Path(__file__).resolve().parent.parent.parent / demo_snapshot_env
+            if candidate.exists():
+                snapshot_p = candidate
+        if snapshot_p.exists():
+            meta_p = snapshot_p.with_suffix(".json")
+            if meta_p.exists():
+                try:
+                    meta = json.loads(meta_p.read_text(encoding="utf-8"))
+                    if "demo_today" in meta and demo_today is None:
+                        demo_today = meta["demo_today"]
+                except Exception:
+                    pass
+            if not db_path.exists() or db_path.stat().st_size == 0:
+                import shutil
+                shutil.copyfile(snapshot_p, db_path)
 
     if demo_today is None:
         demo_today = os.environ.get("DEMO_TODAY", "2026-11-11")
@@ -175,24 +180,30 @@ def create_app(
 
         # 2. Check if DEMO_SNAPSHOT is configured
         demo_snapshot_path = os.environ.get("DEMO_SNAPSHOT")
-        if demo_snapshot_path and Path(demo_snapshot_path).exists():
-            import shutil
-            db_path = app.state.data_dir / "returnlens.db"
-            shutil.copyfile(demo_snapshot_path, db_path)
-            meta_path = Path(demo_snapshot_path).with_suffix(".json")
-            if meta_path.exists():
-                try:
-                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-                    if "demo_today" in meta:
-                        app.state.demo_today = meta["demo_today"]
-                except Exception:
-                    pass
-            app.state.db = Database(db_path)
-            app.state.repo = Repository(app.state.db)
-            app.state.mock_service = MockToolService(app.state.repo)
-            app.state.executor = ActionExecutor(app.state.repo, app.state.mock_service)
-            app.state.engine = WorkflowEngine(app.state.repo, app.state.mock_service)
-            return {"status": "reset_successful", "snapshot": str(demo_snapshot_path), "demo_today": app.state.demo_today}
+        if demo_snapshot_path:
+            snapshot_p = Path(demo_snapshot_path)
+            if not snapshot_p.is_absolute() and not snapshot_p.exists():
+                candidate = Path(__file__).resolve().parent.parent.parent / demo_snapshot_path
+                if candidate.exists():
+                    snapshot_p = candidate
+            if snapshot_p.exists():
+                import shutil
+                db_path = app.state.data_dir / "returnlens.db"
+                shutil.copyfile(snapshot_p, db_path)
+                meta_path = snapshot_p.with_suffix(".json")
+                if meta_path.exists():
+                    try:
+                        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                        if "demo_today" in meta:
+                            app.state.demo_today = meta["demo_today"]
+                    except Exception:
+                        pass
+                app.state.db = Database(db_path)
+                app.state.repo = Repository(app.state.db)
+                app.state.mock_service = MockToolService(app.state.repo)
+                app.state.executor = ActionExecutor(app.state.repo, app.state.mock_service)
+                app.state.engine = WorkflowEngine(app.state.repo, app.state.mock_service)
+                return {"status": "reset_successful", "snapshot": str(snapshot_p), "demo_today": app.state.demo_today}
 
         # Otherwise reseed cleanly
         reset_database(app.state.db, app.state.demo_today)
