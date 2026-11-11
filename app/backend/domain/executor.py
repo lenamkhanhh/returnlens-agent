@@ -187,190 +187,218 @@ class ActionExecutor:
             refs=[f"proposal:{proposal_id}", f"approval:{approval_id}"],
         )
 
-        # Step 8: Dispatch Mutation based on proposal action type
-        # Mutation Path A: PROPOSE_RETURN
-        if proposal.action_type == NextStep.PROPOSE_RETURN:
-            item_id = proposal.item_id or (order.line_item.item_id if order else "")
-            order_id = order.order_id if order else ""
+        mapped_action_type = {
+            NextStep.PROPOSE_RETURN: ActionType.CREATE_RETURN,
+            NextStep.PROPOSE_REFUND: ActionType.ISSUE_REFUND,
+            NextStep.PROPOSE_NDR_REATTEMPT: ActionType.NDR_ACTION,
+        }.get(proposal.action_type, ActionType.CREATE_RETURN)
 
-            result = self.mock_service.create_return(
-                order_id=order_id,
-                item_id=item_id,
-                quantity=1,
-                return_reason="DEFECTIVE",
-                action_id=action_id,
-            )
-
-            user_errors = result.get("userErrors", [])
-            if user_errors:
-                self._record_blocked_action(action_id, ActionType.CREATE_RETURN, order_id, proposal_id, approval_id, idempotency_key, payload_hash, user_errors[0]["message"], proposal.case_id, now_iso)
-                raise HTTPException(status_code=422, detail=user_errors[0]["message"])
-
-            ret_data = result["return"]
-            return_id = ret_data["return_id"]
-            label_id = ret_data["label_id"]
-
-            self._record_successful_action(action_id, ActionType.CREATE_RETURN, order_id, proposal_id, approval_id, idempotency_key, payload_hash, return_id, now_iso)
-
-            self.repo.update_case_state(
-                case_id=proposal.case_id,
-                state=CaseState.WAITING_RETURN,
-                summary=f"Return {return_id} authorized. Awaiting customer shipment.",
-            )
-
-            customer_reply = f"Your return for {order_id} has been approved. Your return label ID is {label_id}."
-            outbound_msg_id = f"MSG-{proposal.case_id}-{uuid.uuid4().hex[:6]}"
-            self.repo.add_message(
-                message_id=outbound_msg_id,
-                case_id=proposal.case_id,
-                actor_id=seller_id,
-                role=ActorRole.SELLER,
-                text=customer_reply,
-                language=Language.EN,
-            )
-
-            self.repo.append_audit_event(
-                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                actor="executor:domain",
-                event_type="return_created",
-                outcome=f"Created return {return_id} with mock label {label_id}",
-                case_id=proposal.case_id,
-                refs=[f"return:{return_id}", f"action:{action_id}", f"label:{label_id}"],
-                safe_payload={"label_id": label_id, "return_id": return_id},
-            )
-            self.repo.append_audit_event(
-                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                actor="executor:domain",
-                event_type="customer_reply_delivered",
-                outcome="Sent return label notification to customer",
-                case_id=proposal.case_id,
-                refs=[f"msg:{outbound_msg_id}"],
-            )
-
-            return {
-                "action_id": action_id,
-                "status": "succeeded",
-                "result_ref": f"return:{return_id}",
-                "label_id": label_id,
-            }
-
-        # Mutation Path B: PROPOSE_REFUND (02 §4b, 02 §5, B07)
-        elif proposal.action_type == NextStep.PROPOSE_REFUND:
-            order_id = order.order_id if order else ""
-            amount_minor = proposal.amount_minor or (order.paid_minor if order else 0)
-
-            result = self.mock_service.issue_refund(
-                order_id=order_id,
-                amount_minor=amount_minor,
-                idempotency_key=idempotency_key,
-                action_id=action_id,
-            )
-
-            user_errors = result.get("userErrors", [])
-            if user_errors:
-                self._record_blocked_action(action_id, ActionType.ISSUE_REFUND, order_id, proposal_id, approval_id, idempotency_key, payload_hash, user_errors[0]["message"], proposal.case_id, now_iso)
-                raise HTTPException(status_code=422, detail=user_errors[0]["message"])
-
-            refund_data = result["refund"]
-            refund_id = refund_data["refund_id"]
-
-            self._record_successful_action(action_id, ActionType.ISSUE_REFUND, order_id, proposal_id, approval_id, idempotency_key, payload_hash, refund_id, now_iso)
-
-            self.repo.update_case_state(
-                case_id=proposal.case_id,
-                state=CaseState.RESOLVED,
-                summary=f"Refund {refund_id} for ₹{amount_minor/100:.2f} processed. Case resolved.",
-            )
-
-            customer_reply = f"Your refund of ₹{amount_minor/100:.2f} for order {order_id} has been processed."
-            outbound_msg_id = f"MSG-{proposal.case_id}-{uuid.uuid4().hex[:6]}"
-            self.repo.add_message(
-                message_id=outbound_msg_id,
-                case_id=proposal.case_id,
-                actor_id=seller_id,
-                role=ActorRole.SELLER,
-                text=customer_reply,
-                language=Language.EN,
-            )
-
-            self.repo.append_audit_event(
-                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                actor="executor:domain",
-                event_type="refund_posted",
-                outcome=f"Refund ₹{amount_minor/100:,.2f} processed",
-                case_id=proposal.case_id,
-                refs=[f"refund:{refund_id}", f"action:{action_id}", f"order:{order_id}"],
-                safe_payload={"refund_id": refund_id, "amount_minor": amount_minor},
-            )
-            self.repo.append_audit_event(
-                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                actor="executor:domain",
-                event_type="customer_reply_delivered",
-                outcome="Sent refund confirmation to customer",
-                case_id=proposal.case_id,
-                refs=[f"msg:{outbound_msg_id}"],
-            )
-
-            return {
-                "action_id": action_id,
-                "status": "succeeded",
-                "result_ref": f"refund:{refund_id}",
-                "amount_minor": amount_minor,
-            }
-
-        # Mutation Path C: PROPOSE_NDR_REATTEMPT (02 §4b, B14)
-        elif proposal.action_type == NextStep.PROPOSE_NDR_REATTEMPT:
-            shipment = self.repo.get_shipment(order.order_id if order else "")
-            shipment_id = shipment.shipment_id if shipment else ""
-            new_addr = proposal.basis.action_fields.get("updated_address")
-
-            result = self.mock_service.ndr_action(
-                shipment_id=shipment_id,
-                action_type="reattempt",
-                new_address=new_addr,
-            )
-
-            if not result.get("success"):
-                err_msg = result.get("error", "NDR reattempt failed")
-                self._record_blocked_action(action_id, ActionType.NDR_ACTION, order.order_id if order else "", proposal_id, approval_id, idempotency_key, payload_hash, err_msg, proposal.case_id, now_iso)
-                raise HTTPException(status_code=422, detail=err_msg)
-
-            self._record_successful_action(action_id, ActionType.NDR_ACTION, order.order_id if order else "", proposal_id, approval_id, idempotency_key, payload_hash, shipment_id, now_iso)
-
-            self.repo.update_case_state(
-                case_id=proposal.case_id,
-                state=CaseState.RESOLVED,
-                summary=f"NDR reattempt confirmed for {shipment_id} with updated address.",
-            )
-
-            self.repo.append_audit_event(
-                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                actor="executor:domain",
-                event_type="ndr_action_taken",
-                outcome="Re-delivery requested with updated address",
-                case_id=proposal.case_id,
-                refs=[f"shipment:{shipment_id}", f"action:{action_id}"],
-                safe_payload={"updated_address": result.get("updated_address")},
-            )
-
-            return {
-                "action_id": action_id,
-                "status": "succeeded",
-                "result_ref": f"shipment:{shipment_id}",
-            }
-
-        raise HTTPException(status_code=400, detail=f"Unsupported action type {proposal.action_type}")
-
-    def _record_blocked_action(self, action_id, action_type, order_id, proposal_id, approval_id, idempotency_key, payload_hash, error_msg, case_id, now_iso):
+        # Pre-insert action in pending state so foreign key constraints on returns/refunds are satisfied
         with self.repo.db.transaction() as conn:
             conn.execute(
                 """
                 INSERT INTO actions (
                     action_id, type, order_id, proposal_id, approval_id, idempotency_key,
                     payload_hash, status, result_ref, attempt_count, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'blocked', NULL, 1, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NULL, 1, ?)
                 """,
-                (action_id, action_type.value, order_id, proposal_id, approval_id, idempotency_key, payload_hash, now_iso),
+                (action_id, mapped_action_type.value, order.order_id if order else "", proposal_id, approval_id, idempotency_key, payload_hash, now_iso),
+            )
+
+        # Step 8: Dispatch Mutation based on proposal action type (Fails Closed per Test 32)
+        try:
+            # Mutation Path A: PROPOSE_RETURN
+            if proposal.action_type == NextStep.PROPOSE_RETURN:
+                item_id = proposal.item_id or (order.line_item.item_id if order else "")
+                order_id = order.order_id if order else ""
+
+                result = self.mock_service.create_return(
+                    order_id=order_id,
+                    item_id=item_id,
+                    quantity=1,
+                    return_reason="DEFECTIVE",
+                    action_id=action_id,
+                )
+
+                user_errors = result.get("userErrors", [])
+                if user_errors:
+                    self._record_blocked_action(action_id, ActionType.CREATE_RETURN, order_id, proposal_id, approval_id, idempotency_key, payload_hash, user_errors[0]["message"], proposal.case_id, now_iso)
+                    raise HTTPException(status_code=422, detail=user_errors[0]["message"])
+
+                ret_data = result["return"]
+                return_id = ret_data["return_id"]
+                label_id = ret_data["label_id"]
+
+                self._record_successful_action(action_id, ActionType.CREATE_RETURN, order_id, proposal_id, approval_id, idempotency_key, payload_hash, return_id, now_iso)
+
+                self.repo.update_case_state(
+                    case_id=proposal.case_id,
+                    state=CaseState.WAITING_RETURN,
+                    summary=f"Return {return_id} authorized. Awaiting customer shipment.",
+                )
+
+                customer_reply = f"Your return for {order_id} has been approved. Your return label ID is {label_id}."
+                outbound_msg_id = f"MSG-{proposal.case_id}-{uuid.uuid4().hex[:6]}"
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=proposal.case_id,
+                    actor_id=seller_id,
+                    role=ActorRole.SELLER,
+                    text=customer_reply,
+                    language=Language.EN,
+                )
+
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="executor:domain",
+                    event_type="return_created",
+                    outcome=f"Created return {return_id} with mock label {label_id}",
+                    case_id=proposal.case_id,
+                    refs=[f"return:{return_id}", f"action:{action_id}", f"label:{label_id}"],
+                    safe_payload={"label_id": label_id, "return_id": return_id},
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="executor:domain",
+                    event_type="customer_reply_delivered",
+                    outcome="Sent return label notification to customer",
+                    case_id=proposal.case_id,
+                    refs=[f"msg:{outbound_msg_id}"],
+                )
+
+                return {
+                    "action_id": action_id,
+                    "status": "succeeded",
+                    "result_ref": f"return:{return_id}",
+                    "label_id": label_id,
+                }
+
+            # Mutation Path B: PROPOSE_REFUND (02 §4b, 02 §5, B07)
+            elif proposal.action_type == NextStep.PROPOSE_REFUND:
+                order_id = order.order_id if order else ""
+                amount_minor = proposal.amount_minor or (order.paid_minor if order else 0)
+
+                result = self.mock_service.issue_refund(
+                    order_id=order_id,
+                    amount_minor=amount_minor,
+                    idempotency_key=idempotency_key,
+                    action_id=action_id,
+                )
+
+                user_errors = result.get("userErrors", [])
+                if user_errors:
+                    self._record_blocked_action(action_id, ActionType.ISSUE_REFUND, order_id, proposal_id, approval_id, idempotency_key, payload_hash, user_errors[0]["message"], proposal.case_id, now_iso)
+                    raise HTTPException(status_code=422, detail=user_errors[0]["message"])
+
+                refund_data = result["refund"]
+                refund_id = refund_data["refund_id"]
+
+                self._record_successful_action(action_id, ActionType.ISSUE_REFUND, order_id, proposal_id, approval_id, idempotency_key, payload_hash, refund_id, now_iso)
+
+                self.repo.update_case_state(
+                    case_id=proposal.case_id,
+                    state=CaseState.RESOLVED,
+                    summary=f"Refund {refund_id} for ₹{amount_minor/100:.2f} processed. Case resolved.",
+                )
+
+                customer_reply = f"Your refund of ₹{amount_minor/100:.2f} for order {order_id} has been processed."
+                outbound_msg_id = f"MSG-{proposal.case_id}-{uuid.uuid4().hex[:6]}"
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=proposal.case_id,
+                    actor_id=seller_id,
+                    role=ActorRole.SELLER,
+                    text=customer_reply,
+                    language=Language.EN,
+                )
+
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="executor:domain",
+                    event_type="refund_posted",
+                    outcome=f"Refund ₹{amount_minor/100:,.2f} processed",
+                    case_id=proposal.case_id,
+                    refs=[f"refund:{refund_id}", f"action:{action_id}", f"order:{order_id}"],
+                    safe_payload={"refund_id": refund_id, "amount_minor": amount_minor},
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="executor:domain",
+                    event_type="customer_reply_delivered",
+                    outcome="Sent refund confirmation to customer",
+                    case_id=proposal.case_id,
+                    refs=[f"msg:{outbound_msg_id}"],
+                )
+
+                return {
+                    "action_id": action_id,
+                    "status": "succeeded",
+                    "result_ref": f"refund:{refund_id}",
+                    "amount_minor": amount_minor,
+                }
+
+            # Mutation Path C: PROPOSE_NDR_REATTEMPT (02 §4b, B14)
+            elif proposal.action_type == NextStep.PROPOSE_NDR_REATTEMPT:
+                shipment = self.repo.get_shipment(order.order_id if order else "")
+                shipment_id = shipment.shipment_id if shipment else ""
+                new_addr = proposal.basis.action_fields.get("updated_address")
+
+                result = self.mock_service.ndr_action(
+                    shipment_id=shipment_id,
+                    action_type="reattempt",
+                    new_address=new_addr,
+                )
+
+                if not result.get("success"):
+                    err_msg = result.get("error", "NDR reattempt failed")
+                    self._record_blocked_action(action_id, ActionType.NDR_ACTION, order.order_id if order else "", proposal_id, approval_id, idempotency_key, payload_hash, err_msg, proposal.case_id, now_iso)
+                    raise HTTPException(status_code=422, detail=err_msg)
+
+                self._record_successful_action(action_id, ActionType.NDR_ACTION, order.order_id if order else "", proposal_id, approval_id, idempotency_key, payload_hash, shipment_id, now_iso)
+
+                self.repo.update_case_state(
+                    case_id=proposal.case_id,
+                    state=CaseState.RESOLVED,
+                    summary=f"NDR reattempt confirmed for {shipment_id} with updated address.",
+                )
+
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="executor:domain",
+                    event_type="ndr_action_taken",
+                    outcome="Re-delivery requested with updated address",
+                    case_id=proposal.case_id,
+                    refs=[f"shipment:{shipment_id}", f"action:{action_id}"],
+                    safe_payload={"updated_address": result.get("updated_address")},
+                )
+
+                return {
+                    "action_id": action_id,
+                    "status": "succeeded",
+                    "result_ref": f"shipment:{shipment_id}",
+                }
+
+            raise HTTPException(status_code=400, detail=f"Unsupported action type {proposal.action_type}")
+        except HTTPException:
+            raise
+        except Exception:
+            # Financial mutation fails closed (Test 32): set action status to failed
+            with self.repo.db.transaction() as conn:
+                conn.execute(
+                    "UPDATE actions SET status = 'failed' WHERE action_id = ?",
+                    (action_id,),
+                )
+            raise
+
+    def _record_blocked_action(self, action_id, action_type, order_id, proposal_id, approval_id, idempotency_key, payload_hash, error_msg, case_id, now_iso):
+        with self.repo.db.transaction() as conn:
+            conn.execute(
+                """
+                UPDATE actions
+                SET status = 'blocked'
+                WHERE action_id = ?
+                """,
+                (action_id,),
             )
         self.repo.append_audit_event(
             event_id=f"EVT-{uuid.uuid4().hex[:8]}",
@@ -385,10 +413,9 @@ class ActionExecutor:
         with self.repo.db.transaction() as conn:
             conn.execute(
                 """
-                INSERT INTO actions (
-                    action_id, type, order_id, proposal_id, approval_id, idempotency_key,
-                    payload_hash, status, result_ref, attempt_count, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'succeeded', ?, 1, ?)
+                UPDATE actions
+                SET status = 'succeeded', result_ref = ?
+                WHERE action_id = ?
                 """,
-                (action_id, action_type.value, order_id, proposal_id, approval_id, idempotency_key, payload_hash, result_ref, now_iso),
+                (result_ref, action_id),
             )

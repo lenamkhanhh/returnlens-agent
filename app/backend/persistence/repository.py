@@ -329,6 +329,27 @@ class Repository:
         attachment_ids: Optional[List[str]] = None,
         client_message_id: Optional[str] = None,
     ) -> Message:
+        # Idempotency check for outbox / client message deduplication (Test 39)
+        if client_message_id:
+            with self.db.cursor() as cur:
+                cur.execute(
+                    "SELECT * FROM messages WHERE case_id = ? AND client_message_id = ?",
+                    (case_id, client_message_id),
+                )
+                row = cur.fetchone()
+                if row:
+                    return Message(
+                        message_id=row["message_id"],
+                        client_message_id=row["client_message_id"],
+                        case_id=row["case_id"],
+                        actor_id=row["actor_id"],
+                        role=ActorRole(row["role"]),
+                        text=row["text"],
+                        language=Language(row["language"]),
+                        attachment_ids=json.loads(row["attachment_ids_json"]),
+                        created_at=row["created_at"],
+                    )
+
         now_iso = datetime.now(timezone.utc).isoformat()
         attachments_json = json.dumps(attachment_ids or [])
         with self.db.transaction() as conn:

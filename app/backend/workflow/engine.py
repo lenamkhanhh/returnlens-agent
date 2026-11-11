@@ -34,6 +34,7 @@ from app.backend.contracts import (
     Visibility,
 )
 from app.backend.domain.executor import compute_payload_hash
+from app.backend.domain.policy import check_return_window
 from app.backend.media.evidence import (
     evaluate_color_match,
     validate_observations_grounding,
@@ -299,36 +300,61 @@ class WorkflowEngine:
             self._mark_job_completed(job_id, now_iso)
             return True
 
+        # 6.5 Cancellation Request for Undelivered Order (Test 49)
+        if re.search(r"\b(cancel|cancellation)\b", text, re.IGNORECASE):
+            shipment_info = tool_results.get("tracking", {})
+            shipment_status = shipment_info.get("status", "IN_TRANSIT")
+            if shipment_status in ("IN_TRANSIT", "OUT_FOR_DELIVERY", "NDR", "MANIFESTED"):
+                handoff_summary = f"Customer requested cancellation for undelivered order {case.order_id} ({shipment_status}). Forwarded to seller support."
+                self.repo.update_case_state(
+                    case_id=case_id,
+                    state=CaseState.HUMAN_REVIEW,
+                    summary=handoff_summary,
+                )
+                self.repo.append_audit_event(
+                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                    actor="agent:returnlens",
+                    event_type="handoff_created",
+                    outcome="Handed to seller with summary (cancellation request for undelivered order)",
+                    case_id=case_id,
+                    refs=[f"order:{case.order_id}"],
+                    safe_payload={"handoff_summary": handoff_summary, "reason": "cancellation_undelivered"},
+                )
+                outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                self.repo.add_message(
+                    message_id=outbound_msg_id,
+                    case_id=case_id,
+                    actor_id="agent:returnlens",
+                    role=ActorRole.AGENT,
+                    text=f"Your request to cancel order {case.order_id} has been transferred to our seller support team for manual review.",
+                )
+                self._mark_job_completed(job_id, now_iso)
+                return True
+
         # 7. Return & Refund Case Orchestration (B06, Tests 08, 09, 10, 12, 14)
         order_info = tool_results.get("order", {})
         tracking_info = tool_results.get("tracking", {})
         remaining_balance = order_info.get("remaining_refundable_minor", 0)
 
-        # 7.1 Check Return Window Policy (02 §5, 17 §2, P_WINDOW)
+        # 7.1 Check Return Window Policy (02 §5, 17 §2, P_WINDOW, Tests 04, 05)
         delivered_at_str = tracking_info.get("delivered_at")
-        outside_window = False
-        if delivered_at_str:
-            delivered_date = date.fromisoformat(delivered_at_str)
-            today_date = date.fromisoformat("2026-11-11")  # DEMO_TODAY
-            diff_days = (today_date - delivered_date).days
-            if diff_days < 0 or diff_days > 7:
-                outside_window = True
-                self.repo.append_audit_event(
-                    event_id=f"EVT-{uuid.uuid4().hex[:8]}",
-                    actor="agent:returnlens",
-                    event_type="policy_checked",
-                    outcome="P_WINDOW failed (delivered > 7 days ago)",
-                    case_id=case_id,
-                    refs=[f"order:{case.order_id}"],
-                    safe_payload={"rule_id": "P_WINDOW", "result": "FAIL", "diff_days": diff_days},
-                )
+        window_check = check_return_window(delivered_at_str)
+        self.repo.append_audit_event(
+            event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+            actor="agent:returnlens",
+            event_type="policy_checked",
+            outcome=f"P_WINDOW {window_check.result.value}: {window_check.reason_code}",
+            case_id=case_id,
+            refs=[f"order:{case.order_id}"],
+            safe_payload={"rule_id": "P_WINDOW", "result": window_check.result.value, "reason_code": window_check.reason_code},
+        )
 
-        # If outside window (Test S06 Late): Do not auto-reject, move to WAITING_SELLER for review
-        if outside_window:
+        # If outside window (Test S06 Late, Test 05): Do not auto-reject, move to WAITING_SELLER for review
+        if window_check.result == PolicyCheckResult.FAIL:
             self.repo.update_case_state(
                 case_id=case_id,
                 state=CaseState.WAITING_SELLER,
-                summary=f"Outside 7-day return window ({diff_days} days). Forwarded to seller for policy review.",
+                summary=f"Outside 7-day return window ({window_check.reason_code}). Forwarded to seller for policy review.",
             )
             outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
             reply = f"Your order {case.order_id} was delivered on {delivered_at_str}. As this is beyond our 7-day return window, your request has been forwarded to the seller for special review."
@@ -374,12 +400,39 @@ class WorkflowEngine:
                 },
             )
 
-        # 7.3 Visual Evidence & Model Processing (B05, B06, Test 12)
+        # 7.3 Visual Evidence & Model Processing (B05, B06, Test 07, Test 12)
         # Check if case has uploaded evidence
         evidence_unclear = False
         with self.repo.db.cursor() as cur:
             cur.execute("SELECT * FROM evidence WHERE case_id = ? ORDER BY created_at DESC", (case_id,))
             evidence_rows = cur.fetchall()
+
+        # Test 07: Return or damage claim without video/photo evidence
+        if not evidence_rows and any(w in text.lower() for w in ["return", "damage", "damaged", "broken", "cracked", "wrong", "defect", "exchange", "mismatch"]):
+            self.repo.update_case_state(
+                case_id=case_id,
+                state=CaseState.WAITING_CUSTOMER,
+                summary="Evidence requested: please share photo or unboxing video of item",
+            )
+            outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+            reply = f"To help us process your return request for order {case.order_id}, please provide a clear photo or unboxing video of the item."
+            self.repo.add_message(
+                message_id=outbound_msg_id,
+                case_id=case_id,
+                actor_id="agent:returnlens",
+                role=ActorRole.AGENT,
+                text=reply,
+            )
+            self.repo.append_audit_event(
+                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                actor="agent:returnlens",
+                event_type="evidence_requested",
+                outcome="Requested photo or video evidence from customer (no fraud assumed)",
+                case_id=case_id,
+                refs=[f"msg:{outbound_msg_id}"],
+            )
+            self._mark_job_completed(job_id, now_iso)
+            return True
 
         if evidence_rows:
             # Model execution block with graceful fallback (Test 12)
@@ -487,6 +540,62 @@ class WorkflowEngine:
             self._mark_job_completed(job_id, now_iso)
             return True
 
+        # 7.55 Check COD refund payout destination requirement (Test 50)
+        customer_profile = self.repo.get_customer_profile(case.customer_id)
+        refund_dest = customer_profile.refund_destination if customer_profile else ""
+        payment_method = str(order_info.get("payment_method", "")).upper()
+        if (payment_method == "COD" or "cod" in text.lower()) and any(w in text.lower() for w in ["refund", "money back", "return"]):
+            if not refund_dest or refund_dest.lower() in ("cod", "none", "", "original"):
+                if case.clarification_count == 0:
+                    self.repo.update_case_state(
+                        case_id=case_id,
+                        state=CaseState.WAITING_CUSTOMER,
+                        summary="COD refund payout destination required (UPI / Bank)",
+                        increment_clarification=True,
+                    )
+                    outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                    cod_text = f"For your Cash on Delivery order {case.order_id}, please provide your UPI ID or bank account details to receive your refund."
+                    self.repo.add_message(
+                        message_id=outbound_msg_id,
+                        case_id=case_id,
+                        actor_id="agent:returnlens",
+                        role=ActorRole.AGENT,
+                        text=cod_text,
+                    )
+                    self.repo.append_audit_event(
+                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                        actor="agent:returnlens",
+                        event_type="clarification_sent",
+                        outcome="Asked customer for COD payout destination (1 of 1)",
+                        case_id=case_id,
+                        refs=[f"msg:{outbound_msg_id}"],
+                    )
+                else:
+                    handoff_summary = f"COD refund destination required for order {case.order_id}. Handed off to seller."
+                    self.repo.update_case_state(
+                        case_id=case_id,
+                        state=CaseState.HUMAN_REVIEW,
+                        summary=handoff_summary,
+                    )
+                    self.repo.append_audit_event(
+                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                        actor="agent:returnlens",
+                        event_type="handoff_created",
+                        outcome="Handed to seller with summary (COD destination needed)",
+                        case_id=case_id,
+                        safe_payload={"handoff_summary": handoff_summary},
+                    )
+                    outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                    self.repo.add_message(
+                        message_id=outbound_msg_id,
+                        case_id=case_id,
+                        actor_id="agent:returnlens",
+                        role=ActorRole.AGENT,
+                        text="Your refund request has been transferred to our seller support team to verify your payout details.",
+                    )
+                self._mark_job_completed(job_id, now_iso)
+                return True
+
         # 7.6 Clear Damage or Color Mismatch (Case A / Case B)
         # Create PROPOSE_RETURN proposal
         item_id = order_info.get("line_item", {}).get("item_id", "item_01")
@@ -567,3 +676,31 @@ class WorkflowEngine:
                 "UPDATE jobs SET status = ?, updated_at = ? WHERE job_id = ?",
                 (JobStatus.COMPLETED.value, now_iso, job_id),
             )
+
+    def recover_pending_jobs(self) -> List[str]:
+        """Finds any leased or pending jobs that died before commit and re-enqueues them (Test 27)."""
+        recovered = []
+        with self.repo.db.cursor() as cur:
+            cur.execute("SELECT job_id, case_id FROM jobs WHERE status IN ('leased', 'failed') AND attempts < 3")
+            rows = cur.fetchall()
+            for r in rows:
+                recovered.append((r["job_id"], r["case_id"]))
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        recovered_ids = []
+        for jid, cid in recovered:
+            with self.repo.db.transaction() as conn:
+                conn.execute(
+                    "UPDATE jobs SET status = 'pending', updated_at = ? WHERE job_id = ?",
+                    (now_iso, jid),
+                )
+            self.repo.append_audit_event(
+                event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                actor="agent:returnlens",
+                event_type="job_recovered",
+                outcome="Recovered uncommitted job for retry",
+                case_id=cid,
+                safe_payload={"job_id": jid},
+            )
+            recovered_ids.append(jid)
+        return recovered_ids

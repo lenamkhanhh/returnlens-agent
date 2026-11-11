@@ -27,12 +27,12 @@ from app.backend.api.cases import router as cases_router
 from app.backend.api.proposals import router as proposals_router
 from app.backend.api.operator import router as operator_router
 
-load_dotenv()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup and shutdown lifecycle."""
+    if not getattr(app.state, "harness_mode", False):
+        load_dotenv()
+
     # Ensure seed is applied if fresh DB
     data_dir = app.state.data_dir
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -52,6 +52,9 @@ def create_app(
 ) -> FastAPI:
     """FastAPI application factory supporting test isolation (17 §9)."""
     # 1. Resolve configuration
+    if harness_mode is None:
+        harness_mode = os.environ.get("HARNESS_MODE", "0") == "1"
+
     if data_dir is None:
         data_dir_env = os.environ.get("DATA_DIR", "./data")
         data_dir = Path(data_dir_env)
@@ -62,9 +65,6 @@ def create_app(
 
     if demo_today is None:
         demo_today = os.environ.get("DEMO_TODAY", "2026-11-11")
-
-    if harness_mode is None:
-        harness_mode = os.environ.get("HARNESS_MODE", "0") == "1"
 
     db_path = data_dir / "returnlens.db"
     db = Database(db_path)
