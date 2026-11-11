@@ -1,19 +1,19 @@
 1
 00:00:00,500 --> 00:00:05,800
-This seller just let an AI agent refund customers on its own.
+This seller wants an AI agent to refund damaged items on its own.
 
 2
 00:00:06,000 --> 00:00:13,200
-Only for damaged items, only after the parcel is back,
-and only because the agent passed that case five out of five times.
+ReturnLens says not yet: damage refunds have not passed
+five out of five test runs, so they stay with the seller.
 
 3
 00:00:13,600 --> 00:00:18,200
-One refund goes through.
+The agent drafts the refund and shows why it stopped.
 
 4
 00:00:18,600 --> 00:00:24,800
-The next one crosses the daily limit and goes back to the seller.
+Every step of the gate is checked in code and logged.
 
 5
 00:00:25,200 --> 00:00:30,200

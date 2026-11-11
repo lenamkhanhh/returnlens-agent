@@ -50,7 +50,7 @@ Follows specs:
   4. `00:18 - 00:25`: Switch to Operator View. Click **RETURN_RECEIVED** for second parcel **ORD-4401** (₹999). Return to Seller View. Case ORD-4401 is NOT auto-refunded; proposal highlights: *"Sent to seller: cumulative limit ₹2,000/day exceeded (₹1,299 + ₹999 > ₹2,000)"*.
   5. Title card transition: *"The support agent that earns its autonomy."*
 - **Narration**:
-  > *"This seller just let an AI agent refund customers on its own. Only for damaged items, only after the parcel is back, and only because the agent passed that case five out of five times. One refund goes through. The next one crosses the daily limit and goes back to the seller."*
+  > *"This seller wants an AI agent to refund damaged items on its own. ReturnLens says not yet: damage refunds have not passed five out of five test runs, so they stay with the seller. The agent drafts the refund and shows why it stopped. Every step of the gate is checked in code and logged."*
 
 ---
 
