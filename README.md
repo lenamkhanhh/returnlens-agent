@@ -33,9 +33,19 @@ Solo Direct-to-Consumer (D2C) merchants in India lose up to **18% of operating m
 
 ## 3. Try It in 60 Seconds (Judge Quickstart)
 
-When accessing the running application at `http://localhost:8000`:
+> **Live Demo:** [https://returnlens-demo.onrender.com](https://returnlens-demo.onrender.com) (or local `http://localhost:8000`)  
+> *Note on Cloud Cold-Start:* Cloud deployments on Render's free tier sleep on idle and take ~45–60 seconds to wake up from cold standby on first access. Under Gemini free-tier quota pressure (15 RPM / 1,500 RPD), the agent fails closed and hands the case to the human seller instead of guessing or fabricating actions.
 
-| Step | Action | Expected Agent Behavior | Verification Proof |
+Follow this 60-second walkthrough:
+1. **Open the Live Demo**: Open [returnlens-demo.onrender.com](https://returnlens-demo.onrender.com).
+2. **Customer Chat**: In **Customer Portal**, select customer **Arjun Mehta (`CUS-02`)** on order **`ORD-7729`** (or pick any customer/order).
+3. **Upload Any Photo or Short Clip**: Click the attachment button (`📎`) and upload any photo or short clip of any object. The agent ingests evidence in seconds.
+4. **See What the Agent Saw vs. What It Could Not Verify**:
+   - **What the agent saw**: Fine-grained visual attributes with video timestamps (e.g., `00:07: black headphones` detected against white catalog order).
+   - **Still unverified**: Missing physical proof the vision model could not confirm (e.g., outer box shipping label barcode).
+5. **Seller Console & "Why did it stop?"**: Switch to **Seller Console** (open on demo, no password required). Click case `ORD-7729` and click the **"Why did it stop?"** button (or check the Autonomy Bar). The 7-step Autonomy Gate displays the exact mathematical and policy checks that stopped autonomous execution and deferred to human review.
+
+| Fast Verification Path | Quick Action | Expected Agent Behavior | Verification Proof |
 |:---|:---|:---|:---|
 | **A. Instant WISMO** | In **Customer Portal**, select **Priya Sharma** (`CUS-01`), order `ORD-2030`. Ask: *"Where is my order?"* | Agent queries live carrier API, verifies status is `IN_TRANSIT` with ETA `2026-11-13` (Delhivery), and delivers instant tracking reply. | Status pill turns `Case resolved`; both messages render in thread. |
 | **B. Try to Break It** | Click the orange **⚡ Try to Break It** button in the header. Run **Preset 1 (Prompt Injection)** or **Preset 2 (₹1,800 Over-Refund)**. | Code-enforced guardrails sanitize adversarial text on paper (`CLIP-INJ`) and reject refund requests exceeding order balance (`P_BALANCE`). | Modal displays `SANITIZED` / `BLOCKED` with architectural defense details. |
@@ -76,7 +86,7 @@ When accessing the running application at `http://localhost:8000`:
 - **Frame-Accurate Video Scrubbing:** Timestamp pills in the merchant console allow one-click jumping to the exact second of physical evidence.
 
 ### 5. Engineering Rigor & Presentation (Weight: 15%)
-- 94 automated backend tests (`pytest`) + 39 frontend tests (`vitest`) pass cleanly with 100% pass rate.
+- 105 automated backend tests (`pytest`) + 70 frontend tests (`vitest`) pass cleanly with 100% pass rate.
 - URL deep-linking support (`?tab=seller&case_id=CASE-0012&modal=why`) enables bookmarkable evaluation flows.
 
 ---
@@ -109,7 +119,29 @@ All benchmark metrics are recorded directly by running `python -m app.evaluation
 
 ---
 
-## 7. System Architecture
+## 7. How We Know We Are Not Fooling Ourselves (The 4 Real Catches)
+
+In a 24-hour hackathon, it is easy to write benchmarks that confirm what you hope is true. Our reliability gate, isolated ASGI runner, and negative controls caught four real bugs and regressions during development—each verified directly from git commit history:
+
+1. **Negative control with an invalid key exposed a text-keyword shortcut** (Wave 8):
+   - **Commits:** [`2373b86`](https://github.com/lenamkhanhh/returnlens-agent/commit/2373b86) & [`b7e7552`](https://github.com/lenamkhanhh/returnlens-agent/commit/b7e7552)
+   - **Git Evidence:** Running the harness in negative control mode (`--invalid-key` with dummy `GEMINI_API_KEY`) exposed that `engine.py` previously branched on customer text keywords (`if "black" in text.lower(): ...`, `if "voice" in text.lower(): ...`) without checking model vision. Commit `2373b86` purged all text-keyword shortcuts in `app/backend/workflow/engine.py` so decisions branch strictly on verified multimodal observations, and commit `b7e7552` enforced in `app/evaluation/harness/runner.py` that invalid or missing model keys fail safely into `HUMAN_REVIEW`.
+
+2. **Results are cryptographically bound to backend code hash, locking live autonomy** (Wave 12):
+   - **Commits:** [`02a7bd9`](https://github.com/lenamkhanhh/returnlens-agent/commit/02a7bd9), [`b9b9567`](https://github.com/lenamkhanhh/returnlens-agent/commit/b9b9567), & [`91c86ef`](https://github.com/lenamkhanhh/returnlens-agent/commit/91c86ef)
+   - **Git Evidence:** Autonomy is mathematically gated by `agent_version` (SHA-256 of all backend source code and prompt files computed via `app/backend/autonomy/version.py`). When backend logic was modified, `compute_agent_version()` generated a new hash (`071a86f2...`) differing from `reliability.json` (`1cf5deff...`), immediately causing `check_case_type_reliability` in `app/backend/autonomy/reliability.py` to lock all case types to manual review on the live site until commit `b9b9567` re-measured the full $k=5$ benchmark on commit `a4a20af`.
+
+3. **Harness caught an ungrounded return proposal regression on S09** (Wave 12):
+   - **Commit:** [`108ec34`](https://github.com/lenamkhanhh/returnlens-agent/commit/108ec34)
+   - **Git Evidence:** In `app/backend/workflow/engine.py`, the $k=5$ harness caught S09 creating an ungrounded return proposal when the vision observer saw "no damage observed" in the video; commit `108ec34` added rule 7.58 (`if obs_output is not None and not damage_seen: ask once for a close-up photo`), refusing to propose a return on customer text claims alone when physical evidence shows no damage.
+
+4. **Fake "visible damage" observation monkeypatch found in harness and removed** (Wave 12):
+   - **Commit:** [`108ec34`](https://github.com/lenamkhanhh/returnlens-agent/commit/108ec34)
+   - **Git Evidence:** In `app/evaluation/harness/environment.py`, commit `108ec34` deleted a synthetic monkeypatch (`Repository.list_case_observations = _list_case_observations`) in `TrialEnvironment` that previously injected a hardcoded `ObservationItem(attribute=ObservationAttribute.DAMAGE, value="visible damage", visibility=Visibility.VISIBLE)`, guaranteeing harness trials evaluate authentic model observer outputs.
+
+---
+
+## 8. System Architecture
 
 ```
                                   ┌────────────────────────┐
@@ -135,6 +167,10 @@ All benchmark metrics are recorded directly by running `python -m app.evaluation
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Design Choice: Models Observe (and Propose), Code Decides
+
+In ReturnLens, generative AI models are intentionally deprived of financial mutation and database write tools. The vision and speech models (`gemini-3.5-flash-lite`) act strictly as observers: they inspect unboxing footage, photos, and voice notes to output structured evidence schemas (`ObservationOutput`)—extracting bounding timestamps, color classifications, visible damage states, and unverified unknowns. Code disposes: every business decision, state transition, financial proposal, and refund execution is governed by deterministic finite state machines, statutory policies (`P_WINDOW`, `P_BALANCE`, `P_UNVERIFIED`), and our 7-step Autonomy Gate. If an LLM hallucinates an auto-refund, code blocks it; if the model is unavailable or encounters free-tier rate limits, code fails closed and escalates to human seller review.
+
 ### The 5 Architectural Differentiators:
 1. **Earned Autonomy Staircase:** No blanket auto-approvals. Level progression is gated mathematically by the reliability harness.
 2. **Deterministic Financial Ledger:** All calculations operate strictly in integer minor units (paise). Over-refunds are prevented by database constraints.
@@ -144,7 +180,7 @@ All benchmark metrics are recorded directly by running `python -m app.evaluation
 
 ---
 
-## 8. Local Setup & Reproduction (≤ 3 Commands)
+## 9. Local Setup & Reproduction (≤ 3 Commands)
 
 ### Prerequisites:
 - Python 3.12+
@@ -176,7 +212,7 @@ Open `http://localhost:8000` in any web browser.
 
 ---
 
-## 9. Honest Limitations & Staged Data Disclosure
+## 10. Honest Limitations & Staged Data Disclosure
 
 1. **Scenario S03 Status:** Scenario S03 (Case A Headband Damage) is recorded as `BLOCKED`. The synthetic solid-color video clip used in early development cannot visually demonstrate a cracked headband to a real vision model. The system correctly refuses to hallucinate damage, keeping the scenario blocked until real unboxing footage is filmed.
 2. **Scenario S04 Model Variance:** In the live benchmark against `gemini-3.5-flash-lite`, S04 achieved 4/5 passes ($pass@1 = 0.80$, $pass^5 = 0.00$). In 1 trial the model requested box label clarification rather than immediately transitioning to seller review. Because $pass^5 < 1.00$, the system honestly keeps `MISMATCH` autonomy locked to human review per the Earned Autonomy gate.
@@ -185,7 +221,7 @@ Open `http://localhost:8000` in any web browser.
 
 ---
 
-## 10. Technology Stack, Credits & Team
+## 11. Technology Stack, Credits & Team
 
 ### Built With:
 - **Language & Runtime:** Python 3.12, Node.js 20, TypeScript 5.9
