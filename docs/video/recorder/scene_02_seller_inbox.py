@@ -41,8 +41,8 @@ def record_scene_02() -> Path:
         page.on("dialog", lambda d: d.dismiss())
 
         # 1. Open Seller Console
-        print("[02] Navigating to Seller Console...")
-        page.goto(f"{BASE_URL}/?tab=seller")
+        print("[02] Navigating to Seller Console (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=seller&demo=1")
         page.wait_for_selector(".app-header", timeout=10000)
         page.wait_for_timeout(2000)
 

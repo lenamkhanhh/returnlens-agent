@@ -32,7 +32,7 @@ def record_scene_03() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=200,
+            slow_mo=120,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -45,26 +45,26 @@ def record_scene_03() -> Path:
         # -------------------------------------------------------------
         # Part 1: WISMO (CUS-01, ORD-2030)
         # -------------------------------------------------------------
-        print("[03] Navigating to Customer Portal for WISMO...")
-        page.goto(f"{BASE_URL}/?tab=customer")
+        print("[03] Navigating to Customer Portal for WISMO (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=customer&demo=1")
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1500)
 
         # Select Priya Sharma (CUS-01) if not already selected
         cust_select = page.locator("select.select-field").first
         cust_select.select_option("CUS-01")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         # Type WISMO inquiry
         print("[03] Customer typing: Where is my order?...")
         text_input = page.locator("input.text-input")
         text_input.fill("Where is my order?")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         # Click Send
         send_btn = page.locator("button.btn-primary:has-text('Send')")
         send_btn.click()
-        page.wait_for_timeout(3500)  # Wait for mock tools and reply
+        page.wait_for_timeout(2200)  # Wait for mock tools and reply
 
         # -------------------------------------------------------------
         # Part 2: NDR Trigger in Operator Controls

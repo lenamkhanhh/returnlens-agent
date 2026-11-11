@@ -40,8 +40,8 @@ def record_scene_07() -> Path:
         page.on("dialog", lambda d: d.dismiss())
 
         # 1. Open Seller Console
-        print("[07] Navigating to ReturnLens Console...")
-        page.goto(f"{BASE_URL}/?tab=seller")
+        print("[07] Navigating to ReturnLens Console (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=seller&demo=1")
         page.wait_for_selector(".app-header", timeout=10000)
         page.wait_for_timeout(2000)
 

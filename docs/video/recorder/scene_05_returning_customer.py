@@ -34,7 +34,7 @@ def record_scene_05() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=200,
+            slow_mo=120,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -45,53 +45,53 @@ def record_scene_05() -> Path:
         page.on("dialog", lambda d: d.dismiss())
 
         # 1. Customer submits first turn
-        print("[05] Opening Customer Portal...")
-        page.goto(f"{BASE_URL}/?tab=customer")
+        print("[05] Opening Customer Portal (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=customer&demo=1")
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
         # Select Vikram Malhotra (CUS-04)
         print("[05] Selecting CUS-04 (Vikram Malhotra)...")
         cust_select = page.locator("select.select-field").first
         cust_select.select_option("CUS-04")
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(800)
 
         # Attach dim stock video
         print("[05] Attaching dim unboxing video...")
         file_input = page.locator("input[type='file']")
         file_input.set_input_files(str(STOCK_DIM_VIDEO))
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         text_input = page.locator("input.text-input")
         text_input.fill("I want a full refund for this defective item.")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         send_btn = page.locator("button.btn-primary:has-text('Send')")
         send_btn.click()
         print("[05] Submitted first claim with dim clip. Waiting for agent clarification reply...")
-        page.wait_for_timeout(4500)
+        page.wait_for_timeout(2500)
 
         # 2. Customer leaves (navigates away / simulates closing tab)
         print("[05] Customer closes tab / leaves portal...")
         page.goto("about:blank")
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
         # 3. Customer returns later
-        print("[05] Customer returns to ReturnLens Portal...")
-        page.goto(f"{BASE_URL}/?tab=customer")
+        print("[05] Customer returns to ReturnLens Portal (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=customer&demo=1")
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(1000)
 
         # Select CUS-04 again
         cust_select = page.locator("select.select-field").first
         cust_select.select_option("CUS-04")
-        page.wait_for_timeout(2500)  # Pause to show restored history and state!
+        page.wait_for_timeout(1800)  # Pause to show restored history and state!
 
         # 4. View Seller Console to show Plan Card Memory chip
         print("[05] Switching to Seller Console to show Memory chip...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
         seller_tab.click()
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(1500)
 
         # Click on ORD-5150 case
         inbox_items = page.locator(".inbox-item").all()
@@ -99,15 +99,15 @@ def record_scene_05() -> Path:
             if "ORD-5150" in it.inner_text():
                 it.click()
                 break
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(1500)
 
         # Highlight Plan Card with Memory
         plan_card = page.locator(".plan-card, .seller-col:has-text('Plan')")
         if plan_card.count() > 0:
             plan_card.first.hover()
-            page.wait_for_timeout(3000)
+            page.wait_for_timeout(1800)
 
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(800)
 
         video_obj = page.video
         context.close()

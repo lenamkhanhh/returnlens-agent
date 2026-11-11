@@ -33,7 +33,7 @@ def record_scene_01() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=250,
+            slow_mo=120,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -56,57 +56,57 @@ def record_scene_01() -> Path:
         page.route("**/api/seller/autonomy", handle_autonomy_put)
 
         # 1. Open Seller Console
-        print("[01] Opening Seller Console...")
-        page.goto(f"{BASE_URL}/?tab=seller")
+        print("[01] Opening Seller Console (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=seller&demo=1")
         page.wait_for_selector(".app-header", timeout=10000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
         # 2. Inspect Autonomy Bar
         print("[01] Highlighting Autonomy Bar...")
         autonomy_bar = page.locator("strong:has-text('Autonomy Bar')")
         autonomy_bar.hover()
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(1000)
 
         # Attempt to select L3 on DAMAGE (triggers live reliability gate check)
         print("[01] Attempting to set DAMAGE to L3...")
         selects = page.locator(".app-header ~ main select").all()
         if len(selects) >= 2:
             selects[1].select_option("L3")
-            page.wait_for_timeout(2500)  # Let viewer see live reliability gate alert
+            page.wait_for_timeout(1800)  # Let viewer see live reliability gate alert
 
         # 3. Switch to Operator Controls tab
         print("[01] Switching to Operator Controls...")
         operator_tab = page.locator("button.tab-btn:has-text('Operator Controls')")
         operator_tab.click()
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
         # Fire RETURN_RECEIVED for ORD-1042 (SHP-1042)
         print("[01] Firing RETURN_RECEIVED for SHP-1042...")
         shipment_input = page.locator("input.select-field").first
         shipment_input.fill("SHP-1042")
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(500)
 
         # Select RETURN_RECEIVED event
         event_select = page.locator("select.select-field").first
         event_select.select_option("RETURN_RECEIVED")
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(500)
 
         dispatch_btn = page.locator("button:has-text('Dispatch Courier Webhook')")
         dispatch_btn.click()
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1200)
 
         # Fire RETURN_RECEIVED for ORD-4401 (SHP-4401)
         print("[01] Firing RETURN_RECEIVED for SHP-4401...")
         shipment_input.fill("SHP-4401")
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(500)
         dispatch_btn.click()
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1200)
 
         # 4. Switch back to Seller Console
         print("[01] Returning to Seller Console...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
         seller_tab.click()
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(1200)
 
         # Click on ORD-1042 case in inbox
         inbox_items = page.locator(".inbox-item").all()
@@ -114,20 +114,20 @@ def record_scene_01() -> Path:
             if "ORD-1042" in it.inner_text():
                 it.click()
                 break
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1200)
 
         # Open "Why?" Checklist modal
         print("[01] Opening 7-step Why? checklist modal...")
         why_btn = page.locator("button:has-text('Why?')")
         if why_btn.count() > 0:
             why_btn.first.click()
-            page.wait_for_timeout(5000)  # Pause to let viewer read all 7 criteria
+            page.wait_for_timeout(2500)  # Pause to let viewer read all 7 criteria
 
             # Close Why modal
             close_btn = page.locator(".modal-header button:has-text('✕')")
             if close_btn.count() > 0:
                 close_btn.first.click()
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(800)
 
         # Finish up recording
         video_obj = page.video

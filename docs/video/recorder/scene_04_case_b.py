@@ -39,7 +39,7 @@ def record_scene_04() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=200,
+            slow_mo=100,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -50,33 +50,33 @@ def record_scene_04() -> Path:
         page.on("dialog", lambda d: d.dismiss())
 
         # 1. Customer Portal
-        print("[04] Navigating to Customer Portal...")
-        page.goto(f"{BASE_URL}/?tab=customer")
+        print("[04] Navigating to Customer Portal (demo scale)...")
+        page.goto(f"{BASE_URL}/?tab=customer&demo=1")
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         # Select Ananya Patel (CUS-02)
         print("[04] Selecting Customer CUS-02...")
         cust_select = page.locator("select.select-field").first
         cust_select.select_option("CUS-02")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         # Attach video clip
         print("[04] Attaching stock black headphones video...")
         file_input = page.locator("input[type='file']")
         file_input.set_input_files(str(STOCK_VIDEO))
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         # Fill text
         text_input = page.locator("input.text-input")
         text_input.fill("I ordered white headphones but received black ones. Here is the unboxing clip.")
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         # Click Send
         print("[04] Sending message and uploading media...")
         send_btn = page.locator("button.btn-primary:has-text('Send')")
         send_btn.click()
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(2000)
 
         # Also attach voice note to case via API if case exists
         try:
@@ -106,13 +106,13 @@ def record_scene_04() -> Path:
             print(f"[04] Note: Voice upload via API: {e}")
 
         # Wait for model analysis to settle
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1500)
 
         # 2. Switch to Seller Console
         print("[04] Navigating to Seller Console...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
         seller_tab.click()
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(1200)
 
         # Click on ORD-7729 case
         inbox_items = page.locator(".inbox-item").all()
@@ -120,7 +120,7 @@ def record_scene_04() -> Path:
             if "ORD-7729" in it.inner_text():
                 it.click()
                 break
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(1200)
 
         # 3. Inspect Triad Facts Panel
         print("[04] Hovering on Triad Facts Panel...")
@@ -134,7 +134,7 @@ def record_scene_04() -> Path:
         timestamp_btn = page.locator("button:has-text('00:07'), button:has-text('0:07'), .timestamp-chip")
         if timestamp_btn.count() > 0:
             timestamp_btn.first.click()
-            page.wait_for_timeout(3500)  # Pause to see video playing at 00:07!
+            page.wait_for_timeout(2500)  # Pause to see video playing at 00:07!
 
         # 5. Inspect Plan Card & Proposal
         print("[04] Inspecting Plan Card and Proposal...")
@@ -147,14 +147,14 @@ def record_scene_04() -> Path:
         review_btn = page.locator("button:has-text('Review & Decide')")
         if review_btn.count() > 0:
             review_btn.first.click()
-            page.wait_for_timeout(1500)
+            page.wait_for_timeout(1000)
 
             close_modal = page.locator(".modal-header button:has-text('✕')")
             if close_modal.count() > 0:
                 close_modal.first.click()
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(800)
 
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(800)
 
         video_obj = page.video
         context.close()
