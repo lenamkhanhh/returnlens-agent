@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""ReturnLens Demo Video Assembly Pipeline (13 §6, 18 §3, 19 §1).
+"""ReturnLens Demo Video Assembly Pipeline (13 §6, 18 §3, 19 §1, Wave 14).
 
-Discovers ffmpeg/ffprobe, normalizes scene clips (1080p 30fps stereo),
+Discovers ffmpeg/ffprobe, normalizes scene clips (1080p 30fps),
 applies the '2× speed' badge to fast-forwarded scenes (Scene 03),
-concatenates scenes 01 through 08, burns subtitles (narration.srt),
-and validates that output duration <= 3:00 (180 seconds).
+concatenates scenes 01 through 08, compiles non-overlapping synthetic voice narration,
+mixes voice with background music (CC0 Erik Satie Gymnopédie No. 1) with dynamic ducking
+at -24 dB and EBU R128 (-16 LUFS) mastering, burns subtitles (narration.srt) with
+readable bottom-centered styling, and validates that output duration <= 3:00 (180s).
 
 Includes a standalone '--test' mode that generates synthetic test clips
-to verify the pipeline end-to-end without real footage or model calls.
+to verify the pipeline end-to-end without real footage or external dependencies.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import wave
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -126,6 +129,43 @@ def run_ffmpeg(cmd: List[str]) -> None:
         raise
 
 
+def parse_srt_cues(subtitles_path: Path) -> List[Dict]:
+    """Parse SRT subtitles file into structured cue dictionaries."""
+    if not subtitles_path.exists():
+        return []
+
+    content = subtitles_path.read_text(encoding="utf-8")
+    blocks = content.strip().split("\n\n")
+
+    def parse_time(ts: str) -> float:
+        h, m, rest = ts.split(":")
+        s, ms = rest.split(",")
+        return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000.0
+
+    cues = []
+    for block in blocks:
+        lines = block.strip().split("\n")
+        if len(lines) >= 3:
+            try:
+                idx = int(lines[0])
+            except ValueError:
+                continue
+            m = re.match(r"(\d+:\d+:\d+,\d+)\s*-->\s*(\d+:\d+:\d+,\d+)", lines[1])
+            if not m:
+                continue
+            start_s = parse_time(m.group(1))
+            end_s = parse_time(m.group(2))
+            text_lines = lines[2:]
+            cues.append({
+                "idx": idx,
+                "start": start_s,
+                "end": end_s,
+                "lines": text_lines,
+                "text": " ".join(text_lines),
+            })
+    return cues
+
+
 def normalize_scene(
     ffmpeg_bin: str,
     probe_bin: str,
@@ -134,13 +174,9 @@ def normalize_scene(
     add_speed_badge: bool = False,
     font_file: Optional[str] = None,
 ) -> None:
-    """Normalize input clip to 1080p 30fps yuv420p with stereo 48kHz audio.
-    Generates silent audio if input has no audio stream.
+    """Normalize input clip to 1080p 30fps yuv420p video.
     Adds a '2× speed' badge if requested.
     """
-    info = probe_media(probe_bin, input_path)
-    has_audio = any(s.get("codec_type") == "audio" for s in info.get("streams", []))
-
     video_filters = [
         "scale=1920:1080:force_original_aspect_ratio=decrease",
         "pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black",
@@ -149,7 +185,6 @@ def normalize_scene(
     ]
 
     if add_speed_badge:
-        # Render a sleek translucent badge in upper-right corner
         badge_text = "2x speed"
         font_arg = f":fontfile='{escape_ffmpeg_filter_path(font_file)}'" if font_file else ""
         drawtext_filter = (
@@ -162,22 +197,14 @@ def normalize_scene(
 
     vf_arg = ",".join(video_filters)
 
-    cmd = [ffmpeg_bin, "-y"]
-    cmd.extend(["-i", str(input_path)])
-
-    if not has_audio:
-        # Add silent stereo audio track
-        cmd.extend(["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"])
-        cmd.extend(["-vf", vf_arg])
-        cmd.extend(["-c:v", "libx264", "-preset", "fast", "-crf", "22"])
-        cmd.extend(["-c:a", "aac", "-b:a", "192k", "-shortest"])
-        cmd.extend(["-map", "0:v:0", "-map", "1:a:0"])
-    else:
-        cmd.extend(["-vf", vf_arg])
-        cmd.extend(["-c:v", "libx264", "-preset", "fast", "-crf", "22"])
-        cmd.extend(["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"])
-
-    cmd.append(str(output_path))
+    cmd = [
+        ffmpeg_bin, "-y",
+        "-i", str(input_path),
+        "-vf", vf_arg,
+        "-an",
+        "-c:v", "libx264", "-preset", "fast", "-crf", "22",
+        str(output_path),
+    ]
     run_ffmpeg(cmd)
 
 
@@ -209,36 +236,144 @@ def concatenate_scenes(
             list_file.unlink()
 
 
-def burn_subtitles(
+def compile_voice_track(
+    cues: List[Dict],
+    clips_dir: Path,
+    total_duration: float,
+    output_wav: Path,
+    sample_rate: int = 48000,
+) -> Path:
+    """Assemble non-overlapping narration voice clips into a continuous PCM WAV audio track."""
+    n_samples = int(total_duration * sample_rate)
+    total_bytes = n_samples * 4  # 16-bit stereo = 4 bytes per frame
+    voice_buffer = bytearray(total_bytes)
+
+    for i, c in enumerate(cues):
+        clip_wav = clips_dir / f"cue_{c['idx']:02d}.wav"
+        if not clip_wav.exists():
+            # If WAV not found, try MP3
+            clip_mp3 = clips_dir / f"cue_{c['idx']:02d}.mp3"
+            if clip_mp3.exists():
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", str(clip_mp3), "-ar", str(sample_rate), "-ac", "2", "-f", "wav", str(clip_wav)],
+                    check=True, capture_output=True
+                )
+            else:
+                continue
+
+        with wave.open(str(clip_wav), "rb") as wf:
+            data = wf.readframes(wf.getnframes())
+
+        start_sample = int(c["start"] * sample_rate)
+        start_byte = start_sample * 4
+
+        # Guarantee zero overlap with the next cue
+        if i + 1 < len(cues):
+            max_bytes = int((cues[i + 1]["start"] - c["start"]) * sample_rate) * 4
+        else:
+            max_bytes = len(data)
+
+        data_to_write = data[:max_bytes]
+        end_byte = min(start_byte + len(data_to_write), len(voice_buffer))
+        actual_len = end_byte - start_byte
+        if actual_len > 0:
+            voice_buffer[start_byte:start_byte + actual_len] = data_to_write[:actual_len]
+
+    with wave.open(str(output_wav), "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(voice_buffer)
+
+    return output_wav
+
+
+def mix_audio_track(
     ffmpeg_bin: str,
-    input_path: Path,
-    subtitles_path: Path,
+    voice_wav: Path,
+    music_file: Optional[Path],
+    output_audio: Path,
+    total_duration: float,
+) -> None:
+    """Mix voice track with background music using dynamic sidechain ducking (-24 dB under voice).
+    Master audio is normalized to EBU R128 (-16 LUFS).
+    """
+    fade_out_st = max(0.0, total_duration - 4.0)
+
+    if music_file and music_file.exists():
+        filter_complex = (
+            f"[1:a]atrim=0:{total_duration},volume=0.32,"
+            f"afade=t=in:ss=0:d=2.0,afade=t=out:st={fade_out_st:.2f}:d=3.5[bgm];"
+            f"[bgm][0:a]sidechaincompress=threshold=0.02:ratio=16:attack=100:release=600[ducked_bgm];"
+            f"[0:a][ducked_bgm]amix=inputs=2:duration=first:weights=1.0 0.9[mix];"
+            f"[mix]loudnorm=I=-16:TP=-1.5:LRA=11,atrim=0:{total_duration}[aout]"
+        )
+        cmd = [
+            ffmpeg_bin, "-y",
+            "-i", str(voice_wav),
+            "-stream_loop", "-1",
+            "-i", str(music_file),
+            "-filter_complex", filter_complex,
+            "-map", "[aout]",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+            str(output_audio),
+        ]
+    else:
+        filter_complex = f"[0:a]loudnorm=I=-16:TP=-1.5:LRA=11,atrim=0:{total_duration}[aout]"
+        cmd = [
+            ffmpeg_bin, "-y",
+            "-i", str(voice_wav),
+            "-filter_complex", filter_complex,
+            "-map", "[aout]",
+            "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+            str(output_audio),
+        ]
+
+    run_ffmpeg(cmd)
+
+
+def burn_subtitles_and_mux_audio(
+    ffmpeg_bin: str,
+    video_path: Path,
+    audio_path: Path,
+    subtitles_path: Optional[Path],
     output_path: Path,
 ) -> None:
-    """Burn in SRT subtitles using libass with readable styling."""
-    escaped_sub = escape_ffmpeg_filter_path(str(subtitles_path.resolve()))
-    style = (
-        "FontName=Arial,"
-        "FontSize=22,"
-        "PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,"
-        "BackColour=&H80000000,"
-        "BorderStyle=3,"
-        "MarginV=36"
-    )
-    sub_filter = f"subtitles='{escaped_sub}':force_style='{style}'"
-
+    """Burn in SRT subtitles using libass with clean bottom box styling and mux mixed audio."""
     cmd = [
-        ffmpeg_bin,
-        "-y",
-        "-i", str(input_path),
-        "-vf", sub_filter,
-        "-c:v", "libx264",
-        "-preset", "medium",
-        "-crf", "20",
-        "-c:a", "copy",
-        str(output_path),
+        ffmpeg_bin, "-y",
+        "-i", str(video_path),
+        "-i", str(audio_path),
     ]
+
+    if subtitles_path and subtitles_path.exists():
+        escaped_sub = escape_ffmpeg_filter_path(str(subtitles_path.resolve()))
+        # Wave 14 subtitle spec: sans-serif, 30-34px at 1080p, white on semi-transparent dark box, bottom margin ~60px
+        style = (
+            "FontName=Arial,"
+            "FontSize=32,"
+            "PrimaryColour=&H00FFFFFF,"
+            "OutlineColour=&H00000000,"
+            "BackColour=&H80000000,"
+            "BorderStyle=3,"
+            "MarginV=60,"
+            "Alignment=2"
+        )
+        sub_filter = f"subtitles='{escaped_sub}':force_style='{style}'"
+        cmd.extend(["-vf", sub_filter])
+
+    cmd.extend([
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "20",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-ar", "48000",
+        "-shortest",
+        str(output_path),
+    ])
     run_ffmpeg(cmd)
 
 
@@ -250,7 +385,7 @@ def generate_synthetic_scene(
     title: str,
     font_file: Optional[str] = None,
 ) -> None:
-    """Generate a synthetic test clip with color background, label, and audio tone."""
+    """Generate a synthetic test clip with color background and label."""
     font_arg = f":fontfile='{escape_ffmpeg_filter_path(font_file)}'" if font_file else ""
     escaped_title = escape_drawtext_text(title)
     vf = (
@@ -264,13 +399,9 @@ def generate_synthetic_scene(
         "-y",
         "-f", "lavfi",
         "-i", f"color=c={color}:s=1920x1080:d={duration}:r=30",
-        "-f", "lavfi",
-        "-i", f"sine=frequency=440:duration={duration}",
         "-vf", vf,
         "-c:v", "libx264",
         "-preset", "ultrafast",
-        "-c:a", "aac",
-        "-shortest",
         str(output_path),
     ]
     run_ffmpeg(cmd)
@@ -280,9 +411,11 @@ def assemble_video(
     scenes_dir: Path,
     output_path: Path,
     subtitles_path: Optional[Path] = None,
+    music_file: Optional[Path] = None,
+    voice_clips_dir: Optional[Path] = None,
     badge_scenes: Optional[List[str]] = None,
 ) -> Tuple[bool, float, str]:
-    """Execute complete assembly pipeline.
+    """Execute complete assembly pipeline: scenes + voice-over + music + ducking + subtitles.
     Returns (success, duration_seconds, message).
     """
     ffmpeg_bin = find_binary("ffmpeg")
@@ -292,7 +425,6 @@ def assemble_video(
     if badge_scenes is None:
         badge_scenes = ["scene_03", "3"]
 
-    # Locate scene files (deduplicating by scene index, preferring .mp4)
     scene_pattern = re.compile(r"scene_?0*([0-9]+)\.(mp4|webm|mov|mkv)$", re.IGNORECASE)
     scene_map: Dict[int, Path] = {}
     ext_priority = {".mp4": 1, ".mkv": 2, ".mov": 3, ".webm": 4}
@@ -313,16 +445,15 @@ def assemble_video(
     scene_files = sorted(scene_map.items(), key=lambda x: x[0])
 
     if not scene_files:
-        return False, 0.0, f"No scene files (e.g. scene_01.mp4 ... scene_08.mp4) found in {scenes_dir}"
+        return False, 0.0, f"No scene files found in {scenes_dir}"
 
-    scene_files.sort(key=lambda x: x[0])
     print(f"Found {len(scene_files)} scenes to assemble: {[f.name for _, f in scene_files]}")
 
     with tempfile.TemporaryDirectory(prefix="returnlens_assemble_") as tmp_dir:
         tmp_path = Path(tmp_dir)
         normalized_files: List[Path] = []
 
-        print("\n--- Phase 1: Normalizing scenes (1080p, 30fps, stereo audio, badges) ---")
+        print("\n--- Phase 1: Normalizing scenes (1080p, 30fps, badges) ---")
         for idx, src_file in scene_files:
             norm_file = tmp_path / f"norm_scene_{idx:02d}.mp4"
             add_badge = str(idx) in badge_scenes or f"scene_{idx:02d}" in badge_scenes or f"scene_{idx}" in badge_scenes
@@ -341,25 +472,53 @@ def assemble_video(
         print("\n--- Phase 2: Concatenating scenes ---")
         concat_file = tmp_path / "concatenated.mp4"
         concatenate_scenes(ffmpeg_bin, normalized_files, concat_file)
-        print(f"  * Concatenated output saved to {concat_file.name}")
+        meta = probe_media(probe_bin, concat_file)
+        video_dur = float(meta.get("format", {}).get("duration", 0.0))
+        print(f"  * Concatenated video duration: {video_dur:.2f}s")
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        print("\n--- Phase 3: Building voice-over track ---")
+        cues = parse_srt_cues(subtitles_path) if subtitles_path else []
+        voice_wav = tmp_path / "voice_track.wav"
 
-        if subtitles_path and subtitles_path.exists():
-            print("\n--- Phase 3: Burning subtitles ---")
-            print(f"  * Subtitles file: {subtitles_path}")
-            burn_subtitles(
-                ffmpeg_bin=ffmpeg_bin,
-                input_path=concat_file,
-                subtitles_path=subtitles_path,
-                output_path=output_path,
+        if voice_clips_dir and voice_clips_dir.exists() and cues:
+            compile_voice_track(
+                cues=cues,
+                clips_dir=voice_clips_dir,
+                total_duration=video_dur,
+                output_wav=voice_wav,
             )
-            print(f"  * Subtitled output saved to {output_path}")
+            print(f"  * Compiled voice-over track from {len(cues)} cues ({voice_wav.name})")
         else:
-            print("\n--- Phase 3: Skipping subtitles (no subtitles file provided or found) ---")
-            shutil.copy2(concat_file, output_path)
+            # Generate silent audio track if no voice clips provided
+            subprocess.run(
+                [ffmpeg_bin, "-y", "-f", "lavfi", "-i", f"anullsrc=r=48000:cl=stereo", "-t", str(video_dur), str(voice_wav)],
+                check=True, capture_output=True
+            )
+            print("  * Using silent audio track (no voice clips)")
 
-        print("\n--- Phase 4: Validating output video ---")
+        print("\n--- Phase 4: Mixing audio (voice + background music + ducking + loudness -16 LUFS) ---")
+        mixed_audio = tmp_path / "mixed_audio.aac"
+        mix_audio_track(
+            ffmpeg_bin=ffmpeg_bin,
+            voice_wav=voice_wav,
+            music_file=music_file if music_file and music_file.exists() else None,
+            output_audio=mixed_audio,
+            total_duration=video_dur,
+        )
+        print(f"  * Mixed audio created ({mixed_audio.name})")
+
+        print("\n--- Phase 5: Burning subtitles and muxing final output ---")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        burn_subtitles_and_mux_audio(
+            ffmpeg_bin=ffmpeg_bin,
+            video_path=concat_file,
+            audio_path=mixed_audio,
+            subtitles_path=subtitles_path,
+            output_path=output_path,
+        )
+        print(f"  * Subtitled, mastered output saved to {output_path}")
+
+        print("\n--- Phase 6: Validating output video ---")
         meta = probe_media(probe_bin, output_path)
         format_info = meta.get("format", {})
         duration = float(format_info.get("duration", 0.0))
@@ -380,6 +539,7 @@ def assemble_video(
 
         print(f"  * Output Resolution: {w}x{h}")
         print(f"  * Total Duration: {duration:.2f} seconds ({duration/60:.2f} minutes)")
+        print(f"  * Audio Channels: {a_stream.get('channels')}, Sample Rate: {a_stream.get('sample_rate')} Hz")
         print(f"  * File Size: {size_bytes / (1024*1024):.2f} MB")
 
         # Hard ceiling check: <= 180 seconds (allow 0.5s float slack)
@@ -417,10 +577,18 @@ def run_pipeline_test(output_path: Path, subtitles_path: Optional[Path] = None) 
             p = tmp_scenes_path / name
             generate_synthetic_scene(ffmpeg_bin, p, dur, col, title, font_file)
 
+        # Generate a synthetic music track
+        synthetic_music = tmp_scenes_path / "test_music.wav"
+        subprocess.run(
+            [ffmpeg_bin, "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=30", str(synthetic_music)],
+            check=True, capture_output=True
+        )
+
         ok, dur, msg = assemble_video(
             scenes_dir=tmp_scenes_path,
             output_path=output_path,
             subtitles_path=subtitles_path,
+            music_file=synthetic_music,
             badge_scenes=["scene_03", "3"],
         )
 
@@ -440,7 +608,7 @@ def run_pipeline_test(output_path: Path, subtitles_path: Optional[Path] = None) 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="ReturnLens Demo Video Assembly Pipeline (1080p 30fps concat & subtitle burner)"
+        description="ReturnLens Demo Video Assembly Pipeline (1080p 30fps concat, audio mix & subtitle burner)"
     )
     parser.add_argument(
         "--scenes-dir",
@@ -451,7 +619,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path(__file__).parent / "returnlens_demo_3min.mp4",
+        default=Path(__file__).parent / "returnlens_demo.mp4",
         help="Path for output assembled MP4 file",
     )
     parser.add_argument(
@@ -459,6 +627,18 @@ def main() -> None:
         type=Path,
         default=Path(__file__).parent / "narration.srt",
         help="Path to SRT subtitles file (burned into output)",
+    )
+    parser.add_argument(
+        "--music",
+        type=Path,
+        default=Path(__file__).parent / "audio" / "gymnopedie_no1.ogg",
+        help="Path to background music audio file",
+    )
+    parser.add_argument(
+        "--voice-dir",
+        type=Path,
+        default=Path(__file__).parent / "audio" / "clips",
+        help="Directory containing voice-over cue WAV/MP3 clips",
     )
     parser.add_argument(
         "--badge-scenes",
@@ -478,7 +658,7 @@ def main() -> None:
 
     if args.test:
         test_out = args.output
-        if test_out == Path(__file__).parent / "returnlens_demo_3min.mp4":
+        if test_out == Path(__file__).parent / "returnlens_demo.mp4":
             test_out = Path(__file__).parent / "test_assembled_output.mp4"
         success = run_pipeline_test(
             output_path=test_out,
@@ -487,10 +667,15 @@ def main() -> None:
         sys.exit(0 if success else 1)
 
     subtitles = args.subtitles if args.subtitles and args.subtitles.exists() else None
+    music = args.music if args.music and args.music.exists() else None
+    voice_dir = args.voice_dir if args.voice_dir and args.voice_dir.exists() else None
+
     success, duration, message = assemble_video(
         scenes_dir=args.scenes_dir,
         output_path=args.output,
         subtitles_path=subtitles,
+        music_file=music,
+        voice_clips_dir=voice_dir,
         badge_scenes=badge_list,
     )
 
