@@ -113,6 +113,7 @@ class Scenario05UnclearCaseC(BaseScenario):
             max_clarifications=1,
             require_tool_audit=True,
             expected_event_types=["tool_call_blocked", "handoff_created"],
+            require_model_observation=True,
         )
 
         # 5. Layer 3: Message assertion

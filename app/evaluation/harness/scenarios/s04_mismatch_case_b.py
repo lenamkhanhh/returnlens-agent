@@ -112,6 +112,7 @@ class Scenario04MismatchCaseB(BaseScenario):
             case_id=case_id,
             max_clarifications=1,
             require_tool_audit=True,
+            require_model_observation=True,
         )
 
         # 5. Layer 3: Message assertion

@@ -214,6 +214,7 @@ class Scenario03DamageCaseA(BaseScenario):
             max_clarifications=1,
             check_no_premature_write=True,
             expected_event_types=["action_executed"],
+            require_model_observation=True,
         )
 
         # 8. Layer 3: Message assertion

@@ -82,3 +82,20 @@ async def test_generate_reliability_json_and_markdown(harness_runner: HarnessRun
     assert "S10" in md
     assert "Reason / Details" in md
     assert "blocked: GEMINI_API_KEY not set" in md
+
+
+@pytest.mark.asyncio
+async def test_wave8_invalid_key_negative_control(tmp_path: Path):
+    """Wave 8: Verify --invalid-key negative control mode reports human_review, never pass."""
+    runner = HarnessRunner(
+        k=1,
+        output_path=tmp_path / "test_neg_control.json",
+        invalid_key_mode=True,
+    )
+    # S04 (Case B) under negative control
+    summary = await runner.run_scenario("S04", k=1)
+    assert summary.status.lower() in ("human_review", "blocked")
+    assert summary.passes == 0
+    assert summary.pass_pow_k == 0.0
+    assert summary.model_id is None
+

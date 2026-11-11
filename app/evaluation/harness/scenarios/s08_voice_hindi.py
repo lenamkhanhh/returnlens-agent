@@ -117,6 +117,7 @@ class Scenario08VoiceHindi(BaseScenario):
             case_id=case_id,
             max_clarifications=1,
             require_tool_audit=True,
+            require_model_observation=True,
         )
 
         # 4. Layer 3: Message assertion

@@ -115,6 +115,7 @@ class Scenario09ReturningRestart(BaseScenario):
             case_id=case_id,
             max_clarifications=1,
             require_tool_audit=True,
+            require_model_observation=True,
         )
 
         # 6. Layer 3: Message assertion

@@ -48,9 +48,11 @@ class HarnessRunner:
         k: int = 1,
         output_path: Optional[Path] = None,
         model_id: Optional[str] = None,
+        invalid_key_mode: bool = False,
     ) -> None:
         self.k = k
         self.output_path = output_path or DEFAULT_RELIABILITY_JSON
+        self.invalid_key_mode = invalid_key_mode
         self.model_id = (
             model_id
             or os.environ.get("MODEL_PRIMARY")
@@ -98,6 +100,41 @@ class HarnessRunner:
             async with TrialEnvironment() as env:
                 try:
                     trial_res = await scenario.run_trial(env, trial_no=trial_no)
+                    if self.invalid_key_mode and scenario.requires_model:
+                        # Wave 8 Negative Control assertion:
+                        if trial_res.status.lower() == "blocked":
+                            pass  # Keep blocked if e.g. S03 prerequisite
+                        else:
+                            with env.repo.db.cursor() as cur:
+                                cur.execute("SELECT case_id, state FROM cases ORDER BY created_at DESC LIMIT 1")
+                                case_row = cur.fetchone()
+                                if case_row:
+                                    c_state = str(case_row["state"]).upper()
+                                    cur.execute("SELECT event_type FROM audit_events WHERE case_id = ?", (case_row["case_id"],))
+                                    c_evts = [r["event_type"] for r in cur.fetchall()]
+                                else:
+                                    c_state = ""
+                                    c_evts = []
+
+                            if case_row:
+                                if c_state == "HUMAN_REVIEW" or "model_unavailable" in c_evts:
+                                    trial_res = TrialResult(
+                                        scenario_id=scenario.scenario_id,
+                                        trial_no=trial_no,
+                                        passed=False,
+                                        status="human_review",
+                                        reason="ended in HUMAN_REVIEW (expected behaviour under invalid key)",
+                                        duration_ms=trial_res.duration_ms,
+                                    )
+                                else:
+                                    trial_res = TrialResult(
+                                        scenario_id=scenario.scenario_id,
+                                        trial_no=trial_no,
+                                        passed=False,
+                                        status="failed",
+                                        reason=f"Negative control violation: ended in {c_state} instead of HUMAN_REVIEW",
+                                        duration_ms=trial_res.duration_ms,
+                                    )
                 except Exception as ex:
                     trial_res = TrialResult(
                         scenario_id=scenario.scenario_id,
@@ -113,24 +150,41 @@ class HarnessRunner:
         pass_at_1 = float(passes) / float(num_trials) if num_trials > 0 else 0.0
         pass_pow_k = 1.0 if (passes == num_trials and num_trials > 0) else 0.0
 
-        # Determine overall scenario status per Wave 3: "passed", "failed", "blocked"
-        if passes == num_trials:
-            overall_status = "passed"
-            overall_reason = f"All {num_trials} trial(s) passed 3-layer verification"
-        elif any(t.status.lower() == "blocked" for t in trials):
-            overall_status = "blocked"
-            blocked_t = next(t for t in trials if t.status.lower() == "blocked")
-            overall_reason = blocked_t.reason
-        else:
-            overall_status = "failed"
-            failed_reasons = [t.reason for t in trials if not t.passed]
-            overall_reason = failed_reasons[0] if failed_reasons else f"{passes}/{num_trials} passed"
-
-        # Wave 3 Bug 4: record model_id: null when no model call happened
-        if overall_status == "blocked" or not scenario.requires_model:
+        if self.invalid_key_mode and scenario.requires_model:
+            passes = 0
+            pass_at_1 = 0.0
+            pass_pow_k = 0.0
             scenario_model_id = None
+            if all(t.status.lower() == "human_review" for t in trials):
+                overall_status = "human_review"
+                overall_reason = "ended in HUMAN_REVIEW (expected behaviour under invalid key)"
+            elif any(t.status.lower() == "blocked" for t in trials):
+                overall_status = "blocked"
+                blocked_t = next(t for t in trials if t.status.lower() == "blocked")
+                overall_reason = blocked_t.reason
+            else:
+                overall_status = "failed"
+                failed_t = next((t for t in trials if t.status.lower() == "failed"), trials[0])
+                overall_reason = failed_t.reason
         else:
-            scenario_model_id = self.model_id
+            # Determine overall scenario status per Wave 3: "passed", "failed", "blocked"
+            if passes == num_trials:
+                overall_status = "passed"
+                overall_reason = f"All {num_trials} trial(s) passed 3-layer verification"
+            elif any(t.status.lower() == "blocked" for t in trials):
+                overall_status = "blocked"
+                blocked_t = next(t for t in trials if t.status.lower() == "blocked")
+                overall_reason = blocked_t.reason
+            else:
+                overall_status = "failed"
+                failed_reasons = [t.reason for t in trials if not t.passed]
+                overall_reason = failed_reasons[0] if failed_reasons else f"{passes}/{num_trials} passed"
+
+            # Wave 3 Bug 4: record model_id: null when no model call happened
+            if overall_status == "blocked" or not scenario.requires_model:
+                scenario_model_id = None
+            else:
+                scenario_model_id = self.model_id
 
         return ScenarioRunSummary(
             scenario_id=scenario.scenario_id,
@@ -167,6 +221,10 @@ class HarnessRunner:
 
     def save_reliability_json(self, summaries: List[ScenarioRunSummary]) -> None:
         """Write reliability results matching ReliabilityResult contract, merging with existing entries."""
+        if self.invalid_key_mode and self.output_path.resolve() == DEFAULT_RELIABILITY_JSON.resolve():
+            # Wave 8: In negative control mode, do not overwrite production reliability.json
+            return
+
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
         existing_results: Dict[str, Dict[str, Any]] = {}
@@ -252,6 +310,7 @@ class HarnessRunner:
             "passed": "✅ PASS",
             "failed": "❌ FAIL",
             "blocked": "🔒 BLOCKED",
+            "human_review": "🛡️ HUMAN_REVIEW",
             "pass": "✅ PASS",
             "fail": "❌ FAIL",
         }
@@ -267,8 +326,13 @@ class HarnessRunner:
         lines.append("")
         total_pass = sum(1 for s in summaries if s.status.lower() in ("pass", "passed"))
         total_blocked = sum(1 for s in summaries if s.status.lower() in ("blocked",))
-        total_failed = len(summaries) - total_pass - total_blocked
-        lines.append(f"**Total Passing**: {total_pass}/{len(summaries)} scenarios — {total_blocked} blocked, {total_failed} failed")
+        total_hr = sum(1 for s in summaries if s.status.lower() in ("human_review",))
+        total_failed = len(summaries) - total_pass - total_blocked - total_hr
+
+        summary_line = f"**Total Passing**: {total_pass}/{len(summaries)} scenarios — {total_blocked} blocked, {total_failed} failed"
+        if total_hr > 0:
+            summary_line += f", {total_hr} ended in HUMAN_REVIEW (negative control)"
+        lines.append(summary_line)
         return "\n".join(lines)
 
 
@@ -278,14 +342,19 @@ async def _main():
     parser.add_argument("-s", "--scenario", type=str, default=None, help="Run specific scenario ID(s), e.g. S01 or S01,S02")
     parser.add_argument("-o", "--output", type=str, default=None, help="Output path for reliability.json")
     parser.add_argument("--k5-passed", action="store_true", help="Run k=1 for all scenarios, then k=5 for all scenarios that pass k=1")
+    parser.add_argument("--invalid-key", action="store_true", help="Negative control mode: run with invalid GEMINI_API_KEY to verify model scenarios end in HUMAN_REVIEW")
     args = parser.parse_args()
 
     targets = [s.strip().upper() for s in args.scenario.split(",") if s.strip()] if args.scenario else None
 
+    # Wave 8: If invalid-key negative control mode is selected, set invalid key
+    if args.invalid_key:
+        os.environ["GEMINI_API_KEY"] = "invalid-key-negative-control"
+
     # Wave 7 per WAVE7.md: Fail loudly at start if key is missing for model scenarios
     target_sids = targets or list(ALL_SCENARIOS.keys())
     model_sids = [sid for sid in target_sids if ALL_SCENARIOS.get(sid) and ALL_SCENARIOS[sid].requires_model]
-    if model_sids and not os.environ.get("GEMINI_API_KEY"):
+    if not args.invalid_key and model_sids and not os.environ.get("GEMINI_API_KEY"):
         raise RuntimeError(
             f"FATAL: GEMINI_API_KEY is not set in {ENV_PATH}! "
             f"Model scenarios {model_sids} require a live GEMINI_API_KEY. "
@@ -293,7 +362,7 @@ async def _main():
         )
 
     out_path = Path(args.output) if args.output else DEFAULT_RELIABILITY_JSON
-    runner = HarnessRunner(k=args.trials, output_path=out_path)
+    runner = HarnessRunner(k=args.trials, output_path=out_path, invalid_key_mode=args.invalid_key)
 
     if args.k5_passed:
         print(f"Phase 1: Running all 10 scenarios with k=1 (agent_version={runner.agent_version[:8]})...")
@@ -304,7 +373,7 @@ async def _main():
         final_summaries_map = {s.scenario_id: s for s in k1_summaries}
         if passed_sids:
             print(f"\nPhase 2: Running k=5 for passing scenarios ({', '.join(passed_sids)})...")
-            runner_k5 = HarnessRunner(k=5, output_path=out_path)
+            runner_k5 = HarnessRunner(k=5, output_path=out_path, invalid_key_mode=args.invalid_key)
             for sid in passed_sids:
                 print(f"  -> Running {sid} (k=5)...")
                 summary_k5 = await runner_k5.run_scenario(sid, k=5)

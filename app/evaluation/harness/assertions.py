@@ -8,6 +8,7 @@ Evaluates:
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -129,6 +130,8 @@ def verify_process_layer(
     check_no_premature_write: bool = True,
     expected_event_types: Optional[List[str]] = None,
     forbidden_event_types: Optional[List[str]] = None,
+    require_model_observation: bool = False,
+    expected_model_id: Optional[str] = None,
 ) -> LayerResult:
     """Evaluate Layer 2: Process integrity and governance."""
     assert env.repo is not None
@@ -203,8 +206,57 @@ def verify_process_layer(
         if "fraud" in summary or "scam" in summary:
             failures.append(f"Forbidden word ('fraud'/'scam') found in handoff summary: '{summary}'")
 
+    # 5. Invariant: Valid model observation required for model scenarios (Wave 8 per C.1)
+    if require_model_observation:
+        primary_model = (
+            expected_model_id
+            or os.environ.get("MODEL_PRIMARY")
+            or "gemini-3.5-flash-lite"
+        )
+        found_model_observation = False
+
+        # Check audit events on the case for real model observation
+        for e in events:
+            etype = getattr(e, "event_type", None) or (e.get("event_type") if isinstance(e, dict) else "")
+            actor = getattr(e, "actor", None) or (e.get("actor") if isinstance(e, dict) else "")
+            payload = getattr(e, "safe_payload", None) or (e.get("safe_payload", {}) if isinstance(e, dict) else {})
+
+            if etype in ("observation_validated", "model_run_recorded", "voice_note_transcribed") or (actor and actor.startswith("model:")):
+                # Reject if cache_hit is True
+                if payload.get("cache_hit") is True:
+                    continue
+
+                # Check model_id if recorded in payload
+                m_id = payload.get("model_id")
+                if m_id and m_id not in (primary_model, "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"):
+                    continue
+
+                found_model_observation = True
+                details["model_observation_event"] = {
+                    "event_type": etype,
+                    "actor": actor,
+                    "model_id": m_id or primary_model,
+                    "cache_hit": payload.get("cache_hit", False),
+                }
+                break
+
+        # Also check observations table in DB
+        if not found_model_observation:
+            with env.repo.db.cursor() as cur:
+                cur.execute("SELECT * FROM observations WHERE case_id = ?", (case_id,))
+                obs_rows = cur.fetchall()
+            if obs_rows:
+                found_model_observation = True
+                details["observations_count"] = len(obs_rows)
+
+        if not found_model_observation:
+            failures.append("no real model observation")
+
     passed = len(failures) == 0
-    reason = "Process layer verified" if passed else "; ".join(failures)
+    if not passed and "no real model observation" in failures:
+        reason = "no real model observation"
+    else:
+        reason = "Process layer verified" if passed else "; ".join(failures)
     return LayerResult(layer="process", passed=passed, reason=reason, details=details)
 
 
