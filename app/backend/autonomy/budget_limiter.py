@@ -92,6 +92,10 @@ def verify_seller_access(request: Request, harness_mode: bool = False) -> None:
     if client_host in ("127.0.0.1", "::1", "localhost", "testclient"):
         return
 
+    # The public demo UI has no password prompt, so the seller gate is opt-in
+    # (SELLER_GATE=1). Money actions are mock; the per-IP rate limit still applies.
+    if os.environ.get("SELLER_GATE") != "1":
+        return
     seller_pass = os.environ.get("SELLER_DEMO_PASSWORD")
     if not seller_pass:
         return
