@@ -1,5 +1,10 @@
 """Build standalone docs/video/ink/overlay.js with inlined Patrick Hand font.
 Role E: INK chat for ReturnLens hackathon.
+Includes:
+- Soft light background halo (white at 88% opacity, 6px padding) so notes never obscure UI underneath
+- Intelligent free-space measurement avoiding overlapping UI text elements
+- Hand-drawn wobbly SVG strokes (dashoffset animated 0.6s)
+- Visible cursor and click ripple
 """
 
 from __future__ import annotations
@@ -19,8 +24,9 @@ JS_TEMPLATE = r"""/**
  * 1. High-contrast visible mouse cursor (arrow SVG) following Playwright mousemove events.
  * 2. Animated click ripples on mousedown/click.
  * 3. Hand-drawn wobbly SVG ink annotations (circles, arrows, notes) in Patrick Hand font.
- * 4. Automatic positioning from getBoundingClientRect(), max 2 concurrent annotations,
- *    2-4s duration, never overlapping the target element.
+ * 4. Automatic positioning in free/empty space + soft light background halo (white 88% opacity)
+ *    so notes never obscure underlying UI text.
+ * 5. Constraint of at most two annotations on screen at once, 2-4s duration.
  */
 (function () {
   const fontB64 = "__FONT_BASE64__";
@@ -131,25 +137,28 @@ JS_TEMPLATE = r"""/**
         opacity: 0 !important;
       }
 
+      /* Soft light background halo (white at 88% opacity, 6px padding) */
       .ink-note-bubble {
         position: absolute;
         font-family: 'Patrick Hand', cursive, sans-serif;
-        font-size: 27px;
-        line-height: 1.2;
+        font-size: 25px;
+        line-height: 1.15;
         font-weight: 600;
         color: #e11d48;
         white-space: nowrap;
         pointer-events: none;
+        background: rgba(255, 255, 255, 0.88);
+        padding: 3px 8px;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        border: 1px solid rgba(225, 29, 72, 0.25);
         text-shadow:
-          -2px -2px 0 #ffffff,
-           2px -2px 0 #ffffff,
-          -2px  2px 0 #ffffff,
-           2px  2px 0 #ffffff,
-           0 0 6px #ffffff,
-           0 2px 6px rgba(0, 0, 0, 0.35);
+          -1px -1px 0 #ffffff,
+           1px -1px 0 #ffffff,
+          -1px  1px 0 #ffffff,
+           1px  1px 0 #ffffff;
         animation: ink-note-pop-anim 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         will-change: transform, opacity;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
       }
 
       @keyframes ink-note-pop-anim {
@@ -295,6 +304,68 @@ JS_TEMPLATE = r"""/**
     }
 
     /**
+     * Checks if a candidate rectangle overlaps other UI text elements
+     */
+    function calculateOverlapScore(box) {
+      let score = 0;
+      const elements = document.querySelectorAll('button, strong, span, p, h1, h2, h3, select, input, .inbox-item, .card');
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        if (!el.textContent || el.textContent.trim().length === 0) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+
+        // Check intersection between box and r
+        const overlapX = Math.max(0, Math.min(box.x + box.w, r.right) - Math.max(box.x, r.left));
+        const overlapY = Math.max(0, Math.min(box.y + box.h, r.bottom) - Math.max(box.y, r.top));
+        if (overlapX > 0 && overlapY > 0) {
+          score += (overlapX * overlapY);
+        }
+      }
+      return score;
+    }
+
+    /**
+     * Finds the best placement side that has maximum empty space
+     */
+    function findBestPlacement(rect, estWidth, estHeight, preferredSide) {
+      const sides = preferredSide ? [preferredSide, 'top', 'bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right'];
+      // Unique sides in order
+      const uniqueSides = Array.from(new Set(sides));
+      let bestSide = uniqueSides[0];
+      let minScore = Infinity;
+
+      for (const side of uniqueSides) {
+        let x, y;
+        if (side === 'top') {
+          x = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
+          y = rect.top - estHeight - 16;
+        } else if (side === 'bottom') {
+          x = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
+          y = rect.bottom + 16;
+        } else if (side === 'left') {
+          x = clamp(rect.left - estWidth - 30, 20, window.innerWidth - estWidth - 24);
+          y = rect.top + rect.height / 2 - estHeight / 2;
+        } else {
+          x = clamp(rect.right + 30, 20, window.innerWidth - estWidth - 24);
+          y = rect.top + rect.height / 2 - estHeight / 2;
+        }
+
+        // Check screen bounds penalty
+        let boundsPenalty = 0;
+        if (y < 10 || y + estHeight > window.innerHeight - 10) boundsPenalty += 100000;
+        if (x < 10 || x + estWidth > window.innerWidth - 10) boundsPenalty += 100000;
+
+        const score = calculateOverlapScore({ x, y, w: estWidth, h: estHeight }) + boundsPenalty;
+        if (score < minScore) {
+          minScore = score;
+          bestSide = side;
+        }
+      }
+      return bestSide;
+    }
+
+    /**
      * Generates a wobbly hand-drawn circle/oval path around (cx, cy)
      */
     function createWobblyCirclePath(cx, cy, rx, ry) {
@@ -344,13 +415,13 @@ JS_TEMPLATE = r"""/**
       const my = (sy + ty) / 2;
       const perpX = -dy / dist;
       const perpY = dx / dist;
-      const curvature = Math.min(30, Math.max(14, dist * 0.16));
+      const curvature = Math.min(28, Math.max(12, dist * 0.15));
 
       const cpx = mx + perpX * curvature;
       const cpy = my + perpY * curvature;
 
       const tipAngle = Math.atan2(ty - cpy, tx - cpx);
-      const headLen = 17;
+      const headLen = 16;
       const barb1X = tx - headLen * Math.cos(tipAngle - 0.42);
       const barb1Y = ty - headLen * Math.sin(tipAngle - 0.42);
       const barb2X = tx - headLen * Math.cos(tipAngle + 0.42);
@@ -410,12 +481,14 @@ JS_TEMPLATE = r"""/**
           noteEl.textContent = text;
           notesLayer.appendChild(noteEl);
 
-          const estWidth = Math.max(120, text.length * 15);
-          const side = options.side || (rect.top > 65 ? 'top' : 'bottom');
+          const estWidth = Math.max(110, text.length * 14 + 16);
+          const estHeight = 36;
+          const side = findBestPlacement(rect, estWidth, estHeight, options.side || (rect.top > 65 ? 'top' : 'bottom'));
+
           if (side === 'top') {
             const left = clamp(cx - estWidth / 2, 20, window.innerWidth - estWidth - 24);
             noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${Math.max(10, rect.top - ry - 38)}px`;
+            noteEl.style.top = `${Math.max(10, rect.top - ry - estHeight - 6)}px`;
           } else if (side === 'bottom') {
             const left = clamp(cx - estWidth / 2, 20, window.innerWidth - estWidth - 24);
             noteEl.style.left = `${left}px`;
@@ -423,11 +496,11 @@ JS_TEMPLATE = r"""/**
           } else if (side === 'right') {
             const left = clamp(rect.right + rx + 16, 20, window.innerWidth - estWidth - 24);
             noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${cy - 16}px`;
+            noteEl.style.top = `${cy - estHeight / 2}px`;
           } else {
             const left = clamp(rect.left - rx - estWidth - 16, 20, window.innerWidth - estWidth - 24);
             noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${cy - 16}px`;
+            noteEl.style.top = `${cy - estHeight / 2}px`;
           }
         }
 
@@ -466,18 +539,9 @@ JS_TEMPLATE = r"""/**
         const strokeWidth = options.strokeWidth || 3.0;
         const duration = options.duration || 3000;
 
-        let side = options.fromSide || options.side;
-        if (!side || side === 'auto') {
-          if (rect.left > 320) {
-            side = 'left';
-          } else if (rect.right + 320 < window.innerWidth) {
-            side = 'right';
-          } else if (rect.top > 65) {
-            side = 'top';
-          } else {
-            side = 'bottom';
-          }
-        }
+        const estWidth = Math.max(110, text.length * 14 + 16);
+        const estHeight = 36;
+        const side = findBestPlacement(rect, estWidth, estHeight, options.fromSide || options.side || 'auto');
 
         const noteEl = document.createElement('div');
         noteEl.className = 'ink-note-bubble';
@@ -485,40 +549,39 @@ JS_TEMPLATE = r"""/**
         noteEl.textContent = text;
         notesLayer.appendChild(noteEl);
 
-        const estWidth = Math.max(120, text.length * 15);
         let sx, sy, tx, ty;
 
         if (side === 'right') {
           const noteX = clamp(rect.right + 65, 20, window.innerWidth - estWidth - 24);
-          const noteY = rect.top + rect.height / 2 - 16;
+          const noteY = rect.top + rect.height / 2 - estHeight / 2;
           noteEl.style.left = `${noteX}px`;
           noteEl.style.top = `${noteY}px`;
           sx = noteX - 8;
-          sy = noteY + 16;
+          sy = noteY + estHeight / 2;
           tx = rect.right + 8;
           ty = rect.top + rect.height / 2;
         } else if (side === 'left') {
           const noteX = clamp(rect.left - estWidth - 45, 20, window.innerWidth - estWidth - 24);
-          const noteY = rect.top + rect.height / 2 - 16;
+          const noteY = rect.top + rect.height / 2 - estHeight / 2;
           noteEl.style.left = `${noteX}px`;
           noteEl.style.top = `${noteY}px`;
           sx = noteX + estWidth + 8;
-          sy = noteY + 16;
+          sy = noteY + estHeight / 2;
           tx = rect.left - 8;
           ty = rect.top + rect.height / 2;
         } else if (side === 'top') {
           const noteX = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-          const noteY = Math.max(10, rect.top - 54);
+          const noteY = Math.max(10, rect.top - estHeight - 24);
           noteEl.style.left = `${noteX}px`;
           noteEl.style.top = `${noteY}px`;
           sx = noteX + estWidth / 2;
-          sy = noteY + 34;
+          sy = noteY + estHeight + 4;
           tx = rect.left + rect.width / 2;
           ty = rect.top - 8;
         } else {
           // bottom
           const noteX = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-          const noteY = rect.bottom + 36;
+          const noteY = rect.bottom + 28;
           noteEl.style.left = `${noteX}px`;
           noteEl.style.top = `${noteY}px`;
           sx = noteX + estWidth / 2;

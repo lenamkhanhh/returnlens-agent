@@ -1,6 +1,8 @@
 """Comprehensive test script for Wave 14 Role E (INK chat):
-Tests both annotations (circle + arrow from bottom) on the real live UI simultaneously,
-verifying cursor, click ripple, Patrick Hand font rendering, and layout.
+Tests both annotations (circle + arrow) on the real live UI simultaneously,
+verifying cursor, click ripple, Patrick Hand font rendering with soft white halo,
+and intelligent empty-space placement that never obscures UI text.
+Saves test images/video under TEMP directory so git tracking remains clean.
 """
 
 from __future__ import annotations
@@ -27,12 +29,13 @@ from docs.video.recorder.common import (
     smooth_move,
 )
 
+TEMP_TEST_DIR = Path(os.environ.get("TEMP", "C:/Users/HP/AppData/Local/Temp")) / "returnlens_ink_test"
+
 def run_test() -> tuple[Path, Path]:
-    print("\n=== RUNNING FULL INK & CURSOR VERIFICATION ===")
+    print("\n=== RUNNING FULL INK & CURSOR VERIFICATION (TEMP DIR) ===")
     reset_demo_database()
 
-    test_dir = INK_DIR / "test_output"
-    test_dir.mkdir(parents=True, exist_ok=True)
+    TEMP_TEST_DIR.mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -41,7 +44,7 @@ def run_test() -> tuple[Path, Path]:
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
-            record_video_dir=str(test_dir),
+            record_video_dir=str(TEMP_TEST_DIR),
             record_video_size={"width": 1920, "height": 1080},
         )
         page = context.new_page()
@@ -62,17 +65,17 @@ def run_test() -> tuple[Path, Path]:
         ink_circle(page, locked_badge, text="locked until 5/5", side="top", duration=5.0)
         time.sleep(0.8)
 
-        # 3. Arrow pointing to Kill Switch from bottom
-        print("[TEST] Arrow pointing to Kill Switch from bottom...")
+        # 3. Arrow pointing to Kill Switch with empty-space auto-positioning
+        print("[TEST] Arrow pointing to Kill Switch with empty space placement...")
         kill_switch_btn = page.locator("button:has-text('Kill Switch')").first
-        ink_arrow(page, kill_switch_btn, text="one click takes it back", from_side="bottom", duration=5.0)
+        ink_arrow(page, kill_switch_btn, text="one click takes it back", from_side="auto", duration=5.0)
         smooth_move(page, kill_switch_btn, steps=25)
         time.sleep(1.0)
 
-        # Capture combined screenshot of both annotations + cursor
-        combined_screenshot = INK_DIR / "test_both_annotations.png"
+        # Capture combined screenshot of both annotations + cursor into temp dir
+        combined_screenshot = TEMP_TEST_DIR / "test_both_annotations.png"
         page.screenshot(path=str(combined_screenshot))
-        print(f"[TEST] Combined screenshot saved: {combined_screenshot}")
+        print(f"[TEST] Combined screenshot saved in temp: {combined_screenshot}")
 
         # 4. Test click ripple on inbox item
         print("[TEST] Testing smooth click on inbox item...")
@@ -85,8 +88,8 @@ def run_test() -> tuple[Path, Path]:
         browser.close()
 
         raw_video_path = Path(video_obj.path())
-        test_webm = test_dir / "test_ink_recording.webm"
-        test_mp4 = test_dir / "test_ink_recording.mp4"
+        test_webm = TEMP_TEST_DIR / "test_ink_recording.webm"
+        test_mp4 = TEMP_TEST_DIR / "test_ink_recording.mp4"
 
         if test_webm.exists():
             test_webm.unlink()
@@ -98,7 +101,7 @@ def run_test() -> tuple[Path, Path]:
         print(f"[TEST DONE] Recorded test video: {test_mp4} ({duration:.1f}s)")
 
         # Extract frame at 2.5s showing both annotations in video
-        extracted_frame = INK_DIR / "test_video_frame.png"
+        extracted_frame = TEMP_TEST_DIR / "test_video_frame.png"
         if FFMPEG_PATH.exists():
             cmd = [
                 str(FFMPEG_PATH),
@@ -109,7 +112,7 @@ def run_test() -> tuple[Path, Path]:
                 str(extracted_frame),
             ]
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            print(f"[TEST] Extracted video frame: {extracted_frame}")
+            print(f"[TEST] Extracted video frame in temp: {extracted_frame}")
 
         return test_mp4, combined_screenshot
 
