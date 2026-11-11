@@ -11,7 +11,21 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
   caseDetail,
   onSeekToTimestamp,
 }) => {
-  const { facts, observations, unknowns } = caseDetail;
+  const { facts, observations = [], unknowns = [] } = caseDetail;
+
+  const order = facts?.order as any;
+  const shipment = facts?.shipment as any;
+
+  const orderId = order?.order_id || 'N/A';
+  const itemName = order?.item_name || order?.line_item?.display_name || order?.line_item?.sku || order?.sku || 'N/A';
+  const catalogColor = order?.catalog_color || order?.line_item?.catalog_color || 'unknown';
+  const paidMinor = order?.paid_minor ?? 0;
+  const currency = order?.currency || 'INR';
+
+  const shipmentStatus = shipment?.status ? shipment.status.replace(/_/g, ' ') : 'N/A';
+  const deliveredDate = shipment?.delivered_date || shipment?.delivered_at || null;
+  const carrierLabel = shipment?.carrier_label || 'Delhivery';
+  const trackingNumber = shipment?.tracking_number || shipment?.shipment_id || 'N/A';
 
   return (
     <div>
@@ -26,39 +40,39 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
         <div className="triad-content">
           <div className="fact-row">
             <span className="fact-label">Order ID:</span>
-            <span className="fact-value">{facts.order.order_id}</span>
+            <span className="fact-value">{orderId}</span>
           </div>
           <div className="fact-row">
             <span className="fact-label">Item / SKU:</span>
-            <span className="fact-value">{facts.order.item_name || facts.order.sku}</span>
+            <span className="fact-value">{itemName}</span>
           </div>
           <div className="fact-row">
             <span className="fact-label">Catalog Color:</span>
             <span className="fact-value" style={{ textTransform: 'capitalize' }}>
-              {facts.order.catalog_color}
+              {catalogColor}
             </span>
           </div>
           <div className="fact-row">
             <span className="fact-label">Paid Amount:</span>
             <span className="fact-value" style={{ color: 'var(--pine-green)' }}>
-              {formatPaise(facts.order.paid_minor, facts.order.currency)}
+              {formatPaise(paidMinor, currency)}
             </span>
           </div>
           <div className="fact-row">
             <span className="fact-label">Shipment Status:</span>
-            <span className="fact-value">{facts.shipment.status}</span>
+            <span className="fact-value" style={{ textTransform: 'capitalize' }}>{shipmentStatus}</span>
           </div>
-          {facts.shipment.delivered_date && (
+          {deliveredDate && (
             <div className="fact-row">
               <span className="fact-label">Delivered Date:</span>
-              <span className="fact-value">{facts.shipment.delivered_date}</span>
+              <span className="fact-value">{deliveredDate}</span>
             </div>
           )}
-          {facts.shipment.carrier_label && (
+          {carrierLabel && (
             <div className="fact-row">
               <span className="fact-label">Carrier & Tracking:</span>
               <span className="fact-value">
-                {facts.shipment.carrier_label} ({facts.shipment.tracking_number || 'N/A'})
+                {carrierLabel} ({trackingNumber})
               </span>
             </div>
           )}
@@ -83,8 +97,8 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
               const seconds = obs.t ? parseTimestampToSeconds(obs.t) : null;
               const isMismatch =
                 obs.color_class &&
-                facts.order.catalog_color &&
-                obs.color_class !== facts.order.catalog_color &&
+                catalogColor &&
+                obs.color_class !== catalogColor &&
                 obs.color_class !== 'unknown';
 
               return (
@@ -140,7 +154,7 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
 
                   {isMismatch && (
                     <div style={{ fontSize: '11px', color: 'var(--terracotta)', fontWeight: 600, marginTop: '4px' }}>
-                      ⚠️ Discrepancy: Ordered "{facts.order.catalog_color}", but evidence shows "{obs.color_class}".
+                      ⚠️ Discrepancy: Ordered "{catalogColor}", but evidence shows "{obs.color_class}".
                     </div>
                   )}
 
