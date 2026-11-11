@@ -67,12 +67,14 @@ def record_scene_01() -> Path:
         autonomy_bar.hover()
         page.wait_for_timeout(1000)
 
-        # Attempt to select L3 on DAMAGE (triggers live reliability gate check)
-        print("[01] Attempting to set DAMAGE to L3...")
-        selects = page.locator(".app-header ~ main select").all()
-        if len(selects) >= 2:
-            selects[1].select_option("L3")
-            page.wait_for_timeout(1800)  # Let viewer see live reliability gate alert
+        # Highlight live reliability gate lock on Autonomy Bar (real lock state)
+        print("[01] Highlighting live reliability lock on Autonomy Bar...")
+        locked_badge = page.locator("div:has-text('🔒 L2/L3 locked')")
+        if locked_badge.count() > 0:
+            locked_badge.first.hover()
+            page.wait_for_timeout(1800)  # Let viewer see live reliability gate lock
+        else:
+            page.wait_for_timeout(1800)
 
         # 3. Switch to Operator Controls tab
         print("[01] Switching to Operator Controls...")
