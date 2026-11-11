@@ -1,0 +1,107 @@
+{
+  "version": "1.0",
+  "notice": "DEV FIXTURES ONLY. All items in this manifest are synthetically generated in code. Never to be presented as real customer evidence per Brief B and 00_COMMON_RULES.md \u00a75.",
+  "fixtures": [
+    {
+      "filename": "synthetic_black_headphones.webm",
+      "synthetic": true,
+      "media_type": "video",
+      "mime_type": "video/webm",
+      "size_bytes": 225,
+      "content_sha256": "8f7ff241c2e0938c9d22746826f5134493a3cc8046b2287d043e8db2fa6da4d1",
+      "duration_ms": 10000,
+      "ground_truth": {
+        "attribute": "color",
+        "observed_color": "black",
+        "damage": "none",
+        "label_readable": false,
+        "barcode_readable": false
+      },
+      "limitations": [
+        "Synthetic solid-color frame generated in code",
+        "Barcode and serial text intentionally not visible",
+        "Development/harness fallback only"
+      ],
+      "source_timestamps": {
+        "00:01": "Black headphones visible in frame",
+        "00:07": "Side profile of black casing visible"
+      }
+    },
+    {
+      "filename": "synthetic_white_headphones.webm",
+      "synthetic": true,
+      "media_type": "video",
+      "mime_type": "video/webm",
+      "size_bytes": 225,
+      "content_sha256": "8f7ff241c2e0938c9d22746826f5134493a3cc8046b2287d043e8db2fa6da4d1",
+      "duration_ms": 10000,
+      "ground_truth": {
+        "attribute": "color",
+        "observed_color": "white",
+        "damage": "none",
+        "label_readable": false,
+        "barcode_readable": false
+      },
+      "limitations": [
+        "Synthetic solid-color frame generated in code",
+        "Development fixture only"
+      ],
+      "source_timestamps": {
+        "00:02": "White headphones visible in frame"
+      }
+    },
+    {
+      "filename": "synthetic_damaged_item.webm",
+      "synthetic": true,
+      "media_type": "video",
+      "mime_type": "video/webm",
+      "size_bytes": 225,
+      "content_sha256": "8f7ff241c2e0938c9d22746826f5134493a3cc8046b2287d043e8db2fa6da4d1",
+      "duration_ms": 10000,
+      "ground_truth": {
+        "attribute": "damage",
+        "observed_damage": "visible crack",
+        "color": "grey"
+      },
+      "limitations": [
+        "Synthetic test fixture"
+      ],
+      "source_timestamps": {
+        "00:04": "Damage crack visible on surface"
+      }
+    },
+    {
+      "filename": "synthetic_voice_hindi.wav",
+      "synthetic": true,
+      "media_type": "audio",
+      "mime_type": "audio/wav",
+      "size_bytes": 128044,
+      "content_sha256": "4688e20ed7738c94fec179e5b33c574ba9965ecd46ca1eaa4cc90c23cc750447",
+      "duration_ms": 4000,
+      "ground_truth": {
+        "language": "hi",
+        "transcript_intent": "RETURN",
+        "mentioned_order_id": "ORD-7729"
+      },
+      "limitations": [
+        "Synthetic tone fixture for audio pipeline integrity verification"
+      ]
+    },
+    {
+      "filename": "synthetic_label_closeup.png",
+      "synthetic": true,
+      "media_type": "image",
+      "mime_type": "image/png",
+      "size_bytes": 586,
+      "content_sha256": "f4a20d79829b43736b7365fb28e935b8a5c3ccb58cd887a1f7195ac8f7dda367",
+      "ground_truth": {
+        "attribute": "label_text",
+        "order_id": "ORD-7729",
+        "sku": "HEAD-WHT-02"
+      },
+      "limitations": [
+        "Synthetic close-up label image fixture"
+      ]
+    }
+  ]
+}
