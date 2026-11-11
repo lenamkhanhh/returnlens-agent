@@ -8,8 +8,12 @@ and renders a Markdown table for documentation per 18 §1–§2 and 17 §2–§3
 from __future__ import annotations
 
 import os
-# Per 17 §1 & 18 §1: HARNESS_MODE=1 disables dev cache and auto-dotenv in harness runs
+# Per 17 §1 & 18 §1: HARNESS_MODE=1 disables dev cache and auto-dotenv in app factory
 os.environ["HARNESS_MODE"] = "1"
+
+# Per Wave 4: load .env for runner execution
+from dotenv import load_dotenv
+load_dotenv()
 
 import argparse
 import asyncio
