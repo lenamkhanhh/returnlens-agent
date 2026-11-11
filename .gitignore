@@ -8,3 +8,6 @@ app/web/dist/
 *.db
 !app/demo/snapshot/*.db
 docs/video/scenes/temp_*/
+docs/video/scenes/webm/
+scenes/webm/
+*.webm
