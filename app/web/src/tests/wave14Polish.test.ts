@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeVisibleText, getStatusBadge } from '../utils/format';
+import { sanitizeVisibleText, getStatusBadge, formatObservationAttribute } from '../utils/format';
 
 describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
   describe('1. Removal of internal references from visible text', () => {
@@ -59,6 +59,51 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
       expect(getStatusBadge('DECLINED')).toEqual({ label: 'Declined', className: 'badge-blocked' });
       expect(getStatusBadge('FAIL')).toEqual({ label: 'Failed', className: 'badge-blocked' });
       expect(getStatusBadge('UNCLEAR')).toEqual({ label: 'Unclear', className: 'badge-blocked' });
+    });
+  });
+
+  describe('3. Observation attribute formatting (plain natural labels, no code identifiers)', () => {
+    it('formats label_text to Label text', () => {
+      expect(formatObservationAttribute('label_text')).toBe('Label text');
+    });
+
+    it('formats item_type to Item type', () => {
+      expect(formatObservationAttribute('item_type')).toBe('Item type');
+    });
+
+    it('formats color and colour to Colour', () => {
+      expect(formatObservationAttribute('color')).toBe('Colour');
+      expect(formatObservationAttribute('colour')).toBe('Colour');
+    });
+
+    it('formats damage to Damage', () => {
+      expect(formatObservationAttribute('damage')).toBe('Damage');
+    });
+
+    it('formats generic snake_case identifiers into sentence case', () => {
+      expect(formatObservationAttribute('outer_box_seal')).toBe('Outer box seal');
+    });
+  });
+
+  describe('4. Proposal return card amount and empty preview handling', () => {
+    it('determines whether to show monetary impact for return vs refund', () => {
+      const isReturn = (action: string) => action.toUpperCase().includes('RETURN');
+      const shouldShowAmount = (action: string, amount?: number | null) =>
+        amount !== undefined && amount !== null && (!isReturn(action) || amount > 0);
+
+      expect(shouldShowAmount('PROPOSE_RETURN', 0)).toBe(false);
+      expect(shouldShowAmount('PROPOSE_RETURN', null)).toBe(false);
+      expect(shouldShowAmount('PROPOSE_RETURN', 50000)).toBe(true);
+      expect(shouldShowAmount('PROPOSE_REFUND', 149900)).toBe(true);
+    });
+
+    it('hides empty or whitespace-only reply previews', () => {
+      const hasPreview = (preview?: string | null) => Boolean(preview && preview.trim().length > 0);
+
+      expect(hasPreview('')).toBe(false);
+      expect(hasPreview('   ')).toBe(false);
+      expect(hasPreview(null)).toBe(false);
+      expect(hasPreview('We have initiated your return label.')).toBe(true);
     });
   });
 });

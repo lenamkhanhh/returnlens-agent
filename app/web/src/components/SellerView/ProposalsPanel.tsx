@@ -104,14 +104,20 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
         proposals.map((prop) => {
           const isPending = prop.status === 'pending';
           const badgeInfo = getStatusBadge(prop.status);
+          const isReturn = prop.action_type.toUpperCase().includes('RETURN');
+          const showAmount =
+            prop.amount_minor !== undefined &&
+            prop.amount_minor !== null &&
+            (!isReturn || prop.amount_minor > 0);
+          const hasReplyPreview = Boolean(prop.reply_preview && prop.reply_preview.trim().length > 0);
 
           return (
             <div key={prop.proposal_id} className="proposal-box">
               <div className="proposal-action">
                 <span>{prop.action_type.replace(/_/g, ' ')}</span>
-                {prop.amount_minor !== undefined && (
+                {showAmount && (
                   <span style={{ color: 'var(--terracotta)', fontWeight: 700 }}>
-                    {formatPaise(prop.amount_minor)}
+                    {formatPaise(prop.amount_minor!)}
                   </span>
                 )}
               </div>
@@ -122,9 +128,11 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
                 </div>
               )}
 
-              <div className="proposal-preview">
-                "{prop.reply_preview}"
-              </div>
+              {hasReplyPreview && (
+                <div className="proposal-preview">
+                  "{prop.reply_preview!.trim()}"
+                </div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className={`badge ${badgeInfo.className}`}>

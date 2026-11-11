@@ -160,3 +160,19 @@ export function sanitizeVisibleText(text?: string | null): string {
     .trim();
 }
 
+/**
+ * Format observation attribute keys into human-friendly labels.
+ * E.g. 'label_text' -> 'Label text', 'item_type' -> 'Item type',
+ * 'color' / 'colour' -> 'Colour', 'damage' -> 'Damage'.
+ */
+export function formatObservationAttribute(attr?: string | null): string {
+  if (!attr) return '';
+  const normalized = attr.trim().toLowerCase();
+  if (normalized === 'label_text' || normalized === 'label text') return 'Label text';
+  if (normalized === 'item_type' || normalized === 'item type') return 'Item type';
+  if (normalized === 'color' || normalized === 'colour') return 'Colour';
+  if (normalized === 'damage') return 'Damage';
+  const spaced = attr.replace(/_/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+

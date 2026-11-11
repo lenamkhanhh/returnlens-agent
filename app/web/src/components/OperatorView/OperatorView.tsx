@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
 import { CourierEventRequest } from '../../types';
 
@@ -19,6 +19,21 @@ export const OperatorView: React.FC = () => {
   // 3. Reset Demo State
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+  // 4. Live System Provenance
+  const [modelId, setModelId] = useState<string>('');
+
+  useEffect(() => {
+    let mounted = true;
+    api.getAutonomyPolicy().then((policy) => {
+      if (mounted && policy.model_id) {
+        setModelId(policy.model_id);
+      }
+    }).catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleFireCourierEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +86,7 @@ export const OperatorView: React.FC = () => {
           Operator & Judge Control Console
         </h2>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Simulate courier webhook events, inject counterfactual tracking facts (S02), and reset demo data.
+          Simulate courier webhook events, inject counterfactual tracking updates, and reset demo data.
         </div>
       </div>
 
@@ -79,8 +94,8 @@ export const OperatorView: React.FC = () => {
         {/* Card 1: Courier Webhook Event Simulation */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>🚚 Fire courier event</h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>POST /api/operator/courier-events</span>
+            <h3>Fire a courier event</h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Dispatch delivery and NDR webhooks</span>
           </div>
 
           <form onSubmit={handleFireCourierEvent} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -141,7 +156,7 @@ export const OperatorView: React.FC = () => {
                 <option value="customer_not_available">customer_not_available</option>
                 <option value="door_locked">door_locked</option>
                 <option value="address_incomplete">address_incomplete</option>
-                <option value="warehouse_inward_scan">warehouse_inward_scan (RETURN_RECEIVED)</option>
+                <option value="warehouse_inward_scan">warehouse_inward_scan (Return received)</option>
               </select>
             </div>
 
@@ -160,8 +175,8 @@ export const OperatorView: React.FC = () => {
         {/* Card 2: Counterfactual Tracking Injection */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>🔄 Counterfactual tracking</h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Change order facts live</span>
+            <h3>Change tracking facts</h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Update shipment status and delivery dates live</span>
           </div>
 
           <form onSubmit={handleUpdateTracking} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -209,7 +224,7 @@ export const OperatorView: React.FC = () => {
                 placeholder="e.g. 2026-10-25 for >7 days late"
               />
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Set to 2026-10-25 to test return window violation (P_WINDOW FAIL).
+                Set to 2026-10-25 to test return window policy expiration.
               </span>
             </div>
 
@@ -231,8 +246,8 @@ export const OperatorView: React.FC = () => {
         {/* Card 3: Reset Demo */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>🧹 Reset Demo Database</h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>POST /api/operator/reset</span>
+            <h3>Reset demo</h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Restore seed state</span>
           </div>
 
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -259,8 +274,8 @@ export const OperatorView: React.FC = () => {
         {/* Card 4: System Provenance & Configuration */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>⚙️ System Provenance</h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Deterministic State</span>
+            <h3>System provenance</h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Deterministic state</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
@@ -274,7 +289,7 @@ export const OperatorView: React.FC = () => {
             </div>
             <div className="fact-row">
               <span className="fact-label">Primary Vision Model:</span>
-              <span className="fact-value">gemini-2.5-flash</span>
+              <span className="fact-value">{modelId || 'gemini-3.5-flash-lite'}</span>
             </div>
             <div className="fact-row">
               <span className="fact-label">Audio Transcriber:</span>

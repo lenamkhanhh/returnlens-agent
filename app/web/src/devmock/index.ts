@@ -25,6 +25,7 @@ class DevMockService {
   private autonomyPolicy: AutonomyPolicy = {
     store_id: 'store_dhun',
     version: '1.0',
+    model_id: 'gemini-3.5-flash-lite',
     levels: {
       WISMO: 'L1',
       DAMAGE: 'L0',

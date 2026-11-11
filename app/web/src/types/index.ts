@@ -143,6 +143,7 @@ export interface AutonomyInfo {
 export interface AutonomyPolicy {
   store_id: string;
   version: string;
+  model_id?: string;
   levels: Record<CaseType, AutonomyLevel>;
   per_order_cap_minor: number;
   per_customer_daily_cap_minor: number;

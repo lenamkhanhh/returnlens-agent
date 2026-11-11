@@ -1,6 +1,6 @@
 import React from 'react';
 import { CaseDetail, Observation } from '../../types';
-import { formatPaise, parseTimestampToSeconds } from '../../utils/format';
+import { formatPaise, parseTimestampToSeconds, formatObservationAttribute } from '../../utils/format';
 
 interface TriadFactsPanelProps {
   caseDetail: CaseDetail;
@@ -130,8 +130,8 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
                       ) : (
                         <span style={{ fontSize: '11px', color: 'var(--text-light)', marginRight: '6px' }}>[Photo]</span>
                       )}
-                      <strong style={{ fontSize: '12px', textTransform: 'capitalize' }}>
-                        {obs.attribute}:
+                      <strong style={{ fontSize: '12px' }}>
+                        {formatObservationAttribute(obs.attribute)}:
                       </strong>
                     </div>
 

@@ -54,7 +54,9 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
               </div>
             )}
 
-            {proposal.amount_minor !== undefined && (
+            {proposal.amount_minor !== undefined &&
+              proposal.amount_minor !== null &&
+              (!proposal.action_type.toUpperCase().includes('RETURN') || proposal.amount_minor > 0) && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Monetary Impact:</span>
                 <strong style={{ color: 'var(--terracotta)', fontSize: '14px' }}>
@@ -73,14 +75,16 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
-              Reply Preview to Customer:
+          {proposal.reply_preview && proposal.reply_preview.trim().length > 0 && (
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '4px' }}>
+                Reply Preview to Customer:
+              </div>
+              <div style={{ padding: '8px 12px', background: '#fbfbfa', borderRadius: '4px', borderLeft: '3px solid var(--pine-green)', fontStyle: 'italic', fontSize: '12.5px' }}>
+                "{proposal.reply_preview.trim()}"
+              </div>
             </div>
-            <div style={{ padding: '8px 12px', background: '#fbfbfa', borderRadius: '4px', borderLeft: '3px solid var(--pine-green)', fontStyle: 'italic', fontSize: '12.5px' }}>
-              "{proposal.reply_preview}"
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="modal-footer">
