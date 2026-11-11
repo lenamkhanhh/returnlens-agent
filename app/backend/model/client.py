@@ -246,6 +246,15 @@ class GeminiModelAdapter:
                 last_exc = exc
                 err_str = str(exc).lower()
 
+                # Fall back to fallback_model if primary model quota is exhausted
+                if (
+                    ("quota exceeded" in err_str or "daily limit" in err_str or "limit: 20" in err_str or "requests per day" in err_str)
+                    and target_model != self.fallback_model
+                    and self.fallback_model
+                ):
+                    target_model = self.fallback_model
+                    continue
+
                 # Fall back gracefully if model does not support ThinkingLevel.MINIMAL (e.g. gemini-3.8-flash)
                 if "thinking level minimal is not supported" in err_str:
                     if config and hasattr(config, "thinking_config"):

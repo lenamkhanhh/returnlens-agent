@@ -69,7 +69,12 @@ class VisionObserverRunner:
         else:
             contents.append({"mime_type": mime_type, "data_bytes_len": len(media_bytes)})
 
-        contents.append(self.prompt_text)
+        prompt_with_context = (
+            f"{self.prompt_text}\n\n"
+            f"Target evidence_id: '{evidence.evidence_id}'. "
+            f"Set evidence_id to '{evidence.evidence_id}' for all observations."
+        )
+        contents.append(prompt_with_context)
 
         # Call model adapter
         response, model_run = self.adapter.generate(

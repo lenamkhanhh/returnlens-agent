@@ -248,6 +248,55 @@ class TestEvidenceSlice(unittest.TestCase):
         self.assertIn("Prompt Injection & Adversarial Text", runner.prompt_text)
         self.assertIn("ignored_instructions to true", runner.prompt_text)
 
+    def test_timestamp_range_and_flexible_formats(self):
+        """Test timestamp range like '00:00-00:09' and raw second formats are parsed correctly."""
+        self.assertEqual(parse_timestamp_ms("00:00-00:09"), 0)
+        self.assertEqual(parse_timestamp_ms("00:05 - 00:10"), 5000)
+        self.assertEqual(parse_timestamp_ms("01:20"), 80000)
+        self.assertEqual(parse_timestamp_ms("5s"), 5000)
+        self.assertEqual(parse_timestamp_ms("00:07.500"), 7000)
+
+    def test_generic_evidence_id_bound_to_target(self):
+        """Test generic evidence_id like 'video_1' or 'image_1' is bound to target evidence_id."""
+        target_evi_id = "EVI-TARGET-1234"
+        obs_generic = ObservationItem(
+            id="OBS-GEN-1",
+            evidence_id="video_1",
+            t="00:02",
+            attribute=ObservationAttribute.COLOR,
+            value="black",
+            color_class=ColorClass.BLACK,
+            visibility=Visibility.VISIBLE,
+        )
+        obs_empty = ObservationItem(
+            id="OBS-GEN-2",
+            evidence_id="",
+            t="00:04",
+            attribute=ObservationAttribute.DAMAGE,
+            value="crack",
+            visibility=Visibility.VISIBLE,
+        )
+        obs_explicit_wrong = ObservationItem(
+            id="OBS-GEN-3",
+            evidence_id="EVI-ANOTHER-9999",
+            t="00:01",
+            attribute=ObservationAttribute.COLOR,
+            value="white",
+            visibility=Visibility.VISIBLE,
+        )
+
+        valid, rejections = validate_observations_grounding(
+            [obs_generic, obs_empty, obs_explicit_wrong],
+            evidence_id=target_evi_id,
+            duration_ms=10000,
+        )
+
+        self.assertEqual(len(valid), 2)
+        self.assertEqual(valid[0].evidence_id, target_evi_id)
+        self.assertEqual(valid[1].evidence_id, target_evi_id)
+        self.assertEqual(len(rejections), 1)
+        self.assertIn("EVI-ANOTHER-9999", rejections[0])
+
 
 if __name__ == "__main__":
     unittest.main()

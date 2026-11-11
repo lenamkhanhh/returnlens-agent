@@ -47,17 +47,30 @@ class MediaValidationError(Exception):
 
 
 def parse_timestamp_ms(t_str: Optional[str]) -> Optional[int]:
-    """Parse 'MM:SS' or 'HH:MM:SS' timestamp into integer milliseconds."""
+    """Parse 'MM:SS' or 'HH:MM:SS' or range 'MM:SS-MM:SS' or plain seconds into integer milliseconds."""
     if not t_str:
         return None
-    match = TIMESTAMP_REGEX.match(t_str.strip())
-    if not match:
-        return None
-    h_str, m_str, s_str = match.groups()
-    hours = int(h_str) if h_str else 0
-    minutes = int(m_str)
-    seconds = int(s_str)
-    return ((hours * 3600) + (minutes * 60) + seconds) * 1000
+    cleaned = str(t_str).strip()
+    # Handle ranges like "00:00-00:09" or "00:00 - 00:09" by taking the start timestamp
+    if "-" in cleaned:
+        cleaned = cleaned.split("-")[0].strip()
+    # Strip trailing fractional seconds if present (e.g. "00:05.500" -> "00:05")
+    cleaned = re.sub(r"\.\d+", "", cleaned)
+
+    match = TIMESTAMP_REGEX.match(cleaned)
+    if match:
+        h_str, m_str, s_str = match.groups()
+        hours = int(h_str) if h_str else 0
+        minutes = int(m_str)
+        seconds = int(s_str)
+        return ((hours * 3600) + (minutes * 60) + seconds) * 1000
+
+    # Fallback: raw seconds format (e.g. "5s", "5", "05s")
+    sec_match = re.match(r"^(\d+)\s*s?$", cleaned)
+    if sec_match:
+        return int(sec_match.group(1)) * 1000
+
+    return None
 
 
 def validate_timestamp(t_str: Optional[str], duration_ms: Optional[int]) -> bool:
@@ -202,9 +215,23 @@ def validate_observations_grounding(
     valid: List[ObservationItem] = []
     rejections: List[str] = []
 
+    generic_prefixes = ("video", "image", "media", "evidence", "clip", "photo", "file")
+
     for obs in observations:
         # 1. Evidence ID binding
-        if obs.evidence_id != evidence_id:
+        # If the model returns a generic evidence_id like "video_1", "image_1", "evidence_1", "",
+        # or matches evidence_id, bind it to evidence_id.
+        obs_eid = (obs.evidence_id or "").strip()
+        is_generic = (
+            not obs_eid
+            or obs_eid.lower().startswith(generic_prefixes)
+            or obs_eid.isdigit()
+        )
+
+        if obs_eid == evidence_id or is_generic:
+            # Bind to true evidence_id
+            obs.evidence_id = evidence_id
+        else:
             rejections.append(
                 f"Observation {obs.id} references evidence '{obs.evidence_id}', expected '{evidence_id}'."
             )
