@@ -159,6 +159,22 @@ describe('Wave 14 D: UI/UX design polish and plain presentation', () => {
       });
     });
 
+    it('explains locked when all scenarios 5/5 but locked due to synthetic test or reason', () => {
+      const lock = {
+        eligible_for_l2_l3: false,
+        status_message: 'Reliability locked for DAMAGE: S10 is synthetic',
+        metrics: {
+          S03: { k: 5, passes: 5 },
+          S10: { k: 5, passes: 5, synthetic: true },
+        },
+      };
+      expect(getCaseTypePassDisplay(lock)).toEqual({
+        text: 'locked · synthetic test does not count',
+        isLocked: true,
+        passCount: '5/5',
+      });
+    });
+
     it('formats ISO timestamps to short messaging time string', () => {
       const timeStr = formatMessageTime('2026-11-12T00:03:00Z');
       expect(timeStr.length).toBeGreaterThan(0);

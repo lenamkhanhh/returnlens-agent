@@ -229,6 +229,26 @@ export function getCaseTypePassDisplay(lock?: {
 
   const passCount = `${minPasses}/${maxK}`;
   if (isLocked) {
+    // When a case type is locked although its scenarios show 5/5
+    // (e.g. DAMAGE: S10 is synthetic and production ignores synthetic runs),
+    // the Autonomy bar must say why in plain words, e.g. 'locked · synthetic test does not count',
+    // using lock_status[..].status_message; never show '5/5' next to a lock without the reason.
+    if (minPasses >= maxK) {
+      let reason = 'synthetic test does not count';
+      const msg = (lock.status_message || '').toLowerCase();
+      if (msg.includes('synthetic')) {
+        reason = 'synthetic test does not count';
+      } else if (msg.includes('version')) {
+        reason = 'code changed';
+      } else if (msg.includes('model')) {
+        reason = 'model mismatch';
+      } else if (msg.includes('failed') || msg.includes('blocked')) {
+        reason = 'failed';
+      } else if (lock.status_message) {
+        reason = lock.status_message.replace(/^reliability locked for [^:]+:\s*/i, '').slice(0, 32);
+      }
+      return { text: `locked · ${reason}`, isLocked: true, passCount };
+    }
     return { text: `${passCount} locked`, isLocked: true, passCount };
   }
   return { text: passCount, isLocked: false, passCount };

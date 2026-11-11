@@ -3,9 +3,14 @@ import React, { useRef, useState } from 'react';
 interface MediaUploaderProps {
   onFileSelected: (file: File) => void;
   disabled?: boolean;
+  showAttachedLabel?: boolean;
 }
 
-export const MediaUploader: React.FC<MediaUploaderProps> = ({ onFileSelected, disabled }) => {
+export const MediaUploader: React.FC<MediaUploaderProps> = ({
+  onFileSelected,
+  disabled,
+  showAttachedLabel = false,
+}) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -24,6 +29,10 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({ onFileSelected, di
 
     setSelectedFileName(file.name);
     onFileSelected(file);
+    // Reset input value so same file can be re-selected if removed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleTrigger = () => {
@@ -33,7 +42,7 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({ onFileSelected, di
   };
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
       <input
         type="file"
         ref={fileInputRef}
@@ -51,18 +60,19 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({ onFileSelected, di
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          padding: '6px 8px',
+          padding: '6px 6px',
           fontSize: '18px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: 'var(--text-muted)',
+          flexShrink: 0,
         }}
       >
         <span>📎</span>
       </button>
 
-      {selectedFileName && (
+      {showAttachedLabel && selectedFileName && (
         <span style={{ fontSize: '11px', color: 'var(--pine-green)', fontWeight: 600 }}>
           Attached: {selectedFileName}
         </span>
