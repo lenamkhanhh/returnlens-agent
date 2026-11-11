@@ -19,8 +19,6 @@ services:
         value: gemini-3.6-flash
       - key: DATA_DIR
         value: ./data
-      - key: SELLER_DEMO_PASSWORD
-        sync: false
       - key: OPERATOR_PASSWORD
         sync: false
       - key: DEMO_SNAPSHOT

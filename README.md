@@ -7,7 +7,7 @@
 [![Pitch Deck](https://img.shields.io/badge/Deck-6--Slide%20Presentation-0077b6?style=for-the-badge&logo=googledrive)](https://docs.google.com/presentation/d/1jrQipaXDKy_4FcaD0eaU8Ez2VyQTQyjuT_GR231WbAg/edit)
 
 * **Hackathon Track:** AgentX Hackathon 2026 — Track PS-04 (Customer Support & E-Commerce Operations)
-* **Merchant Console Credentials:** `SELLER_DEMO_PASSWORD=demo` (or click *Seller Console* in navigation)
+* **Seller Console:** open on the live demo, no password (click *Seller Console* in the top bar). All money actions are mock; a per-IP rate limit protects the model quota.
 * **Cloud Instance Cold-Start:** *Note: Cloud deployments on free tier may take ~45–60 seconds to wake up from cold standby on first access.*
 
 ---
