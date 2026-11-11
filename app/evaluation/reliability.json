@@ -1,13 +1,13 @@
 {
   "metadata": {
-    "generated_at": "2026-11-11T05:10:11.351805+00:00",
+    "generated_at": "2026-11-11T05:10:51.919629+00:00",
     "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
     "model_id": "gemini-3.8-flash",
     "k": 1
   },
   "results": [
     {
-      "run_id": "RUN-S01-1794373811",
+      "run_id": "RUN-S01-1794373851",
       "scenario_id": "S01",
       "case_type": "WISMO",
       "k": 1,
@@ -16,11 +16,11 @@
       "pass_pow_k": 1.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:08.845937+00:00",
+      "ran_at": "2026-11-11T05:10:49.562814+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S02-1794373811",
+      "run_id": "RUN-S02-1794373851",
       "scenario_id": "S02",
       "case_type": "WISMO",
       "k": 1,
@@ -29,11 +29,11 @@
       "pass_pow_k": 1.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:09.165243+00:00",
+      "ran_at": "2026-11-11T05:10:49.906377+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S03-1794373811",
+      "run_id": "RUN-S03-1794373851",
       "scenario_id": "S03",
       "case_type": "DAMAGE",
       "k": 1,
@@ -42,11 +42,11 @@
       "pass_pow_k": 0.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:09.643973+00:00",
+      "ran_at": "2026-11-11T05:10:50.399409+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S04-1794373811",
+      "run_id": "RUN-S04-1794373851",
       "scenario_id": "S04",
       "case_type": "MISMATCH",
       "k": 1,
@@ -55,11 +55,11 @@
       "pass_pow_k": 0.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:09.643973+00:00",
+      "ran_at": "2026-11-11T05:10:50.399409+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S05-1794373811",
+      "run_id": "RUN-S05-1794373851",
       "scenario_id": "S05",
       "case_type": "UNCLEAR",
       "k": 1,
@@ -68,11 +68,11 @@
       "pass_pow_k": 0.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:09.643973+00:00",
+      "ran_at": "2026-11-11T05:10:50.399409+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S06-1794373811",
+      "run_id": "RUN-S06-1794373851",
       "scenario_id": "S06",
       "case_type": "LATE",
       "k": 1,
@@ -81,11 +81,11 @@
       "pass_pow_k": 1.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:09.643973+00:00",
+      "ran_at": "2026-11-11T05:10:50.399409+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S07-1794373811",
+      "run_id": "RUN-S07-1794373851",
       "scenario_id": "S07",
       "case_type": "NDR",
       "k": 1,
@@ -94,11 +94,11 @@
       "pass_pow_k": 1.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:09.994735+00:00",
+      "ran_at": "2026-11-11T05:10:50.801851+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S08-1794373811",
+      "run_id": "RUN-S08-1794373851",
       "scenario_id": "S08",
       "case_type": "MISMATCH",
       "k": 1,
@@ -107,11 +107,11 @@
       "pass_pow_k": 0.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:10.734157+00:00",
+      "ran_at": "2026-11-11T05:10:51.379433+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S09-1794373811",
+      "run_id": "RUN-S09-1794373851",
       "scenario_id": "S09",
       "case_type": "UNCLEAR",
       "k": 1,
@@ -120,11 +120,11 @@
       "pass_pow_k": 0.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:10.734157+00:00",
+      "ran_at": "2026-11-11T05:10:51.379433+00:00",
       "synthetic": false
     },
     {
-      "run_id": "RUN-S10-1794373811",
+      "run_id": "RUN-S10-1794373851",
       "scenario_id": "S10",
       "case_type": "DAMAGE",
       "k": 1,
@@ -133,7 +133,7 @@
       "pass_pow_k": 1.0,
       "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
       "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:10.734157+00:00",
+      "ran_at": "2026-11-11T05:10:51.379433+00:00",
       "synthetic": true
     }
   ],
