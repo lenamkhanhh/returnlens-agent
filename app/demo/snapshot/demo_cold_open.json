@@ -1,0 +1,15 @@
+{
+  "demo_today": "2026-11-11",
+  "created_at": "2026-11-11T08:23:10.262407+00:00",
+  "cases": {
+    "ORD-1042": {
+      "case_id": "CASE-5930B9EF",
+      "state": "WAITING_RETURN"
+    },
+    "ORD-4401": {
+      "case_id": "CASE-9191A318",
+      "state": "WAITING_RETURN"
+    }
+  },
+  "description": "Cold-open state: CUS-03 ORD-1042 and ORD-4401 in WAITING_RETURN"
+}

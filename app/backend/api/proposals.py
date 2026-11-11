@@ -34,6 +34,9 @@ async def decide_proposal(
     x_seller_id: Optional[str] = Header(None, alias="X-Seller-Id"),
 ):
     """Record seller decision (approve/decline) on an immutable proposal (17 §5, 02 §3)."""
+    from app.backend.autonomy.budget_limiter import verify_seller_access
+    verify_seller_access(request, harness_mode=getattr(request.app.state, "harness_mode", False))
+
     executor: ActionExecutor = request.app.state.executor
     seller_id = x_seller_id or "seller_dhun"
 

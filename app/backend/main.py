@@ -63,10 +63,27 @@ def create_app(
 
     data_dir.mkdir(parents=True, exist_ok=True)
 
+    db_path = data_dir / "returnlens.db"
+
+    # Support DEMO_SNAPSHOT loading on boot (17 §9, 18 §3)
+    demo_snapshot_env = os.environ.get("DEMO_SNAPSHOT")
+    if demo_snapshot_env and Path(demo_snapshot_env).exists():
+        snapshot_p = Path(demo_snapshot_env)
+        meta_p = snapshot_p.with_suffix(".json")
+        if meta_p.exists():
+            try:
+                meta = json.loads(meta_p.read_text(encoding="utf-8"))
+                if "demo_today" in meta and demo_today is None:
+                    demo_today = meta["demo_today"]
+            except Exception:
+                pass
+        if not db_path.exists() or db_path.stat().st_size == 0:
+            import shutil
+            shutil.copyfile(snapshot_p, db_path)
+
     if demo_today is None:
         demo_today = os.environ.get("DEMO_TODAY", "2026-11-11")
 
-    db_path = data_dir / "returnlens.db"
     db = Database(db_path)
     repo = Repository(db)
     mock_service = MockToolService(repo)
@@ -149,10 +166,35 @@ def create_app(
             "harness_mode": app.state.harness_mode,
         }
 
-    # Reset endpoint (17 §1, 17 §9)
+    # Reset endpoint (17 §1, 17 §9, 18 §3)
     @app.post("/api/operator/reset")
     async def reset_demo(request: Request):
-        # Allow reset if in harness mode or local request
+        # 1. Gate: allow reset if in harness mode or request from localhost; require OPERATOR_PASSWORD outside
+        from app.backend.autonomy.budget_limiter import verify_operator_access
+        verify_operator_access(request, harness_mode=app.state.harness_mode)
+
+        # 2. Check if DEMO_SNAPSHOT is configured
+        demo_snapshot_path = os.environ.get("DEMO_SNAPSHOT")
+        if demo_snapshot_path and Path(demo_snapshot_path).exists():
+            import shutil
+            db_path = app.state.data_dir / "returnlens.db"
+            shutil.copyfile(demo_snapshot_path, db_path)
+            meta_path = Path(demo_snapshot_path).with_suffix(".json")
+            if meta_path.exists():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    if "demo_today" in meta:
+                        app.state.demo_today = meta["demo_today"]
+                except Exception:
+                    pass
+            app.state.db = Database(db_path)
+            app.state.repo = Repository(app.state.db)
+            app.state.mock_service = MockToolService(app.state.repo)
+            app.state.executor = ActionExecutor(app.state.repo, app.state.mock_service)
+            app.state.engine = WorkflowEngine(app.state.repo, app.state.mock_service)
+            return {"status": "reset_successful", "snapshot": str(demo_snapshot_path), "demo_today": app.state.demo_today}
+
+        # Otherwise reseed cleanly
         reset_database(app.state.db, app.state.demo_today)
         return {"status": "reset_successful", "demo_today": app.state.demo_today}
 

@@ -150,7 +150,17 @@ async def upload_evidence(
     if not file_bytes:
         raise HTTPException(status_code=400, detail="Uploaded file contains 0 bytes")
 
-    media_dir = Path("data/media")
+    # Enforce IP rate limit and daily budget stop (21 P3, B16) outside harness mode
+    if not getattr(request.app.state, "harness_mode", False):
+        from app.backend.autonomy.budget_limiter import budget_tracker, ip_rate_limiter
+        client_ip = request.client.host if request.client else "127.0.0.1"
+        if not ip_rate_limiter.check_and_record(client_ip):
+            raise HTTPException(status_code=429, detail="Model analysis rate limit exceeded (10 calls/hour per IP)")
+        if budget_tracker.is_budget_exceeded(getattr(request.app.state, "demo_today", "2026-11-11")):
+            raise HTTPException(status_code=429, detail="Daily model analysis budget reached ($3.00 stop per 21 P3)")
+        budget_tracker.record_call(getattr(request.app.state, "demo_today", "2026-11-11"))
+
+    media_dir = getattr(request.app.state, "data_dir", Path("data")) / "media"
     try:
         evi = ingest_evidence(
             file_bytes=file_bytes,

@@ -6,3 +6,4 @@ data/
 app/web/dist/
 *.sqlite
 *.db
+!app/demo/snapshot/*.db
