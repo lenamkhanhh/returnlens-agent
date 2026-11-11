@@ -34,7 +34,7 @@ Solo Direct-to-Consumer (D2C) merchants in India lose up to **18% of operating m
 ## 3. Try It in 60 Seconds (Judge Quickstart)
 
 > **Live Demo:** [https://returnlens-demo.onrender.com](https://returnlens-demo.onrender.com) (or local `http://localhost:8000`)  
-> *Note on Cloud Cold-Start:* Cloud deployments on Render's free tier sleep on idle and take ~45–60 seconds to wake up from cold standby on first access. Under Gemini free-tier quota pressure (15 RPM / 1,500 RPD), the agent fails closed and hands the case to the human seller instead of guessing or fabricating actions.
+> *Note on Cloud Cold-Start:* Cloud deployments on Render's free tier sleep on idle and take ~45–60 seconds to wake up from cold standby on first access. Under the Gemini free tier daily request limit (500 requests/day on `gemini-3.5-flash-lite`, which we hit during high-volume testing), the agent fails closed and hands the case to the human seller instead of guessing or fabricating actions.
 
 Follow this 60-second walkthrough:
 1. **Open the Live Demo**: Open [returnlens-demo.onrender.com](https://returnlens-demo.onrender.com).
@@ -43,7 +43,7 @@ Follow this 60-second walkthrough:
 4. **See What the Agent Saw vs. What It Could Not Verify**:
    - **What the agent saw**: Fine-grained visual attributes with video timestamps (e.g., `00:07: black headphones` detected against white catalog order).
    - **Still unverified**: Missing physical proof the vision model could not confirm (e.g., outer box shipping label barcode).
-5. **Seller Console & "Why did it stop?"**: Switch to **Seller Console** (open on demo, no password required). Click case `ORD-7729` and click the **"Why did it stop?"** button (or check the Autonomy Bar). The 7-step Autonomy Gate displays the exact mathematical and policy checks that stopped autonomous execution and deferred to human review.
+5. **Seller Console & "Why did it stop?"**: Switch to **Seller Console** (open on demo, no password required). Click case `ORD-7729` and click the **"Why did it stop?"** button (or check the Autonomy Bar). The 7-step Autonomy Gate displays the exact code and policy checks that stopped autonomous execution and deferred to human review.
 
 | Fast Verification Path | Quick Action | Expected Agent Behavior | Verification Proof |
 |:---|:---|:---|:---|
@@ -78,7 +78,7 @@ Follow this 60-second walkthrough:
 
 ### 3. Demo Quality & Measured Reliability (Weight: 20%)
 - Includes an automated, reproducible benchmark harness (`app/evaluation/harness/runner.py`) running 10 comprehensive scenarios across isolated ASGI environments.
-- Zero flaky synthetic assertions: results are recorded in [`app/evaluation/reliability.json`](app/evaluation/reliability.json) with cryptographic agent version hashing.
+- Zero flaky synthetic assertions: results are recorded in [`app/evaluation/reliability.json`](app/evaluation/reliability.json) bound to a SHA-256 hash of the backend code.
 
 ### 4. Innovation & Wow Factors (Weight: 15%)
 - **Interactive "Try to Break It" Judge Sandbox:** Live adversarial testing suite allowing evaluators to simulate prompt injection attacks, balance over-refunds, and cumulative split refunds.
@@ -95,15 +95,15 @@ Follow this 60-second walkthrough:
 
 All benchmark metrics are recorded directly by running `python -m app.evaluation.harness.runner --k5-passed` against the live backend:
 
-* **Evaluation Model:** `gemini-3.5-flash-lite` (Free Tier quota: 15 RPM / 1,500 RPD)
-* **Agent Version Hash:** `071a86f2` (`071a86f22d0690bb23e49f5fb1fc7cd794066b3c2edbb48495eb3be502bc4382`)
-* **Measurement Source:** [`app/evaluation/reliability.json`](app/evaluation/reliability.json) & [`H0_DISPATCH/STATUS_C.md`](../returnlens-planning/H0_DISPATCH/STATUS_C.md)
+* **Evaluation Model:** `gemini-3.5-flash-lite` (Free tier daily request limit: 500 requests/day; fresh key used with 0 quota fallbacks)
+* **Agent Version Hash:** `ffaccd04` (`ffaccd04c091ced6c3ccf577cd44519ff4789db09e8a07be7231f9078463f30a`)
+* **Measurement Source:** [`app/evaluation/reliability.json`](app/evaluation/reliability.json) (commit `5f7929a`)
 
 | Scenario | Case Type | Scenario Description | k | Passes | Pass@1 | Pass^k | Status | Model ID | Evaluation Details |
 |:---:|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---|
 | `S01` | `WISMO` | Standard Tracking Status Inquiry | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | All 5 trial(s) passed 3-layer verification |
 | `S02` | `WISMO` | Counterfactual Live Tracking Update | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *fast-path* | All 5 trial(s) passed 3-layer verification |
-| `S03` | `DAMAGE` | Case A Headband Damage (Clip-A) | 5 | 0 | 0.00 | 0.00 | 🔒 BLOCKED | null | needs real filmed clip (synthetic media cannot show cracked headband) |
+| `S03` | `DAMAGE` | Case A Headband Damage (ORD-1043) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.5-flash-lite` | All 5 trial(s) passed 3-layer verification |
 | `S04` | `MISMATCH` | Case B Wrong Color Delivered (Clip-B) | 5 | 4 | 0.80 | 0.00 | ❌ FAIL | `gemini-3.5-flash-lite` | DB: Case state WAITING_CUSTOMER not in expected ['WAITING_SELLER', 'HUMAN_REVIEW', 'PROCESSING'] |
 | `S05` | `UNCLEAR` | Case C Dim Lighting + Excess Amount | 5 | 5 | 1.00 | 1.00 | ✅ PASS | `gemini-3.5-flash-lite` | All 5 trial(s) passed 3-layer verification |
 | `S06` | `LATE` | Return Window Exceeded (>7 Days) | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | All 5 trial(s) passed 3-layer verification |
@@ -113,8 +113,7 @@ All benchmark metrics are recorded directly by running `python -m app.evaluation
 | `S10` | `DAMAGE` | Cumulative Daily Velocity Limit Gate | 5 | 5 | 1.00 | 1.00 | ✅ PASS | *rule-gate* | All 5 trial(s) passed 3-layer verification |
 
 **Benchmark Summary:**
-- **8 / 10 scenarios passed at $k=5$ ($pass^5 = 1.00$)**
-- **1 honestly blocked** (`S03` awaiting real filmed damage clip; synthetic media cannot show physical cracks)
+- **9 / 10 scenarios passed at $k=5$ ($pass^5 = 1.00$)**
 - **1 measured failure at $k=5$** (`S04`: 4/5 passed, $pass@1 = 0.80$, $pass^5 = 0.00$ on `gemini-3.5-flash-lite` due to real-world vision model variance across multi-turn clarification). Because $pass^5 < 1.00$, the Earned Autonomy gate safely locks Case B (`MISMATCH`) to human seller review.
 
 ---
@@ -127,9 +126,9 @@ In a 24-hour hackathon, it is easy to write benchmarks that confirm what you hop
    - **Commits:** [`2373b86`](https://github.com/lenamkhanhh/returnlens-agent/commit/2373b86) & [`b7e7552`](https://github.com/lenamkhanhh/returnlens-agent/commit/b7e7552)
    - **Git Evidence:** Running the harness in negative control mode (`--invalid-key` with dummy `GEMINI_API_KEY`) exposed that `engine.py` previously branched on customer text keywords (`if "black" in text.lower(): ...`, `if "voice" in text.lower(): ...`) without checking model vision. Commit `2373b86` purged all text-keyword shortcuts in `app/backend/workflow/engine.py` so decisions branch strictly on verified multimodal observations, and commit `b7e7552` enforced in `app/evaluation/harness/runner.py` that invalid or missing model keys fail safely into `HUMAN_REVIEW`.
 
-2. **Results are cryptographically bound to backend code hash, locking live autonomy** (Wave 12):
+2. **Results are bound to a SHA-256 hash of the backend code, locking live autonomy** (Wave 12):
    - **Commits:** [`02a7bd9`](https://github.com/lenamkhanhh/returnlens-agent/commit/02a7bd9), [`b9b9567`](https://github.com/lenamkhanhh/returnlens-agent/commit/b9b9567), & [`91c86ef`](https://github.com/lenamkhanhh/returnlens-agent/commit/91c86ef)
-   - **Git Evidence:** Autonomy is mathematically gated by `agent_version` (SHA-256 of all backend source code and prompt files computed via `app/backend/autonomy/version.py`). When backend logic was modified, `compute_agent_version()` generated a new hash (`071a86f2...`) differing from `reliability.json` (`1cf5deff...`), immediately causing `check_case_type_reliability` in `app/backend/autonomy/reliability.py` to lock all case types to manual review on the live site until commit `b9b9567` re-measured the full $k=5$ benchmark on commit `a4a20af`.
+   - **Git Evidence:** Autonomy is gated by `agent_version` (SHA-256 of all backend source code and prompt files computed via `app/backend/autonomy/version.py`). When backend logic was modified, `compute_agent_version()` generated a new hash (`071a86f2...`) differing from `reliability.json` (`1cf5deff...`), immediately causing `check_case_type_reliability` in `app/backend/autonomy/reliability.py` to lock all case types to manual review on the live site until commit `b9b9567` re-measured the full $k=5$ benchmark on commit `a4a20af`.
 
 3. **Harness caught an ungrounded return proposal regression on S09** (Wave 12):
    - **Commit:** [`108ec34`](https://github.com/lenamkhanhh/returnlens-agent/commit/108ec34)
@@ -167,12 +166,12 @@ In a 24-hour hackathon, it is easy to write benchmarks that confirm what you hop
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Design Choice: Models Observe (and Propose), Code Decides
+### Design Choice: Models Observe, Code Decides
 
-In ReturnLens, generative AI models are intentionally deprived of financial mutation and database write tools. The vision and speech models (`gemini-3.5-flash-lite`) act strictly as observers: they inspect unboxing footage, photos, and voice notes to output structured evidence schemas (`ObservationOutput`)—extracting bounding timestamps, color classifications, visible damage states, and unverified unknowns. Code disposes: every business decision, state transition, financial proposal, and refund execution is governed by deterministic finite state machines, statutory policies (`P_WINDOW`, `P_BALANCE`, `P_UNVERIFIED`), and our 7-step Autonomy Gate. If an LLM hallucinates an auto-refund, code blocks it; if the model is unavailable or encounters free-tier rate limits, code fails closed and escalates to human seller review.
+In ReturnLens, generative AI models are intentionally deprived of financial mutation and database write tools. The vision and speech models (`gemini-3.5-flash-lite`) act strictly as observers: they inspect unboxing footage, photos, and voice notes to output structured evidence schemas (`ObservationOutput`)—extracting bounding timestamps, color classifications, visible damage states, and unverified unknowns. Code disposes: every business decision, state transition, financial proposal, and refund execution is governed by deterministic finite state machines, statutory policies (`P_WINDOW`, `P_BALANCE`, `P_UNVERIFIED`), and our 7-step Autonomy Gate. If an LLM hallucinates an auto-refund, code blocks it; if the model is unavailable or hits free-tier daily request limits (500 requests/day on `gemini-3.5-flash-lite`, which we hit during high-volume testing), code fails closed and escalates to human seller review.
 
 ### The 5 Architectural Differentiators:
-1. **Earned Autonomy Staircase:** No blanket auto-approvals. Level progression is gated mathematically by the reliability harness.
+1. **Earned Autonomy Staircase:** No blanket auto-approvals. Level progression is gated by the reliability harness.
 2. **Deterministic Financial Ledger:** All calculations operate strictly in integer minor units (paise). Over-refunds are prevented by database constraints.
 3. **Tool Isolation:** AI models analyze evidence and generate text proposals only. Mutations require merchant authorization or verified L2/L3 policy execution.
 4. **Stateful Cross-Session Recovery:** Workflows persist in durable SQLite tables, surviving unexpected crashes or restarts.
@@ -214,7 +213,7 @@ Open `http://localhost:8000` in any web browser.
 
 ## 10. Honest Limitations & Staged Data Disclosure
 
-1. **Scenario S03 Status:** Scenario S03 (Case A Headband Damage) is recorded as `BLOCKED`. The synthetic solid-color video clip used in early development cannot visually demonstrate a cracked headband to a real vision model. The system correctly refuses to hallucinate damage, keeping the scenario blocked until real unboxing footage is filmed.
+1. **Scenario S03 Unblocked with Real Photographic Evidence:** Scenario S03 (Case A Headband Damage on mock order `ORD-1043`) originally failed on synthetic solid-color video clips that could not depict physical cracks to a vision observer. In Wave 13, it was unblocked using an authentic CC BY-SA 2.0 broken-headphones photograph (Gabriel Saldaña / Flickr, unmodified), passing 5 out of 5 runs cleanly on `gemini-3.5-flash-lite`.
 2. **Scenario S04 Model Variance:** In the live benchmark against `gemini-3.5-flash-lite`, S04 achieved 4/5 passes ($pass@1 = 0.80$, $pass^5 = 0.00$). In 1 trial the model requested box label clarification rather than immediately transitioning to seller review. Because $pass^5 < 1.00$, the system honestly keeps `MISMATCH` autonomy locked to human review per the Earned Autonomy gate.
 3. **Synthetic Voice Audio:** Voice notes (`synthetic_voice_*.ogg`) were generated using offline Windows System.Speech text-to-speech to enable deterministic, zero-cost unit testing without consuming paid cloud API calls.
 4. **Demo Orders & Store Data:** Order fixtures for store *Dhun Audio* are pre-seeded relative to `DEMO_TODAY = 2026-11-11` per the hackathon prototype specification.
@@ -230,11 +229,12 @@ Open `http://localhost:8000` in any web browser.
 - **Frontend Console:** React 18, Vite 5.4, Vanilla CSS (Design Tokens inspired by Indian botanical aesthetics)
 - **Testing & Verification:** Pytest, Vitest, Microsoft Edge Headless Automation
 
-### Media Credits (Pexels License):
-Stock footage utilized for unboxing evidence is credited to the following creators via Pexels (free commercial use, modification permitted):
-- *Black Headphones Unboxing Video:* Created by **Dario Fernandez Ruz** via [Pexels](https://www.pexels.com/video/person-getting-headphones-9130360/)
-- *Dim Lighting Unboxing Video:* Created by **Tom Shutkin** via [Pexels](https://www.pexels.com/video/unboxing-gear-in-a-dimly-lit-room-40423563/)
-- *Wireless Earbuds Case Video:* Created by **Nothing Ahead (ian-panelo)** via [Pexels](https://www.pexels.com/video/unboxing-wireless-earbuds-with-charging-case-40558520/)
+### Media Credits:
+Stock footage and photography utilized for dispute evidence are credited to the following creators:
+- *Broken Headphones Evidence Photo (Case A / ORD-1043):* Created by **Gabriel Saldaña** via [Flickr](https://www.flickr.com/photos/gabrielsaldana/4728001748/) (licensed under [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/), unmodified).
+- *Black Headphones Unboxing Video (Case B / ORD-7729):* Created by **Dario Fernandez Ruz** via [Pexels](https://www.pexels.com/video/person-getting-headphones-9130360/) (Pexels license).
+- *Dim Lighting Unboxing Video (Case C / ORD-8812):* Created by **Tom Shutkin** via [Pexels](https://www.pexels.com/video/unboxing-gear-in-a-dimly-lit-room-40423563/) (Pexels license).
+- *Wireless Earbuds Case Video:* Created by **Nothing Ahead (ian-panelo)** via [Pexels](https://www.pexels.com/video/unboxing-wireless-earbuds-with-charging-case-40558520/) (Pexels license).
 
 ### Team Members:
 - **Role A:** Backend Workflow, API Contracts & Packaging
