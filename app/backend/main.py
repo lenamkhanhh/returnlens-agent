@@ -33,6 +33,44 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if not getattr(app.state, "harness_mode", False):
         load_dotenv()
 
+        # Support DEMO_SNAPSHOT on boot when server starts (17 §9, 18 §3)
+        demo_snapshot_env = os.environ.get("DEMO_SNAPSHOT")
+        if demo_snapshot_env:
+            snapshot_p = Path(demo_snapshot_env)
+            if not snapshot_p.is_absolute() and not snapshot_p.exists():
+                candidate = Path(__file__).resolve().parent.parent.parent / demo_snapshot_env
+                if candidate.exists():
+                    snapshot_p = candidate
+            if snapshot_p.exists():
+                db_path = app.state.data_dir / "returnlens.db"
+                with app.state.db.cursor() as cur:
+                    cur.execute("SELECT COUNT(*) AS count FROM cases")
+                    has_cases = cur.fetchone()["count"] > 0
+                if not has_cases:
+                    import shutil
+                    shutil.copyfile(snapshot_p, db_path)
+                    snap_media = snapshot_p.parent / "media"
+                    target_media = app.state.data_dir / "media"
+                    if snap_media.exists() and snap_media.is_dir():
+                        target_media.mkdir(parents=True, exist_ok=True)
+                        for mf in snap_media.glob("*"):
+                            if mf.is_file():
+                                tf = target_media / mf.name
+                                shutil.copyfile(mf, tf)
+                    meta_p = snapshot_p.with_suffix(".json")
+                    if meta_p.exists():
+                        try:
+                            meta = json.loads(meta_p.read_text(encoding="utf-8"))
+                            if "demo_today" in meta:
+                                app.state.demo_today = meta["demo_today"]
+                        except Exception:
+                            pass
+                    app.state.db = Database(db_path)
+                    app.state.repo = Repository(app.state.db)
+                    app.state.mock_service = MockToolService(app.state.repo)
+                    app.state.executor = ActionExecutor(app.state.repo, app.state.mock_service)
+                    app.state.engine = WorkflowEngine(app.state.repo, app.state.mock_service)
+
     # Ensure seed is applied if fresh DB
     data_dir = app.state.data_dir
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -85,6 +123,16 @@ def create_app(
             if not db_path.exists() or db_path.stat().st_size == 0:
                 import shutil
                 shutil.copyfile(snapshot_p, db_path)
+                # Copy snapshot media assets if present (Wave 10)
+                snap_media = snapshot_p.parent / "media"
+                target_media = data_dir / "media"
+                if snap_media.exists() and snap_media.is_dir():
+                    target_media.mkdir(parents=True, exist_ok=True)
+                    for mf in snap_media.glob("*"):
+                        if mf.is_file():
+                            tf = target_media / mf.name
+                            if not tf.exists():
+                                shutil.copyfile(mf, tf)
 
     if demo_today is None:
         demo_today = os.environ.get("DEMO_TODAY", "2026-11-11")
@@ -171,6 +219,12 @@ def create_app(
             "harness_mode": app.state.harness_mode,
         }
 
+    # Root media proxy route (Wave 10)
+    @app.get("/media/{evidence_id}")
+    async def get_root_media(evidence_id: str, request: Request):
+        from app.backend.api.cases import get_media_evidence
+        return await get_media_evidence(evidence_id, request)
+
     # Reset endpoint (17 §1, 17 §9, 18 §3)
     @app.post("/api/operator/reset")
     async def reset_demo(request: Request):
@@ -190,6 +244,15 @@ def create_app(
                 import shutil
                 db_path = app.state.data_dir / "returnlens.db"
                 shutil.copyfile(snapshot_p, db_path)
+                # Copy snapshot media assets if present (Wave 10)
+                snap_media = snapshot_p.parent / "media"
+                target_media = app.state.data_dir / "media"
+                if snap_media.exists() and snap_media.is_dir():
+                    target_media.mkdir(parents=True, exist_ok=True)
+                    for mf in snap_media.glob("*"):
+                        if mf.is_file():
+                            tf = target_media / mf.name
+                            shutil.copyfile(mf, tf)
                 meta_path = snapshot_p.with_suffix(".json")
                 if meta_path.exists():
                     try:

@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 
 from app.backend.contracts import (
     CaseState,
+    CaseType,
     ColorClass,
     NextStep,
     ObservationAttribute,
@@ -62,12 +63,16 @@ def build_cold_open_snapshot(
     )
     case_id_1042 = res_c1["case_id"]
 
-    # Ingest synthetic/mock damage evidence
-    dummy_bytes = b"\x00\x00\x00\x20ftypisom" + b"\x00" * 200
+    # Ingest damage evidence (prefer real clip if present)
+    src_clip_1 = Path("app/demo/media/synthetic_damaged_item.webm")
+    if not src_clip_1.exists():
+        src_clip_1 = Path("app/demo/media/stock/stock_earbuds_unboxing_pexels_40558520.mp4")
+    dummy_bytes = src_clip_1.read_bytes() if src_clip_1.exists() else (b"\x00\x00\x00\x20ftypisom" + b"\x00" * 200)
+
     from app.backend.media.evidence import ingest_evidence
     evi_1042 = ingest_evidence(
         file_bytes=dummy_bytes,
-        filename="damage_clip.mp4",
+        filename=src_clip_1.name if src_clip_1.exists() else "damage_clip.mp4",
         case_id=case_id_1042,
         media_dir=target_data_dir / "media",
     )
@@ -79,6 +84,16 @@ def build_cold_open_snapshot(
             VALUES (?, ?, 'video', ?, ?, ?, 12000, 'ingested', ?)
             """,
             (evi_1042.evidence_id, case_id_1042, evi_1042.storage_key, evi_1042.content_sha256, len(dummy_bytes), now_iso),
+        )
+        conn.execute(
+            """
+            INSERT INTO observations (
+                observation_id, case_id, evidence_id, evidence_ref_ids_json,
+                t, attribute, value, color_class, visibility, uncertainty_reason,
+                model_run_id, created_at
+            ) VALUES (?, ?, ?, '[]', '00:04', 'damage', 'cracked headband', NULL, 'visible', NULL, 'RUN-1042', ?)
+            """,
+            ("OBS-DMG-1", case_id_1042, evi_1042.evidence_id, now_iso),
         )
 
     # Provide grounded damage observation
@@ -126,9 +141,11 @@ def build_cold_open_snapshot(
         idempotency_key=f"IDEMP-{prop_1042.proposal_id}",
     )
 
+    repo.update_case_type(case_id_1042, CaseType.DAMAGE)
     case_1042 = repo.get_case(case_id_1042)
-    print(f"ORD-1042 final state: {case_1042.state.value}")
+    print(f"ORD-1042 final state: {case_1042.state.value}, type: {case_1042.case_type.value}")
     assert case_1042.state == CaseState.WAITING_RETURN
+    assert case_1042.case_type == CaseType.DAMAGE
 
     # --------------------------------------------------------------------------
     # Flow 2: ORD-4401 (CUS-03) -> Damage Claim -> WAITING_RETURN
@@ -141,10 +158,13 @@ def build_cold_open_snapshot(
     )
     case_id_4401 = res_c2["case_id"]
 
-    dummy_bytes_2 = b"\x00\x00\x00\x20ftypisom_buds" + b"\x01" * 200
+    # Ingest buds damage evidence (prefer real clip if present)
+    src_clip_2 = Path("app/demo/media/stock/stock_earbuds_unboxing_pexels_40558520.mp4")
+    dummy_bytes_2 = src_clip_2.read_bytes() if src_clip_2.exists() else (b"\x00\x00\x00\x20ftypisom_buds" + b"\x01" * 200)
+
     evi_4401 = ingest_evidence(
         file_bytes=dummy_bytes_2,
-        filename="buds_damage.mp4",
+        filename=src_clip_2.name if src_clip_2.exists() else "buds_damage.mp4",
         case_id=case_id_4401,
         media_dir=target_data_dir / "media",
     )
@@ -154,7 +174,17 @@ def build_cold_open_snapshot(
             INSERT INTO evidence (evidence_id, case_id, media_type, storage_key, content_sha256, bytes, duration_ms, ingest_status, created_at)
             VALUES (?, ?, 'video', ?, ?, ?, 8000, 'ingested', ?)
             """,
-            (evi_4401.evidence_id, case_id_4401, evi_4401.storage_key, evi_4401.content_sha256, len(dummy_bytes), now_iso),
+            (evi_4401.evidence_id, case_id_4401, evi_4401.storage_key, evi_4401.content_sha256, len(dummy_bytes_2), now_iso),
+        )
+        conn.execute(
+            """
+            INSERT INTO observations (
+                observation_id, case_id, evidence_id, evidence_ref_ids_json,
+                t, attribute, value, color_class, visibility, uncertainty_reason,
+                model_run_id, created_at
+            ) VALUES (?, ?, ?, '[]', '00:03', 'damage', 'cracked shell', NULL, 'visible', NULL, 'RUN-4401', ?)
+            """,
+            ("OBS-DMG-2", case_id_4401, evi_4401.evidence_id, now_iso),
         )
 
     mock_runner.observe.return_value = (
@@ -197,9 +227,11 @@ def build_cold_open_snapshot(
         idempotency_key=f"IDEMP-{prop_4401.proposal_id}",
     )
 
+    repo.update_case_type(case_id_4401, CaseType.DAMAGE)
     case_4401 = repo.get_case(case_id_4401)
-    print(f"ORD-4401 final state: {case_4401.state.value}")
+    print(f"ORD-4401 final state: {case_4401.state.value}, type: {case_4401.case_type.value}")
     assert case_4401.state == CaseState.WAITING_RETURN
+    assert case_4401.case_type == CaseType.DAMAGE
 
     # --------------------------------------------------------------------------
     # Save Metadata and Verify Output
@@ -212,10 +244,10 @@ def build_cold_open_snapshot(
         "demo_today": demo_today,
         "created_at": now_iso,
         "cases": {
-            "ORD-1042": {"case_id": case_id_1042, "state": case_1042.state.value},
-            "ORD-4401": {"case_id": case_id_4401, "state": case_4401.state.value},
+            "ORD-1042": {"case_id": case_id_1042, "state": case_1042.state.value, "case_type": case_1042.case_type.value},
+            "ORD-4401": {"case_id": case_id_4401, "state": case_4401.state.value, "case_type": case_4401.case_type.value},
         },
-        "description": "Cold-open state: CUS-03 ORD-1042 and ORD-4401 in WAITING_RETURN",
+        "description": "Cold-open state: CUS-03 ORD-1042 and ORD-4401 in WAITING_RETURN (DAMAGE)",
     }
     meta_path = output_db_path.with_suffix(".json")
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")

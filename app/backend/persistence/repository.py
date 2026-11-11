@@ -304,6 +304,7 @@ class Repository:
         state: CaseState,
         summary: Optional[str] = None,
         increment_clarification: bool = False,
+        case_type: Optional[CaseType] = None,
     ) -> None:
         now_iso = datetime.now(timezone.utc).isoformat()
         with self.db.transaction() as conn:
@@ -314,9 +315,21 @@ class Repository:
                 params.append(summary)
             if increment_clarification:
                 sql += ", clarification_count = clarification_count + 1"
+            if case_type is not None:
+                sql += ", case_type = ?"
+                params.append(case_type.value if isinstance(case_type, CaseType) else str(case_type))
             sql += " WHERE case_id = ?"
             params.append(case_id)
             conn.execute(sql, tuple(params))
+
+    def update_case_type(self, case_id: str, case_type: CaseType) -> None:
+        """Update case_type on case record (Wave 10)."""
+        now_iso = datetime.now(timezone.utc).isoformat()
+        with self.db.transaction() as conn:
+            conn.execute(
+                "UPDATE cases SET case_type = ?, updated_at = ? WHERE case_id = ?",
+                (case_type.value if isinstance(case_type, CaseType) else str(case_type), now_iso, case_id),
+            )
 
     def add_message(
         self,

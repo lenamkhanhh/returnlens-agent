@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi.responses import FileResponse
 
 from app.backend.contracts import (
     ActorRole,
@@ -112,17 +113,84 @@ async def get_case_snapshot(
 
     with repo.db.cursor() as cur:
         cur.execute("SELECT * FROM evidence WHERE case_id = ? ORDER BY created_at ASC", (case_id,))
-        evidence_list = [dict(row) for row in cur.fetchall()]
+        evidence_list = []
+        for row in cur.fetchall():
+            row_dict = dict(row)
+            row_dict["url"] = f"/api/media/{row_dict['evidence_id']}"
+            row_dict["filename"] = row_dict.get("storage_key", "")
+            if row_dict.get("duration_ms"):
+                row_dict["duration_s"] = round(row_dict["duration_ms"] / 1000.0, 1)
+            evidence_list.append(row_dict)
+
+    # Observations & unknowns extraction from table or audit events
+    observations_list = []
+    unknowns_list = []
+    with repo.db.cursor() as cur:
+        cur.execute("SELECT * FROM observations WHERE case_id = ? ORDER BY t ASC", (case_id,))
+        for r in cur.fetchall():
+            observations_list.append(dict(r))
+
+    # Reconstruct or supplement from audit events
+    for ev in events:
+        if ev.event_type == "observation_validated" and ev.safe_payload:
+            if not observations_list:
+                obs = ev.safe_payload.get("observations") or []
+                if isinstance(obs, list):
+                    observations_list.extend(obs)
+            if not unknowns_list:
+                unk = ev.safe_payload.get("unknowns") or []
+                if isinstance(unk, list):
+                    unknowns_list.extend(unk)
+
+    # Policy checks
+    policy_checks_list = []
+    with repo.db.cursor() as cur:
+        cur.execute("SELECT * FROM policy_checks WHERE case_id = ? ORDER BY created_at ASC", (case_id,))
+        for r in cur.fetchall():
+            policy_checks_list.append(dict(r))
+
+    if not policy_checks_list:
+        for ev in events:
+            if ev.event_type == "policy_checked" and ev.safe_payload:
+                policy_checks_list.append({
+                    "rule_id": ev.safe_payload.get("rule_id", "POL-DEF"),
+                    "result": ev.safe_payload.get("result", "PASS"),
+                    "reason_code": ev.safe_payload.get("reason_code", "OK"),
+                })
+
+    # Plan card synthesis
+    plan = None
+    if proposals:
+        latest_prop = proposals[-1]
+        action_val = latest_prop.action_type.value if hasattr(latest_prop.action_type, "value") else str(latest_prop.action_type)
+        plan = {
+            "action_type": action_val,
+            "summary": f"Proposed {action_val} for order {case.order_id}",
+            "requires_approval": True,
+            "proposal_id": latest_prop.proposal_id,
+        }
+    elif case.state == CaseState.WAITING_CUSTOMER:
+        plan = {
+            "action_type": "REQUEST_CLARIFICATION",
+            "summary": case.summary or "Awaiting additional evidence from customer",
+            "requires_approval": False,
+        }
+    elif case.state in (CaseState.RESOLVED, CaseState.WAITING_RETURN):
+        plan = {
+            "action_type": case.state.value,
+            "summary": case.summary or f"Case in {case.state.value}",
+            "requires_approval": False,
+        }
 
     return CaseSnapshotResponse(
         case_id=case.case_id,
         case_type=case.case_type,
         state=case.state,
         facts=facts,
-        observations=[],
-        unknowns=[],
-        policy_checks=[],
-        plan=None,
+        observations=observations_list,
+        unknowns=unknowns_list,
+        policy_checks=policy_checks_list,
+        plan=plan,
         clarification_count=case.clarification_count,
         proposals=[p.model_dump() for p in proposals],
         autonomy=autonomy_info,
@@ -232,7 +300,91 @@ async def list_case_evidence(
 
     with repo.db.cursor() as cur:
         cur.execute("SELECT * FROM evidence WHERE case_id = ? ORDER BY created_at ASC", (case_id,))
-        return [dict(row) for row in cur.fetchall()]
+        evidence = []
+        for row in cur.fetchall():
+            row_dict = dict(row)
+            row_dict["url"] = f"/api/media/{row_dict['evidence_id']}"
+            row_dict["filename"] = row_dict.get("storage_key", "")
+            if row_dict.get("duration_ms"):
+                row_dict["duration_s"] = round(row_dict["duration_ms"] / 1000.0, 1)
+            evidence.append(row_dict)
+        return evidence
+
+
+@router.get("/media/{evidence_id}")
+async def get_media_evidence(
+    evidence_id: str,
+    request: Request,
+):
+    """Serve uploaded media file with HTTP Range support for video seeking (Wave 10)."""
+    repo: Repository = request.app.state.repo
+    with repo.db.cursor() as cur:
+        cur.execute("SELECT * FROM evidence WHERE evidence_id = ?", (evidence_id,))
+        row = cur.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Evidence {evidence_id} not found")
+
+    storage_key = row["storage_key"]
+    media_type = row["media_type"]
+
+    # Search media locations
+    media_dir = getattr(request.app.state, "data_dir", Path("data")) / "media"
+    candidates = [
+        media_dir / storage_key,
+        Path(repo.db.db_path).parent / "media" / storage_key,
+        Path("data/media") / storage_key,
+        Path("app/demo/snapshot/media") / storage_key,
+        Path("app/demo/media/stock") / storage_key,
+        Path("app/demo/media") / storage_key,
+        Path(storage_key),
+    ]
+    media_path = next((p for p in candidates if p.exists() and p.is_file()), None)
+
+    if not media_path:
+        filename = Path(storage_key).name
+        for search_dir in [
+            Path("app/demo/snapshot/media"),
+            Path("app/demo/media/stock"),
+            Path("app/demo/media"),
+            media_dir,
+            Path("data/media"),
+        ]:
+            if search_dir.exists():
+                candidate = search_dir / filename
+                if candidate.exists() and candidate.is_file():
+                    media_path = candidate
+                    break
+    if not media_path:
+        raise HTTPException(status_code=404, detail=f"Media file for {evidence_id} not found on disk")
+
+    ext = media_path.suffix.lower()
+    mime_map = {
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+        ".ogg": "audio/ogg",
+        ".wav": "audio/wav",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }
+    content_type = mime_map.get(ext)
+    if not content_type:
+        if media_type == "video":
+            content_type = "video/mp4"
+        elif media_type == "audio":
+            content_type = "audio/ogg"
+        elif media_type == "image":
+            content_type = "image/png"
+        else:
+            content_type = "application/octet-stream"
+
+    return FileResponse(
+        path=media_path,
+        media_type=content_type,
+        content_disposition_type="inline",
+        headers={"Accept-Ranges": "bytes"},
+    )
 
 
 @router.get("/cases/{case_id}/messages")

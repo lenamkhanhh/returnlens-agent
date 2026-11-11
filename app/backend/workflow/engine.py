@@ -78,7 +78,17 @@ class WorkflowEngine:
 
         # Initial intent inference
         route = Router.classify_and_route(initial_message, order_id)
-        case_type = CaseType.WISMO if route.intent == Intent.WISMO else CaseType.UNCLEAR
+        msg_lower = initial_message.lower()
+        if route.intent == Intent.WISMO:
+            case_type = CaseType.WISMO
+        elif route.intent == Intent.ADDRESS_UPDATE:
+            case_type = CaseType.NDR
+        elif any(w in msg_lower for w in ["damage", "broken", "cracked", "defect", "torn"]):
+            case_type = CaseType.DAMAGE
+        elif any(w in msg_lower for w in ["wrong color", "different color", "black instead of white", "white instead of black"]):
+            case_type = CaseType.MISMATCH
+        else:
+            case_type = CaseType.UNCLEAR
 
         # 1. Create Case & initial inbound Message
         case = self.repo.create_case(
@@ -511,6 +521,45 @@ class WorkflowEngine:
                             "model_id": getattr(model_run, "model_id", None) if model_run else None,
                         },
                     )
+
+                    # Persist observations to database (Wave 10)
+                    with self.repo.db.transaction() as conn:
+                        for obs in obs_output.observations:
+                            obs_id = obs.id or f"OBS-{uuid.uuid4().hex[:8].upper()}"
+                            col_class = getattr(obs.color_class, "value", obs.color_class) if obs.color_class else None
+                            vis = getattr(obs.visibility, "value", obs.visibility) if obs.visibility else "visible"
+                            attr = getattr(obs.attribute, "value", obs.attribute) if obs.attribute else str(obs.attribute)
+                            m_id = getattr(model_run, "model_id", "gemini-3.5-flash-lite") if model_run else "gemini-3.5-flash-lite"
+                            conn.execute(
+                                """
+                                INSERT OR REPLACE INTO observations (
+                                    observation_id, case_id, evidence_id, evidence_ref_ids_json,
+                                    t, attribute, value, color_class, visibility, uncertainty_reason,
+                                    model_run_id, created_at
+                                ) VALUES (?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?)
+                                """,
+                                (
+                                    obs_id,
+                                    case_id,
+                                    evi_contract.evidence_id,
+                                    obs.t,
+                                    attr,
+                                    obs.value,
+                                    col_class,
+                                    vis,
+                                    obs.limitation,
+                                    m_id,
+                                    now_iso,
+                                ),
+                            )
+
+                    # Update case type if damage is observed
+                    has_damage = any(
+                        (getattr(o.attribute, "value", o.attribute) in (ObservationAttribute.DAMAGE.value, "damage"))
+                        for o in obs_output.observations
+                    )
+                    if has_damage:
+                        self.repo.update_case_type(case_id, CaseType.DAMAGE)
             except ModelUnavailableError:
                 self.repo.append_audit_event(
                     event_id=f"EVT-{uuid.uuid4().hex[:8]}",
@@ -590,6 +639,7 @@ class WorkflowEngine:
 
                     if match_status == "MISMATCH":
                         # Grounded color mismatch verified!
+                        self.repo.update_case_type(case_id, CaseType.MISMATCH)
                         # Check if outer box label photo with barcode has been provided
                         label_obs = next((o for o in obs_output.observations if o.attribute in (ObservationAttribute.LABEL_TEXT, "label_text")), None)
                         label_verified = bool(label_obs and case.order_id.lower() in str(label_obs.value).lower())
