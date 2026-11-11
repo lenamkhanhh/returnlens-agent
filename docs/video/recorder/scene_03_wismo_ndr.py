@@ -4,8 +4,9 @@ Per BRIEF_E_RECORDING & 13_FINAL_PLAYBOOK §6:
    Agent calls real mock tracking tools, replies with live Delhivery status and ETA.
 2. NDR: Operator fires NDR on ORD-3110 (SHP-3110).
    Agent sends proactive outreach to CUS-05 (Rohit Verma).
-   Customer replies with corrected address (Flat 14B).
-   Seller reviews PROPOSE_NDR_REATTEMPT in Seller Console and approves.
+3. Customer replies with corrected address (Flat 14B) in Hinglish.
+4. Seller reviews PROPOSE_NDR_REATTEMPT in Seller Console and approves with one click.
+- Features visible cursor with ripples and hand-drawn ink annotations.
 """
 
 from __future__ import annotations
@@ -20,6 +21,12 @@ from docs.video.recorder.common import (
     convert_webm_to_mp4,
     get_video_duration,
     reset_demo_database,
+    setup_page_cursor_and_ink,
+    smooth_move,
+    smooth_click,
+    ink_circle,
+    ink_arrow,
+    ink_clear,
 )
 
 def record_scene_03() -> Path:
@@ -32,7 +39,7 @@ def record_scene_03() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=120,
+            slow_mo=50,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -45,99 +52,101 @@ def record_scene_03() -> Path:
         # -------------------------------------------------------------
         # Part 1: WISMO (CUS-01, ORD-2030)
         # -------------------------------------------------------------
-        print("[03] Navigating to Customer Portal for WISMO (demo scale)...")
+        print("[03] Navigating to Customer Portal for WISMO...")
         page.goto(f"{BASE_URL}/?tab=customer&demo=1")
+        setup_page_cursor_and_ink(page)
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(1500)
+        time.sleep(1.0)
 
-        # Select Priya Sharma (CUS-01) if not already selected
-        cust_select = page.locator("select.select-field").first
-        cust_select.select_option("CUS-01")
-        page.wait_for_timeout(800)
+        # Select Priya Sharma (CUS-01) if not default
+        cust_select = page.locator("select.demo-select").first
+        if cust_select.count() > 0:
+            cust_select.select_option("CUS-01")
+            time.sleep(0.5)
 
-        # Type WISMO inquiry
+        # Type WISMO inquiry with smooth move & click
         print("[03] Customer typing: Where is my order?...")
-        text_input = page.locator("input.text-input")
+        text_input = page.locator("input.messaging-input-field")
+        smooth_click(page, text_input, steps=15, delay_after=0.3)
         text_input.fill("Where is my order?")
-        page.wait_for_timeout(800)
+        time.sleep(0.6)
 
-        # Click Send
-        send_btn = page.locator("button.btn-primary:has-text('Send')")
-        send_btn.click()
-        page.wait_for_timeout(2200)  # Wait for mock tools and reply
+        send_btn = page.locator("button.messaging-send-btn")
+        smooth_click(page, send_btn, steps=15, delay_after=2.0)
+
+        # Annotate live tracking response
+        ink_circle(page, ".messaging-phone-frame", text="Live Delhivery tracking & ETA", side="top", duration=3.0)
+        time.sleep(1.8)
+        ink_clear(page)
 
         # -------------------------------------------------------------
         # Part 2: NDR Trigger in Operator Controls
         # -------------------------------------------------------------
         print("[03] Switching to Operator Controls to fire NDR...")
         op_tab = page.locator("button.tab-btn:has-text('Operator Controls')")
-        op_tab.click()
-        page.wait_for_timeout(1500)
+        smooth_click(page, op_tab, steps=20, delay_after=1.0)
+        setup_page_cursor_and_ink(page)
 
-        # Fill SHP-3110 and fire NDR
-        shipment_input = page.locator("input.select-field").first
-        shipment_input.fill("SHP-3110")
-        page.wait_for_timeout(600)
-
-        event_select = page.locator("select.select-field").first
-        event_select.select_option("NDR")
-        page.wait_for_timeout(600)
-
+        # Form has default SHP-3110 and NDR
         dispatch_btn = page.locator("button:has-text('Dispatch Courier Webhook')")
-        dispatch_btn.click()
-        page.wait_for_timeout(2000)
+        smooth_click(page, dispatch_btn, steps=20, delay_after=0.8)
+        ink_arrow(page, dispatch_btn, text="NDR delivery failure", from_side="top", duration=2.5)
+        time.sleep(1.8)
+        ink_clear(page)
 
         # -------------------------------------------------------------
         # Part 3: Customer Corrects Address for NDR
         # -------------------------------------------------------------
-        print("[03] Switching back to Customer Portal for Rohit Verma (CUS-05)...")
+        print("[03] Switching back to Customer Portal for CUS-05...")
         cust_tab = page.locator("button.tab-btn:has-text('Customer Portal')")
-        cust_tab.click()
-        page.wait_for_timeout(1500)
+        smooth_click(page, cust_tab, steps=20, delay_after=1.0)
+        setup_page_cursor_and_ink(page)
 
-        cust_select = page.locator("select.select-field").first
+        cust_select = page.locator("select.demo-select").first
         cust_select.select_option("CUS-05")
-        page.wait_for_timeout(2000)
+        time.sleep(1.2)
 
-        # Type address correction
+        # Type address correction in Hinglish
         print("[03] Customer replies with corrected address...")
-        text_input = page.locator("input.text-input")
+        text_input = page.locator("input.messaging-input-field")
+        smooth_click(page, text_input, steps=15, delay_after=0.3)
         text_input.fill("Flat 12B nahi, 14B hai. Kal shaam 6 baje chalega.")
-        page.wait_for_timeout(1000)
-        send_btn = page.locator("button.btn-primary:has-text('Send')")
-        send_btn.click()
-        page.wait_for_timeout(3500)
+        time.sleep(0.6)
+
+        send_btn = page.locator("button.messaging-send-btn")
+        smooth_click(page, send_btn, steps=15, delay_after=2.8)
+
+        ink_circle(page, ".messaging-phone-frame", text="Address parsed from Hinglish", side="bottom", duration=3.0)
+        time.sleep(1.8)
+        ink_clear(page)
 
         # -------------------------------------------------------------
         # Part 4: Seller Approves Reattempt in Seller Console
         # -------------------------------------------------------------
         print("[03] Switching to Seller Console to approve NDR reattempt...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
-        seller_tab.click()
-        page.wait_for_timeout(2000)
+        smooth_click(page, seller_tab, steps=20, delay_after=1.2)
+        setup_page_cursor_and_ink(page)
 
         # Find and click ORD-3110 case
-        inbox_items = page.locator(".inbox-item").all()
-        for it in inbox_items:
-            if "ORD-3110" in it.inner_text():
-                it.click()
-                break
-        page.wait_for_timeout(2000)
+        ord_item = page.locator(".inbox-item:has-text('ORD-3110')")
+        if ord_item.count() > 0:
+            smooth_click(page, ord_item.first, steps=20, delay_after=1.0)
 
-        # Click Review & Decide on Proposal if available
-        review_btn = page.locator("button:has-text('Review & Decide')")
+        # Click Review & Approve on Proposal
+        review_btn = page.locator("button:has-text('Review & Approve')")
         if review_btn.count() > 0:
-            review_btn.first.click()
-            page.wait_for_timeout(1500)
+            smooth_click(page, review_btn.first, steps=18, delay_after=1.0)
 
             # Click Approve inside Approval Modal
-            approve_btn = page.locator(".modal-footer button.btn-primary:has-text('Approve')")
+            approve_btn = page.locator("button:has-text('Approve action')")
             if approve_btn.count() > 0:
-                approve_btn.first.click()
-                page.wait_for_timeout(2500)
+                smooth_click(page, approve_btn.first, steps=18, delay_after=1.5)
 
-        # Pause to view resolved reattempt
-        page.wait_for_timeout(2000)
+        ink_arrow(page, ".seller-col:has-text('Proposals')", text="One-click reattempt scheduled", from_side="left", duration=3.0)
+        time.sleep(1.8)
+        ink_clear(page)
+        time.sleep(0.8)
 
         video_obj = page.video
         context.close()

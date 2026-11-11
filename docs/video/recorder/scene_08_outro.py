@@ -55,6 +55,7 @@ OUTRO_HTML = """<!DOCTYPE html>
     color: #e2e8f0;
     margin-bottom: 36px;
     text-align: center;
+    line-height: 1.4;
   }
   .badge-row {
     display: flex;
@@ -81,6 +82,15 @@ OUTRO_HTML = """<!DOCTYPE html>
     color: #64748b;
   }
 </style>
+<script>
+  let tick = 0;
+  function animate() {
+    tick++;
+    document.title = "ReturnLens Outro " + tick;
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+</script>
 </head>
 <body>
   <div class="brand">
@@ -109,7 +119,7 @@ def record_scene_08() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=200,
+            slow_mo=0,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -120,7 +130,7 @@ def record_scene_08() -> Path:
 
         print("[08] Displaying high-contrast outro title card...")
         page.set_content(OUTRO_HTML)
-        page.wait_for_timeout(4500)
+        page.wait_for_timeout(7000)
 
         video_obj = page.video
         context.close()

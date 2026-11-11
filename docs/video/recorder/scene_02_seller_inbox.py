@@ -2,10 +2,11 @@
 Per BRIEF_E_RECORDING & 13_FINAL_PLAYBOOK §6:
 Shows a solo D2C Indian merchant's support console:
 - Multi-case inbox across WISMO, Returns, and NDR.
-- Filtering by status (ALL, Needs Review, PROCESSING).
+- Filtering by status (All, Needs review, Processing).
 - 3-Group Fact Panel: Verified Order Facts, Observed in Evidence, Still Unverified.
 - Plan card with memory chips and action proposals.
 - Chronological Audit Timeline drawer with human-readable event labels.
+- Visible cursor with ripples and hand-drawn ink annotations.
 """
 
 from __future__ import annotations
@@ -19,6 +20,12 @@ from docs.video.recorder.common import (
     SCENES_DIR,
     convert_webm_to_mp4,
     get_video_duration,
+    setup_page_cursor_and_ink,
+    smooth_move,
+    smooth_click,
+    ink_circle,
+    ink_arrow,
+    ink_clear,
 )
 
 def record_scene_02() -> Path:
@@ -30,7 +37,7 @@ def record_scene_02() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=250,
+            slow_mo=50,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -43,55 +50,67 @@ def record_scene_02() -> Path:
         # 1. Open Seller Console
         print("[02] Navigating to Seller Console (demo scale)...")
         page.goto(f"{BASE_URL}/?tab=seller&demo=1")
+        setup_page_cursor_and_ink(page)
         page.wait_for_selector(".app-header", timeout=10000)
-        page.wait_for_timeout(2000)
+        time.sleep(1.5)
 
-        # 2. Browse Inbox & Filter Tabs
-        print("[02] Testing Inbox filter tabs...")
-        needs_review_btn = page.locator("button:has-text('Needs Review')")
+        # 2. Browse Inbox & Filter Tabs with smooth cursor
+        print("[02] Clicking 'Needs review' tab...")
+        needs_review_btn = page.locator("button:has-text('Needs review')")
         if needs_review_btn.count() > 0:
-            needs_review_btn.first.click()
-            page.wait_for_timeout(1500)
+            smooth_click(page, needs_review_btn.first, steps=20, delay_after=1.0)
 
-        all_filter_btn = page.locator("button:has-text('ALL')")
+        print("[02] Clicking 'All' tab...")
+        all_filter_btn = page.locator("button:has-text('All')")
         if all_filter_btn.count() > 0:
-            all_filter_btn.first.click()
-            page.wait_for_timeout(1500)
+            smooth_click(page, all_filter_btn.first, steps=20, delay_after=1.0)
 
-        # 3. Select an active case with rich details (e.g. ORD-1042 or first available)
-        print("[02] Selecting inbox case...")
-        inbox_items = page.locator(".inbox-item").all()
-        if len(inbox_items) > 0:
-            inbox_items[0].click()
-            page.wait_for_timeout(2000)
+        # 3. Select an active case (ORD-1042 or first available)
+        print("[02] Selecting inbox case ORD-1042...")
+        case_item = page.locator(".inbox-item:has-text('ORD-1042')")
+        if case_item.count() > 0:
+            smooth_click(page, case_item.first, steps=22, delay_after=1.2)
+        else:
+            inbox_items = page.locator(".inbox-item").all()
+            if len(inbox_items) > 0:
+                smooth_click(page, inbox_items[0], steps=22, delay_after=1.2)
 
-        # Hover over Triad Facts Panel
-        facts_panel = page.locator(".facts-panel, .seller-col:has-text('Verified Order Facts')")
+        # Hover over Triad Facts Panel and annotate
+        print("[02] Highlighting Triad Facts Panel...")
+        facts_panel = page.locator(".facts-panel, .seller-col:has-text('Order facts')")
         if facts_panel.count() > 0:
-            facts_panel.first.hover()
-            page.wait_for_timeout(1500)
+            smooth_move(page, facts_panel.first, steps=25)
+            ink_circle(page, facts_panel.first, text="3-group triad: facts, seen, unverified", side="bottom", duration=3.5)
+            time.sleep(2.0)
 
         # 4. Open Timeline Drawer
         print("[02] Opening Audit Timeline Drawer...")
-        timeline_btn = page.locator("button:has-text('Open Timeline Drawer')")
+        timeline_btn = page.locator("button:has-text('Case audit timeline')")
         if timeline_btn.count() > 0:
-            timeline_btn.first.click()
-            page.wait_for_timeout(3000)  # Pause to inspect audit events
+            smooth_click(page, timeline_btn.first, steps=20, delay_after=1.2)
+            page.wait_for_selector(".timeline-drawer", timeout=3000)
 
-            # Scroll timeline drawer if scrollable
+            # Draw ink arrow to timeline
+            ink_arrow(page, ".timeline-drawer", text="Immutable event log", from_side="left", duration=3.5)
+            time.sleep(1.8)
+
+            # Scroll timeline drawer down smoothly
             timeline_drawer = page.locator(".timeline-drawer")
             if timeline_drawer.count() > 0:
-                timeline_drawer.evaluate("el => el.scrollTop = 200")
-                page.wait_for_timeout(1500)
+                timeline_drawer.evaluate("el => el.scrollTop = 180")
+                time.sleep(1.5)
 
             # Close timeline drawer
+            print("[02] Closing timeline drawer...")
             close_drawer_btn = page.locator(".timeline-drawer button:has-text('✕')")
             if close_drawer_btn.count() > 0:
-                close_drawer_btn.first.click()
-                page.wait_for_timeout(1000)
+                smooth_click(page, close_drawer_btn.first, steps=18, delay_after=1.0)
+            else:
+                smooth_click(page, timeline_btn.first, steps=18, delay_after=1.0)
 
-        # Pause on full console view
-        page.wait_for_timeout(1500)
+        ink_clear(page)
+        # Settle on full console
+        time.sleep(1.5)
 
         video_obj = page.video
         context.close()

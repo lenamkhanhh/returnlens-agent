@@ -1,12 +1,16 @@
 """Scene 04: Case B - Voice Note & Video Evidence (1:05 - 1:50)
-Per BRIEF_E_RECORDING & 13_FINAL_PLAYBOOK §6:
-1. CUS-02 (Ananya Patel) sends mismatch inquiry on ORD-7729 with:
-   - Voice note: synthetic_voice_en_mismatch_ORD-7729.ogg
+Per BRIEF_E_RECORDING & 13_FINAL_PLAYBOOK §6 & WAVE16_FINAL_VIDEO.md:
+1. Customer Portal: CUS-02 (Ananya Patel) sends WhatsApp-style inquiry on ORD-7729 with:
    - Video clip: stock_black_headphones_pexels_9130360.mp4
-2. Grounded Vision Observer detects black headphones at 00:07 vs White in catalog.
-3. Barcode and exact model kept in 'Still Unverified'.
-4. Seller opens case, sees Triad Facts Panel, and clicks timestamp (▶ 00:07)
-   causing the video player to seek to 00:07.
+   - Voice note: synthetic_voice_en_mismatch_ORD-7729.ogg
+   - Text message: "Ordered white headphones, got black ones in the box."
+2. Seller Console:
+   - Triad Facts Panel shows:
+     - Verified Order Facts: Catalog Color: White
+     - "What the agent saw": Detected black at timestamp (ink circle: "black at 00:05")
+     - "Still unverified": barcode / box label (ink arrow: "Still unverified")
+   - Clicking timestamp button seeks the customer unboxing video player.
+   - Visible cursor with ripples and hand-drawn ink annotations.
 """
 
 from __future__ import annotations
@@ -24,6 +28,12 @@ from docs.video.recorder.common import (
     convert_webm_to_mp4,
     get_video_duration,
     reset_demo_database,
+    setup_page_cursor_and_ink,
+    smooth_move,
+    smooth_click,
+    ink_circle,
+    ink_arrow,
+    ink_clear,
 )
 
 STOCK_VIDEO = REPO_ROOT / "app" / "demo" / "media" / "stock" / "stock_black_headphones_pexels_9130360.mp4"
@@ -39,7 +49,7 @@ def record_scene_04() -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=100,
+            slow_mo=50,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -52,31 +62,32 @@ def record_scene_04() -> Path:
         # 1. Customer Portal
         print("[04] Navigating to Customer Portal (demo scale)...")
         page.goto(f"{BASE_URL}/?tab=customer&demo=1")
+        setup_page_cursor_and_ink(page)
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(800)
+        time.sleep(1.0)
 
         # Select Ananya Patel (CUS-02)
         print("[04] Selecting Customer CUS-02...")
-        cust_select = page.locator("select.select-field").first
+        cust_select = page.locator("select.demo-select").first
         cust_select.select_option("CUS-02")
-        page.wait_for_timeout(800)
+        time.sleep(0.8)
 
         # Attach video clip
         print("[04] Attaching stock black headphones video...")
         file_input = page.locator("input[type='file']")
         file_input.set_input_files(str(STOCK_VIDEO))
-        page.wait_for_timeout(800)
+        time.sleep(0.8)
 
         # Fill text
-        text_input = page.locator("input.text-input")
+        text_input = page.locator("input.messaging-input-field")
+        smooth_click(page, text_input, steps=15, delay_after=0.3)
         text_input.fill("I ordered white headphones but received black ones. Here is the unboxing clip.")
-        page.wait_for_timeout(800)
+        time.sleep(0.6)
 
         # Click Send
         print("[04] Sending message and uploading media...")
-        send_btn = page.locator("button.btn-primary:has-text('Send')")
-        send_btn.click()
-        page.wait_for_timeout(2000)
+        send_btn = page.locator("button.messaging-send-btn")
+        smooth_click(page, send_btn, steps=15, delay_after=2.5)
 
         # Also attach voice note to case via API if case exists
         try:
@@ -85,7 +96,6 @@ def record_scene_04() -> Path:
             match = next((c for c in cases if c.get("order_id") == "ORD-7729"), None)
             if match and STOCK_VOICE.exists():
                 print(f"[04] Attaching voice note {STOCK_VOICE.name} to case {match['case_id']}...")
-                # Upload via multipart
                 data = STOCK_VOICE.read_bytes()
                 boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
                 body = (
@@ -105,56 +115,56 @@ def record_scene_04() -> Path:
         except Exception as e:
             print(f"[04] Note: Voice upload via API: {e}")
 
-        # Wait for model analysis to settle
-        page.wait_for_timeout(1500)
+        # Show WhatsApp-style customer chat
+        ink_circle(page, ".messaging-phone-frame", text="WhatsApp-style customer chat", side="top", duration=3.0)
+        time.sleep(2.5)
+        ink_clear(page)
 
         # 2. Switch to Seller Console
         print("[04] Navigating to Seller Console...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
-        seller_tab.click()
-        page.wait_for_timeout(1200)
+        smooth_click(page, seller_tab, steps=20, delay_after=1.2)
+        setup_page_cursor_and_ink(page)
 
         # Click on ORD-7729 case
-        inbox_items = page.locator(".inbox-item").all()
-        for it in inbox_items:
-            if "ORD-7729" in it.inner_text():
-                it.click()
-                break
-        page.wait_for_timeout(1200)
+        ord_item = page.locator(".inbox-item:has-text('ORD-7729')")
+        if ord_item.count() > 0:
+            smooth_click(page, ord_item.first, steps=20, delay_after=1.2)
 
         # 3. Inspect Triad Facts Panel
-        print("[04] Hovering on Triad Facts Panel...")
-        triad_panel = page.locator(".seller-col:has-text('Verified Order Facts')")
-        if triad_panel.count() > 0:
-            triad_panel.first.hover()
-            page.wait_for_timeout(1500)
+        print("[04] Highlighting Triad Facts Panel...")
+        seen_section = page.locator(".triad-group:has-text('What the agent saw')")
+        if seen_section.count() > 0:
+            smooth_move(page, seen_section.first, steps=20)
+            ink_circle(page, seen_section.first, text="black at 00:05", side="left", duration=4.0)
+            time.sleep(2.5)
 
-        # 4. Click Timestamp ▶ 00:07 to seek video
+        unverified_section = page.locator(".triad-group:has-text('Still unverified')")
+        if unverified_section.count() > 0:
+            ink_arrow(page, unverified_section.first, text="Still unverified", from_side="bottom", duration=4.0)
+            time.sleep(2.5)
+
+        # 4. Click Timestamp button to seek video
         print("[04] Clicking timestamp button to seek video...")
-        timestamp_btn = page.locator("button:has-text('00:07'), button:has-text('0:07'), .timestamp-chip")
+        timestamp_btn = page.locator("button.timestamp-pill, button:has-text('00:05'), button:has-text('00:07')")
         if timestamp_btn.count() > 0:
-            timestamp_btn.first.click()
-            page.wait_for_timeout(2500)  # Pause to see video playing at 00:07!
+            smooth_click(page, timestamp_btn.first, steps=18, delay_after=1.2)
 
-        # 5. Inspect Plan Card & Proposal
-        print("[04] Inspecting Plan Card and Proposal...")
-        plan_card = page.locator(".plan-card, .seller-col:has-text('Plan')")
+            # Move cursor to video player to show seeked frame
+            video_player = page.locator("video.video-player")
+            if video_player.count() > 0:
+                smooth_move(page, video_player.first, steps=20)
+                time.sleep(2.5)
+
+        # 5. Inspect Plan Card
+        print("[04] Inspecting Plan Card...")
+        plan_card = page.locator(".plan-card")
         if plan_card.count() > 0:
-            plan_card.first.hover()
-            page.wait_for_timeout(1500)
+            smooth_move(page, plan_card.first, steps=20)
+            time.sleep(2.0)
 
-        # Review & Decide proposal if available
-        review_btn = page.locator("button:has-text('Review & Decide')")
-        if review_btn.count() > 0:
-            review_btn.first.click()
-            page.wait_for_timeout(1000)
-
-            close_modal = page.locator(".modal-header button:has-text('✕')")
-            if close_modal.count() > 0:
-                close_modal.first.click()
-                page.wait_for_timeout(800)
-
-        page.wait_for_timeout(800)
+        ink_clear(page)
+        time.sleep(1.0)
 
         video_obj = page.video
         context.close()
