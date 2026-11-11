@@ -73,12 +73,12 @@ class GeminiModelAdapter:
         self.primary_model = (
             primary_model
             or os.environ.get("MODEL_PRIMARY")
-            or "gemini-3.8-flash"
+            or "gemini-3.5-flash-lite"
         )
         self.fallback_model = (
             fallback_model
             or os.environ.get("MODEL_FALLBACK")
-            or "gemini-3.5-flash-lite"
+            or "gemini-3.6-flash"
         )
 
         if harness_mode is not None:

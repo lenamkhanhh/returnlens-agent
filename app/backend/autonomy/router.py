@@ -69,7 +69,7 @@ def get_autonomy_policy(
     """Fetch current autonomy policy and reliability status for all CaseTypes."""
     policy = repo.get_autonomy_policy(store_id=store_id)
     agent_ver = compute_agent_version()
-    model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.8-flash")
+    model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.5-flash-lite")
     rel_data = load_reliability_results()
 
     lock_status: Dict[str, Dict[str, Any]] = {}
@@ -112,7 +112,7 @@ def update_autonomy_policy(
     Test 40: Rejects L2 or L3 with HTTP 422 if reliability gate is not met.
     """
     agent_ver = compute_agent_version()
-    model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.8-flash")
+    model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.5-flash-lite")
     rel_data = load_reliability_results()
 
     # Validate that requested L2/L3 levels pass the reliability gate
@@ -233,7 +233,7 @@ def get_autonomy_why_checklist(
 
     policy = repo.get_autonomy_policy(order.store_id)
     agent_ver = compute_agent_version()
-    model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.8-flash")
+    model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.5-flash-lite")
     rel_data = load_reliability_results()
 
     # Find proposal or default to return proposal for evaluation

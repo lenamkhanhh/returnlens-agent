@@ -78,7 +78,7 @@ def evaluate_autonomy_decision(
     observations: Optional[List[ObservationItem]] = None,
     reliability_data: Optional[Dict[str, ReliabilityResult]] = None,
     current_agent_version: str = "",
-    current_model_id: str = "gemini-3.8-flash",
+    current_model_id: str = "gemini-3.5-flash-lite",
     is_receipt_received: bool = False,
     is_return_to_origin: bool = False,
     is_customer_denial: bool = False,

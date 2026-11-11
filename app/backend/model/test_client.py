@@ -58,7 +58,7 @@ class TestGeminiModelAdapter(unittest.TestCase):
         )
 
         self.assertEqual(res.text, mock_response.text)
-        self.assertEqual(model_run.model_id, "gemini-3.8-flash")
+        self.assertEqual(model_run.model_id, adapter.primary_model)
         self.assertEqual(model_run.prompt_version, "v1.0")
         self.assertEqual(model_run.schema_version, "v1.0")
         self.assertEqual(model_run.token_usage["prompt_tokens"], 42)
@@ -229,7 +229,7 @@ class TestGeminiModelAdapter(unittest.TestCase):
         self.assertEqual(fake_client.models.generate_content.call_count, 2)
         self.assertEqual(res.text, '{"intent": "WISMO"}')
         self.assertTrue(model_run.output_validated)
-        self.assertEqual(model_run.model_id, "gemini-3.8-flash")
+        self.assertEqual(model_run.model_id, adapter.primary_model)
 
     def test_29_auth_error_fails_immediately_without_retry(self):
         """Test 29: Authentication / authorization errors must never be retried."""
