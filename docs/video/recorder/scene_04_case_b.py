@@ -53,13 +53,13 @@ def record_scene_04() -> Path:
         print("[04] Navigating to Customer Portal...")
         page.goto(f"{BASE_URL}/?tab=customer")
         page.wait_for_selector(".customer-layout", timeout=10000)
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
         # Select Ananya Patel (CUS-02)
         print("[04] Selecting Customer CUS-02...")
         cust_select = page.locator("select.select-field").first
         cust_select.select_option("CUS-02")
-        page.wait_for_timeout(1500)
+        page.wait_for_timeout(1000)
 
         # Attach video clip
         print("[04] Attaching stock black headphones video...")
@@ -76,7 +76,7 @@ def record_scene_04() -> Path:
         print("[04] Sending message and uploading media...")
         send_btn = page.locator("button.btn-primary:has-text('Send')")
         send_btn.click()
-        page.wait_for_timeout(4000)
+        page.wait_for_timeout(2500)
 
         # Also attach voice note to case via API if case exists
         try:
@@ -106,13 +106,13 @@ def record_scene_04() -> Path:
             print(f"[04] Note: Voice upload via API: {e}")
 
         # Wait for model analysis to settle
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(2000)
 
         # 2. Switch to Seller Console
         print("[04] Navigating to Seller Console...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
         seller_tab.click()
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(1500)
 
         # Click on ORD-7729 case
         inbox_items = page.locator(".inbox-item").all()
@@ -120,14 +120,14 @@ def record_scene_04() -> Path:
             if "ORD-7729" in it.inner_text():
                 it.click()
                 break
-        page.wait_for_timeout(2500)
+        page.wait_for_timeout(1500)
 
         # 3. Inspect Triad Facts Panel
         print("[04] Hovering on Triad Facts Panel...")
         triad_panel = page.locator(".seller-col:has-text('Verified Order Facts')")
         if triad_panel.count() > 0:
             triad_panel.first.hover()
-            page.wait_for_timeout(2000)
+            page.wait_for_timeout(1500)
 
         # 4. Click Timestamp ▶ 00:07 to seek video
         print("[04] Clicking timestamp button to seek video...")
@@ -141,20 +141,20 @@ def record_scene_04() -> Path:
         plan_card = page.locator(".plan-card, .seller-col:has-text('Plan')")
         if plan_card.count() > 0:
             plan_card.first.hover()
-            page.wait_for_timeout(2000)
+            page.wait_for_timeout(1500)
 
         # Review & Decide proposal if available
         review_btn = page.locator("button:has-text('Review & Decide')")
         if review_btn.count() > 0:
             review_btn.first.click()
-            page.wait_for_timeout(2500)
+            page.wait_for_timeout(1500)
 
             close_modal = page.locator(".modal-header button:has-text('✕')")
             if close_modal.count() > 0:
                 close_modal.first.click()
                 page.wait_for_timeout(1000)
 
-        page.wait_for_timeout(2000)
+        page.wait_for_timeout(1000)
 
         video_obj = page.video
         context.close()

@@ -292,15 +292,25 @@ def assemble_video(
     if badge_scenes is None:
         badge_scenes = ["scene_03", "3"]
 
-    # Locate scene files
+    # Locate scene files (deduplicating by scene index, preferring .mp4)
     scene_pattern = re.compile(r"scene_?0*([0-9]+)\.(mp4|webm|mov|mkv)$", re.IGNORECASE)
-    scene_files: List[Tuple[int, Path]] = []
+    scene_map: Dict[int, Path] = {}
+    ext_priority = {".mp4": 1, ".mkv": 2, ".mov": 3, ".webm": 4}
 
     for f in scenes_dir.iterdir():
         if f.is_file():
             m = scene_pattern.search(f.name)
             if m:
-                scene_files.append((int(m.group(1)), f))
+                idx = int(m.group(1))
+                if idx not in scene_map:
+                    scene_map[idx] = f
+                else:
+                    cur_ext = scene_map[idx].suffix.lower()
+                    new_ext = f.suffix.lower()
+                    if ext_priority.get(new_ext, 99) < ext_priority.get(cur_ext, 99):
+                        scene_map[idx] = f
+
+    scene_files = sorted(scene_map.items(), key=lambda x: x[0])
 
     if not scene_files:
         return False, 0.0, f"No scene files (e.g. scene_01.mp4 ... scene_08.mp4) found in {scenes_dir}"

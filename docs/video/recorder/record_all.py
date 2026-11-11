@@ -27,6 +27,7 @@ from docs.video.recorder.scene_04_case_b import record_scene_04
 from docs.video.recorder.scene_05_returning_customer import record_scene_05
 from docs.video.recorder.scene_06_reliability_kill_switch import record_scene_06
 from docs.video.recorder.scene_07_try_to_break_it import record_scene_07
+from docs.video.recorder.scene_08_outro import record_scene_08
 
 RECORDERS = [
     ("scene_01", "Cold Open (Autonomy Bar, Caps, Courier RETURN_RECEIVED, Why?)", record_scene_01),
@@ -36,6 +37,7 @@ RECORDERS = [
     ("scene_05", "Returning Customer (Dim clip, Leave & Return, Session restored, Memory chip)", record_scene_05),
     ("scene_06", "Reliability & Kill Switch (Benchmark gate, Provenance, 1-Click Kill Switch)", record_scene_06),
     ("scene_07", "Try to Break It (Prompt injection, Over-refund, Cumulative split, Custom attack)", record_scene_07),
+    ("scene_08", "Outro & Repository Link (Closing title card, Track badge, Repo link)", record_scene_08),
 ]
 
 def record_all(selected_scenes: list[str] | None = None) -> list[dict]:

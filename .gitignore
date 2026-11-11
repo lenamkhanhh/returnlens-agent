@@ -7,3 +7,4 @@ app/web/dist/
 *.sqlite
 *.db
 !app/demo/snapshot/*.db
+docs/video/scenes/temp_*/
