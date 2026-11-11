@@ -10,4 +10,6 @@ app/web/dist/
 docs/video/scenes/temp_*/
 docs/video/scenes/webm/
 scenes/webm/
+docs/video/scenes/frames/
+scenes/frames/
 *.webm

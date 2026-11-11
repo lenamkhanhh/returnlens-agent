@@ -250,123 +250,322 @@ JS_TEMPLATE = r"""/**
 
     function resolveTarget(target) {
       if (!target) return null;
+      let el = null;
+      let left = 0, top = 0, width = 10, height = 10;
+
       if (typeof target === 'object' && target !== null && 'x' in target && 'y' in target) {
-        const w = target.width || target.w || 10;
-        const h = target.height || target.h || 10;
-        return {
-          left: target.x,
-          top: target.y,
-          width: w,
-          height: h,
-          right: target.x + w,
-          bottom: target.y + h,
-        };
-      }
-      if (target instanceof Element) {
-        const r = target.getBoundingClientRect();
-        return {
-          left: r.left,
-          top: r.top,
-          width: r.width,
-          height: r.height,
-          right: r.right,
-          bottom: r.bottom,
-        };
-      }
-      if (typeof target === 'string') {
+        left = target.x;
+        top = target.y;
+        width = target.width || target.w || 10;
+        height = target.height || target.h || 10;
         try {
-          const el = document.querySelector(target);
+          el = document.elementFromPoint(left + width / 2, top + height / 2);
+        } catch (e) {}
+      } else if (target instanceof Element) {
+        el = target;
+        const r = target.getBoundingClientRect();
+        left = r.left; top = r.top; width = r.width; height = r.height;
+      } else if (typeof target === 'string') {
+        try {
+          el = document.querySelector(target);
           if (el) {
             const r = el.getBoundingClientRect();
-            return { left: r.left, top: r.top, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
+            left = r.left; top = r.top; width = r.width; height = r.height;
           }
         } catch (e) {}
 
-        const textMatch = target.match(/:has-text\(['"](.+?)['"]\)/) || target.match(/text=(.+)/);
-        const needle = textMatch ? textMatch[1].replace(/^["']|["']$/g, '') : target;
-        
-        const all = Array.from(document.querySelectorAll('*'));
-        let best = null;
-        for (const el of all) {
-          if (el.textContent && el.textContent.includes(needle)) {
-            const rect = el.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-              best = el;
+        if (!el) {
+          const textMatch = target.match(/:has-text\(['"](.+?)['"]\)/) || target.match(/text=(.+)/);
+          const needle = textMatch ? textMatch[1].replace(/^["']|["']$/g, '') : target;
+          const all = Array.from(document.querySelectorAll('*'));
+          let best = null;
+          for (const cand of all) {
+            if (cand.textContent && cand.textContent.includes(needle)) {
+              const r = cand.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0) {
+                best = cand;
+              }
             }
           }
-        }
-        if (best) {
-          const r = best.getBoundingClientRect();
-          return { left: r.left, top: r.top, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
+          if (best) {
+            el = best;
+            const r = best.getBoundingClientRect();
+            left = r.left; top = r.top; width = r.width; height = r.height;
+          }
         }
       }
-      return null;
+
+      // Safeguard against broad containers (.modal-card, #autonomy-bar, .inbox-list)
+      if (el && width > 550 && height > 320) {
+        // If modal, find inner alert/result/pre/badge
+        const sub = el.querySelector('.sandbox-result, .alert, .badge, .modal-title, pre, h3');
+        if (sub) {
+          const sr = sub.getBoundingClientRect();
+          if (sr.width > 0 && sr.height > 0) {
+            el = sub;
+            left = sr.left; top = sr.top; width = sr.width; height = sr.height;
+          }
+        } else {
+          width = Math.min(width, 420);
+          height = Math.min(height, 120);
+        }
+      } else if (el && width > 900) {
+        // e.g. AutonomyBar spanning 1920px
+        const sub = el.querySelector('.badge, code, strong, span');
+        if (sub) {
+          const sr = sub.getBoundingClientRect();
+          if (sr.width > 0 && sr.height > 0) {
+            el = sub;
+            left = sr.left; top = sr.top; width = sr.width; height = sr.height;
+          }
+        } else {
+          width = Math.min(width, 360);
+        }
+      }
+
+      return {
+        left,
+        top,
+        width,
+        height,
+        right: left + width,
+        bottom: top + height,
+        cx: left + width / 2,
+        cy: top + height / 2,
+        el
+      };
+    }
+
+    function getOppositeSide(side) {
+      if (side === 'left') return 'right';
+      if (side === 'right') return 'left';
+      if (side === 'top') return 'bottom';
+      return 'top';
     }
 
     /**
-     * Checks if a candidate rectangle overlaps other UI text elements
+     * Checks if a candidate note box overlaps any text node, modal, or control
+     * using document.elementsFromPoint and caretRangeFromPoint.
+     * Rule: Never over text, never over a modal.
      */
-    function calculateOverlapScore(box) {
-      let score = 0;
-      const elements = document.querySelectorAll('button, strong, span, p, h1, h2, h3, select, input, .inbox-item, .card');
-      for (let i = 0; i < elements.length; i++) {
-        const el = elements[i];
-        if (!el.textContent || el.textContent.trim().length === 0) continue;
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 || r.height === 0) continue;
+    function checkNoteBoxCollision(box, targetEl) {
+      if (box.x < 12 || box.x + box.w > window.innerWidth - 12) return 1000000;
+      if (box.y < 12 || box.y + box.h > window.innerHeight - 12) return 1000000;
 
-        // Check intersection between box and r
-        const overlapX = Math.max(0, Math.min(box.x + box.w, r.right) - Math.max(box.x, r.left));
-        const overlapY = Math.max(0, Math.min(box.y + box.h, r.bottom) - Math.max(box.y, r.top));
-        if (overlapX > 0 && overlapY > 0) {
-          score += (overlapX * overlapY);
+      let score = 0;
+
+      // 1. Modal collision: "never over a modal"
+      const targetInsideModal = targetEl && targetEl.closest && targetEl.closest('.modal-card, .modal, dialog, [role="dialog"]');
+      const modals = document.querySelectorAll('.modal-card, .modal, dialog, [role="dialog"]');
+      for (let i = 0; i < modals.length; i++) {
+        const m = modals[i];
+        if (!targetInsideModal || m !== targetInsideModal) {
+          const mr = m.getBoundingClientRect();
+          if (mr.width > 0 && mr.height > 0) {
+            const ox = Math.max(0, Math.min(box.x + box.w, mr.right) - Math.max(box.x, mr.left));
+            const oy = Math.max(0, Math.min(box.y + box.h, mr.bottom) - Math.max(box.y, mr.top));
+            if (ox > 0 && oy > 0) {
+              score += 500000; // Strict: note cannot sit over a modal from outside
+            }
+          }
         }
       }
+
+      // 2. Check rendered text nodes using elementsFromPoint across a 15-point grid
+      const xs = [box.x + 8, box.x + box.w * 0.25, box.x + box.w * 0.5, box.x + box.w * 0.75, box.x + box.w - 8];
+      const ys = [box.y + 6, box.y + box.h * 0.5, box.y + box.h - 6];
+
+      for (let xi = 0; xi < xs.length; xi++) {
+        for (let yi = 0; yi < ys.length; yi++) {
+          const px = xs[xi];
+          const py = ys[yi];
+          if (px < 0 || px >= window.innerWidth || py < 0 || py >= window.innerHeight) continue;
+
+          // Direct caret / rendered text check if supported
+          if (document.caretRangeFromPoint) {
+            try {
+              const range = document.caretRangeFromPoint(px, py);
+              if (range && range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
+                const tVal = range.startContainer.nodeValue;
+                if (tVal && tVal.trim().length > 0) {
+                  if (!targetEl || !targetEl.contains(range.startContainer)) {
+                    score += 40000; // Overlapping direct text node
+                  }
+                }
+              }
+            } catch (e) {}
+          }
+
+          const stack = document.elementsFromPoint(px, py) || [];
+          for (let ei = 0; ei < stack.length; ei++) {
+            const el = stack[ei];
+            if (!el || el.id === 'playwright-cursor-container' || el.id === 'ink-overlay-svg' ||
+                el.id === 'ink-notes-layer' || el.closest('#ink-notes-layer')) {
+              continue;
+            }
+            if (targetEl && (el === targetEl || targetEl.contains(el))) {
+              continue;
+            }
+
+            const tag = el.tagName ? el.tagName.toLowerCase() : '';
+            const isTextOrControl = ['button', 'input', 'select', 'textarea', 'label', 'a',
+                                     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'th', 'td', 'p', 'pre', 'code'].includes(tag) ||
+                                     (el.className && typeof el.className === 'string' &&
+                                      /badge|chip|bubble|title|header|card-title|item-title/i.test(el.className));
+
+            if (isTextOrControl) {
+              score += 15000;
+            }
+
+            if (el.childNodes && el.childNodes.length > 0) {
+              for (let ci = 0; ci < el.childNodes.length; ci++) {
+                const cn = el.childNodes[ci];
+                if (cn.nodeType === Node.TEXT_NODE && cn.nodeValue && cn.nodeValue.trim().length > 0) {
+                  score += 8000;
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Overlap with visible text bounding rects across page
+      const textElements = document.querySelectorAll('button, select, input, label, h1, h2, h3, h4, p, span.badge, span.chip, .chat-bubble, .inbox-item-title, .proposal-header, .stat-value, .stat-label, .triad-title');
+      for (let i = 0; i < textElements.length; i++) {
+        const tel = textElements[i];
+        if (!tel.textContent || tel.textContent.trim().length === 0) continue;
+        if (targetEl && (tel === targetEl || targetEl.contains(tel))) continue;
+
+        const tr = tel.getBoundingClientRect();
+        if (tr.width === 0 || tr.height === 0) continue;
+
+        const overlapX = Math.max(0, Math.min(box.x + box.w, tr.right) - Math.max(box.x, tr.left));
+        const overlapY = Math.max(0, Math.min(box.y + box.h, tr.bottom) - Math.max(box.y, tr.top));
+        if (overlapX > 0 && overlapY > 0) {
+          score += (overlapX * overlapY * 15);
+        }
+      }
+
       return score;
     }
 
     /**
-     * Finds the best placement side that has maximum empty space
+     * Finds the best placement side in empty space with a short arrow (<= 160px).
+     * If preferred side overlaps any text or modal, tests the opposite side, then remaining sides.
      */
-    function findBestPlacement(rect, estWidth, estHeight, preferredSide) {
-      const sides = preferredSide ? [preferredSide, 'top', 'bottom', 'left', 'right'] : ['top', 'bottom', 'left', 'right'];
-      // Unique sides in order
+    function findBestPlacement(targetInfo, estWidth, estHeight, preferredSide, maxArrowDist) {
+      maxArrowDist = maxArrowDist || 160;
+      const targetRect = targetInfo;
+      const targetEl = targetInfo.el;
+
+      const pref = preferredSide && preferredSide !== 'auto' ? preferredSide : 'right';
+      const opposite = getOppositeSide(pref);
+      const sides = [pref, opposite, 'right', 'left', 'bottom', 'top'];
       const uniqueSides = Array.from(new Set(sides));
-      let bestSide = uniqueSides[0];
+
+      let bestPlacement = null;
       let minScore = Infinity;
 
       for (const side of uniqueSides) {
-        let x, y;
-        if (side === 'top') {
-          x = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-          y = rect.top - estHeight - 16;
-        } else if (side === 'bottom') {
-          x = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-          y = rect.bottom + 16;
+        let noteX, noteY;
+        const gap = (side === 'top' || side === 'bottom') ? 20 : 26;
+
+        if (side === 'right') {
+          noteX = targetRect.right + gap;
+          noteY = targetRect.top + targetRect.height / 2 - estHeight / 2;
         } else if (side === 'left') {
-          x = clamp(rect.left - estWidth - 30, 20, window.innerWidth - estWidth - 24);
-          y = rect.top + rect.height / 2 - estHeight / 2;
+          noteX = targetRect.left - estWidth - gap;
+          noteY = targetRect.top + targetRect.height / 2 - estHeight / 2;
+        } else if (side === 'top') {
+          noteX = targetRect.left + targetRect.width / 2 - estWidth / 2;
+          noteY = targetRect.top - estHeight - gap;
         } else {
-          x = clamp(rect.right + 30, 20, window.innerWidth - estWidth - 24);
-          y = rect.top + rect.height / 2 - estHeight / 2;
+          // bottom
+          noteX = targetRect.left + targetRect.width / 2 - estWidth / 2;
+          noteY = targetRect.bottom + gap;
         }
 
-        // Check screen bounds penalty
-        let boundsPenalty = 0;
-        if (y < 10 || y + estHeight > window.innerHeight - 10) boundsPenalty += 100000;
-        if (x < 10 || x + estWidth > window.innerWidth - 10) boundsPenalty += 100000;
+        noteX = clamp(noteX, 16, window.innerWidth - estWidth - 16);
+        noteY = clamp(noteY, 16, window.innerHeight - estHeight - 16);
 
-        const score = calculateOverlapScore({ x, y, w: estWidth, h: estHeight }) + boundsPenalty;
+        // Arrow endpoints
+        let sx, sy, tx, ty;
+        if (side === 'right') {
+          sx = noteX - 4;
+          sy = noteY + estHeight / 2;
+          tx = targetRect.right + 4;
+          ty = targetRect.top + targetRect.height / 2;
+        } else if (side === 'left') {
+          sx = noteX + estWidth + 4;
+          sy = noteY + estHeight / 2;
+          tx = targetRect.left - 4;
+          ty = targetRect.top + targetRect.height / 2;
+        } else if (side === 'top') {
+          sx = noteX + estWidth / 2;
+          sy = noteY + estHeight + 4;
+          tx = targetRect.left + targetRect.width / 2;
+          ty = targetRect.top - 4;
+        } else {
+          // bottom
+          sx = noteX + estWidth / 2;
+          sy = noteY - 4;
+          tx = targetRect.left + targetRect.width / 2;
+          ty = targetRect.bottom + 4;
+        }
+
+        // Clamp arrow length <= 160 px
+        const arrowDist = Math.hypot(tx - sx, ty - sy);
+        if (arrowDist > maxArrowDist) {
+          const factor = (maxArrowDist - 12) / arrowDist;
+          noteX = clamp(tx + (sx - tx) * factor, 16, window.innerWidth - estWidth - 16);
+          noteY = clamp(ty + (sy - ty) * factor, 16, window.innerHeight - estHeight - 16);
+          if (side === 'right') {
+            sx = noteX - 4;
+          } else if (side === 'left') {
+            sx = noteX + estWidth + 4;
+          } else if (side === 'top') {
+            sy = noteY + estHeight + 4;
+          } else {
+            sy = noteY - 4;
+          }
+        }
+
+        const box = { x: noteX, y: noteY, w: estWidth, h: estHeight };
+        const score = checkNoteBoxCollision(box, targetEl);
+
         if (score < minScore) {
           minScore = score;
-          bestSide = side;
+          bestPlacement = {
+            side,
+            noteX,
+            noteY,
+            sx,
+            sy,
+            tx,
+            ty,
+            score
+          };
+          if (score === 0 && side === pref) {
+            break; // optimal placement matching preference
+          }
         }
       }
-      return bestSide;
+
+      return bestPlacement || {
+        side: 'bottom',
+        noteX: targetRect.left,
+        noteY: targetRect.bottom + 20,
+        sx: targetRect.left + estWidth / 2,
+        sy: targetRect.bottom + 16,
+        tx: targetRect.left + targetRect.width / 2,
+        ty: targetRect.bottom + 4,
+        score: 999
+      };
     }
 
     /**
-     * Generates a wobbly hand-drawn circle/oval path around (cx, cy)
+     * Generates a wobbly hand-drawn circle/oval path hugging (cx, cy)
      */
     function createWobblyCirclePath(cx, cy, rx, ry) {
       const numPoints = 8;
@@ -375,10 +574,11 @@ JS_TEMPLATE = r"""/**
 
       for (let i = 0; i <= numPoints + 2; i++) {
         const angle = baseAngle + (i / numPoints) * 2 * Math.PI;
-        const wobbleR = (Math.sin(i * 2.3) * 2.5 + Math.cos(i * 1.7) * 2.0);
+        // Subtle wobble <= 1.8px so diameter never exceeds target + 24px
+        const wobbleR = (Math.sin(i * 2.3) * 1.2 + Math.cos(i * 1.7) * 0.8);
         const curRx = rx + wobbleR;
-        const curRy = ry + wobbleR * 0.9;
-        const spiral = (i > numPoints) ? (i - numPoints) * 2.2 : 0;
+        const curRy = ry + wobbleR * 0.8;
+        const spiral = (i > numPoints) ? (i - numPoints) * 1.2 : 0;
         points.push({
           x: cx + (curRx + spiral) * Math.cos(angle),
           y: cy + (curRy + spiral) * Math.sin(angle)
@@ -409,19 +609,19 @@ JS_TEMPLATE = r"""/**
       const dx = tx - sx;
       const dy = ty - sy;
       const dist = Math.hypot(dx, dy);
-      if (dist < 10) return `M ${sx} ${sy} L ${tx} ${ty}`;
+      if (dist < 8) return `M ${sx} ${sy} L ${tx} ${ty}`;
 
       const mx = (sx + tx) / 2;
       const my = (sy + ty) / 2;
       const perpX = -dy / dist;
       const perpY = dx / dist;
-      const curvature = Math.min(28, Math.max(12, dist * 0.15));
+      const curvature = Math.min(22, Math.max(8, dist * 0.14));
 
       const cpx = mx + perpX * curvature;
       const cpy = my + perpY * curvature;
 
       const tipAngle = Math.atan2(ty - cpy, tx - cpx);
-      const headLen = 16;
+      const headLen = 14;
       const barb1X = tx - headLen * Math.cos(tipAngle - 0.42);
       const barb1Y = ty - headLen * Math.sin(tipAngle - 0.42);
       const barb2X = tx - headLen * Math.cos(tipAngle + 0.42);
@@ -443,15 +643,16 @@ JS_TEMPLATE = r"""/**
         }
 
         const color = options.color || '#e11d48';
-        const padX = options.padX || options.pad || 12;
-        const padY = options.padY || options.pad || 8;
-        const strokeWidth = options.strokeWidth || 3.5;
+        // Padding <= 12 px, diameter <= target + 24 px
+        const padX = Math.min(12, Math.max(4, options.padX !== undefined ? options.padX : (options.pad !== undefined ? options.pad : 8)));
+        const padY = Math.min(12, Math.max(4, options.padY !== undefined ? options.padY : (options.pad !== undefined ? options.pad : 6)));
+        const strokeWidth = options.strokeWidth || 3.2;
         const duration = options.duration || 3000;
 
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const rx = (rect.width / 2) + padX;
-        const ry = (rect.height / 2) + padY;
+        const rx = Math.min((rect.width / 2) + padX, (rect.width / 2) + 12);
+        const ry = Math.min((rect.height / 2) + padY, (rect.height / 2) + 12);
 
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.className.baseVal = 'ink-group';
@@ -464,16 +665,10 @@ JS_TEMPLATE = r"""/**
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');
         group.appendChild(path);
-        svgOverlay.appendChild(group);
-
-        const pathLength = path.getTotalLength() || 400;
-        path.style.strokeDasharray = `${pathLength}`;
-        path.style.strokeDashoffset = `${pathLength}`;
-        path.getBoundingClientRect(); // trigger reflow
-        path.style.transition = 'stroke-dashoffset 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
-        path.style.strokeDashoffset = '0';
 
         let noteEl = null;
+        let arrowPath = null;
+
         if (text) {
           noteEl = document.createElement('div');
           noteEl.className = 'ink-note-bubble';
@@ -481,27 +676,39 @@ JS_TEMPLATE = r"""/**
           noteEl.textContent = text;
           notesLayer.appendChild(noteEl);
 
-          const estWidth = Math.max(110, text.length * 14 + 16);
+          const estWidth = Math.max(110, text.length * 13 + 24);
           const estHeight = 36;
-          const side = findBestPlacement(rect, estWidth, estHeight, options.side || (rect.top > 65 ? 'top' : 'bottom'));
+          const placement = findBestPlacement(rect, estWidth, estHeight, options.side || 'auto', 160);
 
-          if (side === 'top') {
-            const left = clamp(cx - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-            noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${Math.max(10, rect.top - ry - estHeight - 6)}px`;
-          } else if (side === 'bottom') {
-            const left = clamp(cx - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-            noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${rect.bottom + ry + 10}px`;
-          } else if (side === 'right') {
-            const left = clamp(rect.right + rx + 16, 20, window.innerWidth - estWidth - 24);
-            noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${cy - estHeight / 2}px`;
-          } else {
-            const left = clamp(rect.left - rx - estWidth - 16, 20, window.innerWidth - estWidth - 24);
-            noteEl.style.left = `${left}px`;
-            noteEl.style.top = `${cy - estHeight / 2}px`;
-          }
+          noteEl.style.left = `${placement.noteX}px`;
+          noteEl.style.top = `${placement.noteY}px`;
+
+          // Connect note to circle with a short curved arrow
+          arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          arrowPath.setAttribute('d', createCurvedArrowPath(placement.sx, placement.sy, placement.tx, placement.ty));
+          arrowPath.setAttribute('stroke', color);
+          arrowPath.setAttribute('stroke-width', (strokeWidth * 0.85).toString());
+          arrowPath.setAttribute('fill', 'none');
+          arrowPath.setAttribute('stroke-linecap', 'round');
+          arrowPath.setAttribute('stroke-linejoin', 'round');
+          group.appendChild(arrowPath);
+        }
+
+        svgOverlay.appendChild(group);
+
+        const pathLength = path.getTotalLength() || 400;
+        path.style.strokeDasharray = `${pathLength}`;
+        path.style.strokeDashoffset = `${pathLength}`;
+        path.getBoundingClientRect();
+        path.style.transition = 'stroke-dashoffset 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+        path.style.strokeDashoffset = '0';
+
+        if (arrowPath) {
+          const aLen = arrowPath.getTotalLength() || 200;
+          arrowPath.style.strokeDasharray = `${aLen}`;
+          arrowPath.style.strokeDashoffset = `${aLen}`;
+          arrowPath.style.transition = 'stroke-dashoffset 0.45s cubic-bezier(0.25, 1, 0.5, 1) 0.1s';
+          arrowPath.style.strokeDashoffset = '0';
         }
 
         const handle = {
@@ -539,62 +746,24 @@ JS_TEMPLATE = r"""/**
         const strokeWidth = options.strokeWidth || 3.0;
         const duration = options.duration || 3000;
 
-        const estWidth = Math.max(110, text.length * 14 + 16);
-        const estHeight = 36;
-        const side = findBestPlacement(rect, estWidth, estHeight, options.fromSide || options.side || 'auto');
-
         const noteEl = document.createElement('div');
         noteEl.className = 'ink-note-bubble';
         noteEl.style.color = color;
         noteEl.textContent = text;
         notesLayer.appendChild(noteEl);
 
-        let sx, sy, tx, ty;
+        const estWidth = Math.max(110, text.length * 13 + 24);
+        const estHeight = 36;
+        const placement = findBestPlacement(rect, estWidth, estHeight, options.fromSide || options.side || 'auto', 160);
 
-        if (side === 'right') {
-          const noteX = clamp(rect.right + 65, 20, window.innerWidth - estWidth - 24);
-          const noteY = rect.top + rect.height / 2 - estHeight / 2;
-          noteEl.style.left = `${noteX}px`;
-          noteEl.style.top = `${noteY}px`;
-          sx = noteX - 8;
-          sy = noteY + estHeight / 2;
-          tx = rect.right + 8;
-          ty = rect.top + rect.height / 2;
-        } else if (side === 'left') {
-          const noteX = clamp(rect.left - estWidth - 45, 20, window.innerWidth - estWidth - 24);
-          const noteY = rect.top + rect.height / 2 - estHeight / 2;
-          noteEl.style.left = `${noteX}px`;
-          noteEl.style.top = `${noteY}px`;
-          sx = noteX + estWidth + 8;
-          sy = noteY + estHeight / 2;
-          tx = rect.left - 8;
-          ty = rect.top + rect.height / 2;
-        } else if (side === 'top') {
-          const noteX = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-          const noteY = Math.max(10, rect.top - estHeight - 24);
-          noteEl.style.left = `${noteX}px`;
-          noteEl.style.top = `${noteY}px`;
-          sx = noteX + estWidth / 2;
-          sy = noteY + estHeight + 4;
-          tx = rect.left + rect.width / 2;
-          ty = rect.top - 8;
-        } else {
-          // bottom
-          const noteX = clamp(rect.left + rect.width / 2 - estWidth / 2, 20, window.innerWidth - estWidth - 24);
-          const noteY = rect.bottom + 28;
-          noteEl.style.left = `${noteX}px`;
-          noteEl.style.top = `${noteY}px`;
-          sx = noteX + estWidth / 2;
-          sy = noteY - 6;
-          tx = rect.left + rect.width / 2;
-          ty = rect.bottom + 8;
-        }
+        noteEl.style.left = `${placement.noteX}px`;
+        noteEl.style.top = `${placement.noteY}px`;
 
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.className.baseVal = 'ink-group';
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', createCurvedArrowPath(sx, sy, tx, ty));
+        path.setAttribute('d', createCurvedArrowPath(placement.sx, placement.sy, placement.tx, placement.ty));
         path.setAttribute('stroke', color);
         path.setAttribute('stroke-width', strokeWidth.toString());
         path.setAttribute('fill', 'none');
@@ -607,7 +776,7 @@ JS_TEMPLATE = r"""/**
         path.style.strokeDasharray = `${pathLength}`;
         path.style.strokeDashoffset = `${pathLength}`;
         path.getBoundingClientRect();
-        path.style.transition = 'stroke-dashoffset 0.6s cubic-bezier(0.25, 1, 0.5, 1)';
+        path.style.transition = 'stroke-dashoffset 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
         path.style.strokeDashoffset = '0';
 
         const handle = {
