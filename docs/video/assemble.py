@@ -5,8 +5,9 @@ Discovers ffmpeg/ffprobe, normalizes scene clips (1080p 30fps),
 applies the '2× speed' badge to fast-forwarded scenes (Scene 03),
 concatenates scenes 01 through 08, compiles non-overlapping synthetic voice narration,
 mixes voice with background music (CC0 Erik Satie Gymnopédie No. 1) with dynamic ducking
-at -24 dB and EBU R128 (-16 LUFS) mastering, burns subtitles (narration.srt) with
-readable bottom-centered styling, and validates that output duration <= 3:00 (180s).
+at -24 dB and EBU R128 (-16 LUFS) mastering, burns subtitles (narration.ass / PlayRes 1920x1080)
+with bottom-centered styling (FontSize 32, MarginV 60, bottom ~15% of frame),
+measures integrated loudness with ebur128, and validates output duration <= 3:00 (180s).
 
 Includes a standalone '--test' mode that generates synthetic test clips
 to verify the pipeline end-to-end without real footage or external dependencies.
@@ -129,41 +130,104 @@ def run_ffmpeg(cmd: List[str]) -> None:
         raise
 
 
-def parse_srt_cues(subtitles_path: Path) -> List[Dict]:
-    """Parse SRT subtitles file into structured cue dictionaries."""
+def parse_subtitles_cues(subtitles_path: Path) -> List[Dict]:
+    """Parse SRT or ASS subtitles file into structured cue dictionaries."""
     if not subtitles_path.exists():
         return []
 
     content = subtitles_path.read_text(encoding="utf-8")
-    blocks = content.strip().split("\n\n")
 
     def parse_time(ts: str) -> float:
-        h, m, rest = ts.split(":")
-        s, ms = rest.split(",")
-        return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000.0
+        ts = ts.strip().replace(",", ".")
+        parts = ts.split(":")
+        h = int(parts[0])
+        m = int(parts[1])
+        s = float(parts[2])
+        return h * 3600.0 + m * 60.0 + s
 
-    cues = []
-    for block in blocks:
-        lines = block.strip().split("\n")
-        if len(lines) >= 3:
-            try:
-                idx = int(lines[0])
-            except ValueError:
-                continue
-            m = re.match(r"(\d+:\d+:\d+,\d+)\s*-->\s*(\d+:\d+:\d+,\d+)", lines[1])
-            if not m:
-                continue
-            start_s = parse_time(m.group(1))
-            end_s = parse_time(m.group(2))
-            text_lines = lines[2:]
-            cues.append({
-                "idx": idx,
-                "start": start_s,
-                "end": end_s,
-                "lines": text_lines,
-                "text": " ".join(text_lines),
-            })
+    cues: List[Dict] = []
+
+    if subtitles_path.suffix.lower() == ".ass":
+        # Parse Dialogue lines: Dialogue: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+        for line in content.splitlines():
+            line = line.strip()
+            if line.startswith("Dialogue:"):
+                parts = line.split(",", 9)
+                if len(parts) >= 10:
+                    start_s = parse_time(parts[1])
+                    end_s = parse_time(parts[2])
+                    text = parts[9].replace("\\N", "\n").replace("\\n", "\n")
+                    text_lines = [l.strip() for l in text.split("\n") if l.strip()]
+                    cues.append({
+                        "idx": len(cues) + 1,
+                        "start": start_s,
+                        "end": end_s,
+                        "lines": text_lines,
+                        "text": " ".join(text_lines),
+                    })
+    else:
+        # Standard SRT parsing
+        blocks = content.strip().split("\n\n")
+        for block in blocks:
+            lines = block.strip().split("\n")
+            if len(lines) >= 3:
+                try:
+                    idx = int(lines[0])
+                except ValueError:
+                    continue
+                m = re.match(r"(\d+:\d+:\d+,\d+)\s*-->\s*(\d+:\d+:\d+,\d+)", lines[1])
+                if not m:
+                    continue
+                start_s = parse_time(m.group(1))
+                end_s = parse_time(m.group(2))
+                text_lines = lines[2:]
+                cues.append({
+                    "idx": idx,
+                    "start": start_s,
+                    "end": end_s,
+                    "lines": text_lines,
+                    "text": " ".join(text_lines),
+                })
+
     return cues
+
+
+def srt_to_ass(srt_path: Path, ass_output_path: Path) -> Path:
+    """Convert SRT file to ASS format with strict 1080p PlayRes and readable bottom styling."""
+    cues = parse_subtitles_cues(srt_path)
+
+    def srt_time_to_ass(seconds: float) -> str:
+        h = int(seconds // 3600)
+        m = int((seconds % 3600) // 60)
+        s = seconds % 60
+        cs = int(round((s - int(s)) * 100))
+        return f"{h}:{m:02d}:{int(s):02d}.{cs:02d}"
+
+    ass_header = """[Script Info]
+Title: ReturnLens Narration
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H80000000,&H80000000,0,0,0,0,100,100,0,0,3,4,0,2,60,60,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+    dialogue_lines = []
+    for c in cues:
+        start_ass = srt_time_to_ass(c["start"])
+        end_ass = srt_time_to_ass(c["end"])
+        text = "\\N".join(c["lines"])
+        dialogue_lines.append(f"Dialogue: 0,{start_ass},{end_ass},Default,,0,0,0,,{text}")
+
+    ass_output_path.write_text(ass_header + "\n".join(dialogue_lines) + "\n", encoding="utf-8")
+    return ass_output_path
 
 
 def normalize_scene(
@@ -241,27 +305,35 @@ def compile_voice_track(
     clips_dir: Path,
     total_duration: float,
     output_wav: Path,
+    tmp_path: Path,
+    ffmpeg_bin: str,
     sample_rate: int = 48000,
 ) -> Path:
-    """Assemble non-overlapping narration voice clips into a continuous PCM WAV audio track."""
+    """Assemble non-overlapping narration voice clips (from MP3 or WAV) into a continuous PCM audio track."""
     n_samples = int(total_duration * sample_rate)
     total_bytes = n_samples * 4  # 16-bit stereo = 4 bytes per frame
     voice_buffer = bytearray(total_bytes)
 
     for i, c in enumerate(cues):
+        clip_mp3 = clips_dir / f"cue_{c['idx']:02d}.mp3"
         clip_wav = clips_dir / f"cue_{c['idx']:02d}.wav"
-        if not clip_wav.exists():
-            # If WAV not found, try MP3
-            clip_mp3 = clips_dir / f"cue_{c['idx']:02d}.mp3"
-            if clip_mp3.exists():
-                subprocess.run(
-                    ["ffmpeg", "-y", "-i", str(clip_mp3), "-ar", str(sample_rate), "-ac", "2", "-f", "wav", str(clip_wav)],
-                    check=True, capture_output=True
-                )
-            else:
-                continue
+        temp_wav = tmp_path / f"temp_cue_{c['idx']:02d}.wav"
 
-        with wave.open(str(clip_wav), "rb") as wf:
+        # Decode MP3 or WAV into temp 48kHz stereo WAV
+        if clip_mp3.exists():
+            subprocess.run(
+                [ffmpeg_bin, "-y", "-i", str(clip_mp3), "-ar", str(sample_rate), "-ac", "2", "-f", "wav", str(temp_wav)],
+                check=True, capture_output=True
+            )
+        elif clip_wav.exists():
+            subprocess.run(
+                [ffmpeg_bin, "-y", "-i", str(clip_wav), "-ar", str(sample_rate), "-ac", "2", "-f", "wav", str(temp_wav)],
+                check=True, capture_output=True
+            )
+        else:
+            continue
+
+        with wave.open(str(temp_wav), "rb") as wf:
             data = wf.readframes(wf.getnframes())
 
         start_sample = int(c["start"] * sample_rate)
@@ -338,8 +410,9 @@ def burn_subtitles_and_mux_audio(
     audio_path: Path,
     subtitles_path: Optional[Path],
     output_path: Path,
+    tmp_path: Path,
 ) -> None:
-    """Burn in SRT subtitles using libass with clean bottom box styling and mux mixed audio."""
+    """Burn in subtitles (using ASS with PlayRes 1920x1080) and mux mixed audio."""
     cmd = [
         ffmpeg_bin, "-y",
         "-i", str(video_path),
@@ -347,19 +420,15 @@ def burn_subtitles_and_mux_audio(
     ]
 
     if subtitles_path and subtitles_path.exists():
-        escaped_sub = escape_ffmpeg_filter_path(str(subtitles_path.resolve()))
-        # Wave 14 subtitle spec: sans-serif, 30-34px at 1080p, white on semi-transparent dark box, bottom margin ~60px
-        style = (
-            "FontName=Arial,"
-            "FontSize=32,"
-            "PrimaryColour=&H00FFFFFF,"
-            "OutlineColour=&H00000000,"
-            "BackColour=&H80000000,"
-            "BorderStyle=3,"
-            "MarginV=60,"
-            "Alignment=2"
-        )
-        sub_filter = f"subtitles='{escaped_sub}':force_style='{style}'"
+        # If input is .srt, convert to .ass with explicit PlayResX/PlayResY 1920x1080
+        if subtitles_path.suffix.lower() == ".srt":
+            ass_file = tmp_path / "burned_narration.ass"
+            srt_to_ass(subtitles_path, ass_file)
+        else:
+            ass_file = subtitles_path
+
+        escaped_ass = escape_ffmpeg_filter_path(str(ass_file.resolve()))
+        sub_filter = f"ass='{escaped_ass}'"
         cmd.extend(["-vf", sub_filter])
 
     cmd.extend([
@@ -375,6 +444,26 @@ def burn_subtitles_and_mux_audio(
         str(output_path),
     ])
     run_ffmpeg(cmd)
+
+
+def measure_loudness(ffmpeg_bin: str, video_path: Path) -> Dict[str, str]:
+    """Measure integrated loudness, LRA, and true peak using FFmpeg ebur128 filter."""
+    cmd = [
+        ffmpeg_bin,
+        "-i", str(video_path),
+        "-filter_complex", "ebur128=peak=true",
+        "-f", "null", "-",
+    ]
+    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    output = res.stderr
+    m_i = re.search(r"Integrated loudness:\s*I:\s*([-\d.]+)\s*LUFS", output)
+    m_lra = re.search(r"Loudness range:\s*LRA:\s*([-\d.]+)\s*LU", output)
+    m_tp = re.search(r"True peak:\s*Peak:\s*([-\d.]+)\s*dBFS", output)
+    return {
+        "integrated_lufs": m_i.group(1) if m_i else "N/A",
+        "loudness_range_lu": m_lra.group(1) if m_lra else "N/A",
+        "true_peak_dbfs": m_tp.group(1) if m_tp else "N/A",
+    }
 
 
 def generate_synthetic_scene(
@@ -477,7 +566,7 @@ def assemble_video(
         print(f"  * Concatenated video duration: {video_dur:.2f}s")
 
         print("\n--- Phase 3: Building voice-over track ---")
-        cues = parse_srt_cues(subtitles_path) if subtitles_path else []
+        cues = parse_subtitles_cues(subtitles_path) if subtitles_path else []
         voice_wav = tmp_path / "voice_track.wav"
 
         if voice_clips_dir and voice_clips_dir.exists() and cues:
@@ -486,10 +575,11 @@ def assemble_video(
                 clips_dir=voice_clips_dir,
                 total_duration=video_dur,
                 output_wav=voice_wav,
+                tmp_path=tmp_path,
+                ffmpeg_bin=ffmpeg_bin,
             )
             print(f"  * Compiled voice-over track from {len(cues)} cues ({voice_wav.name})")
         else:
-            # Generate silent audio track if no voice clips provided
             subprocess.run(
                 [ffmpeg_bin, "-y", "-f", "lavfi", "-i", f"anullsrc=r=48000:cl=stereo", "-t", str(video_dur), str(voice_wav)],
                 check=True, capture_output=True
@@ -515,10 +605,11 @@ def assemble_video(
             audio_path=mixed_audio,
             subtitles_path=subtitles_path,
             output_path=output_path,
+            tmp_path=tmp_path,
         )
         print(f"  * Subtitled, mastered output saved to {output_path}")
 
-        print("\n--- Phase 6: Validating output video ---")
+        print("\n--- Phase 6: Validating output video & measuring loudness ---")
         meta = probe_media(probe_bin, output_path)
         format_info = meta.get("format", {})
         duration = float(format_info.get("duration", 0.0))
@@ -537,9 +628,14 @@ def assemble_video(
         if (w, h) != (1920, 1080):
             return False, duration, f"Invalid resolution {w}x{h}, expected 1920x1080."
 
+        loud = measure_loudness(ffmpeg_bin, output_path)
+
         print(f"  * Output Resolution: {w}x{h}")
         print(f"  * Total Duration: {duration:.2f} seconds ({duration/60:.2f} minutes)")
         print(f"  * Audio Channels: {a_stream.get('channels')}, Sample Rate: {a_stream.get('sample_rate')} Hz")
+        print(f"  * Integrated Loudness: {loud['integrated_lufs']} LUFS")
+        print(f"  * Loudness Range: {loud['loudness_range_lu']} LU")
+        print(f"  * True Peak: {loud['true_peak_dbfs']} dBFS")
         print(f"  * File Size: {size_bytes / (1024*1024):.2f} MB")
 
         # Hard ceiling check: <= 180 seconds (allow 0.5s float slack)
@@ -547,7 +643,7 @@ def assemble_video(
             msg = f"Duration {duration:.2f}s exceeds the 3:00 (180s) competition limit!"
             return False, duration, msg
 
-        return True, duration, "Assembly succeeded and passed all validation checks."
+        return True, duration, f"Assembly succeeded. Loudness: {loud['integrated_lufs']} LUFS."
 
 
 def run_pipeline_test(output_path: Path, subtitles_path: Optional[Path] = None) -> bool:
@@ -577,7 +673,6 @@ def run_pipeline_test(output_path: Path, subtitles_path: Optional[Path] = None) 
             p = tmp_scenes_path / name
             generate_synthetic_scene(ffmpeg_bin, p, dur, col, title, font_file)
 
-        # Generate a synthetic music track
         synthetic_music = tmp_scenes_path / "test_music.wav"
         subprocess.run(
             [ffmpeg_bin, "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=30", str(synthetic_music)],
@@ -625,8 +720,8 @@ def main() -> None:
     parser.add_argument(
         "--subtitles",
         type=Path,
-        default=Path(__file__).parent / "narration.srt",
-        help="Path to SRT subtitles file (burned into output)",
+        default=Path(__file__).parent / "narration.ass" if (Path(__file__).parent / "narration.ass").exists() else Path(__file__).parent / "narration.srt",
+        help="Path to ASS or SRT subtitles file (burned into output with PlayRes 1920x1080)",
     )
     parser.add_argument(
         "--music",
@@ -638,7 +733,7 @@ def main() -> None:
         "--voice-dir",
         type=Path,
         default=Path(__file__).parent / "audio" / "clips",
-        help="Directory containing voice-over cue WAV/MP3 clips",
+        help="Directory containing voice-over cue MP3 clips",
     )
     parser.add_argument(
         "--badge-scenes",

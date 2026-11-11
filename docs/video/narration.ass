@@ -1,0 +1,37 @@
+[Script Info]
+Title: ReturnLens Narration
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: 1920
+PlayResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H80000000,&H80000000,0,0,0,0,100,100,0,0,3,4,0,2,60,60,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.50,0:00:05.80,Default,,0,0,0,,This seller wants an AI agent\Nto refund damaged items on its own.
+Dialogue: 0,0:00:06.00,0:00:13.20,Default,,0,0,0,,ReturnLens says not yet: damage refunds\Nhave not passed 5 of 5 test runs.
+Dialogue: 0,0:00:13.60,0:00:18.20,Default,,0,0,0,,The agent drafts the refund\Nand shows why it stopped.
+Dialogue: 0,0:00:18.60,0:00:24.80,Default,,0,0,0,,Every step of the gate is checked\Nin code and logged.
+Dialogue: 0,0:00:25.20,0:00:30.20,Default,,0,0,0,,Meet ReturnLens, the support agent\Nthat earns its autonomy.
+Dialogue: 0,0:00:30.60,0:00:39.80,Default,,0,0,0,,Indian sellers spend all day answering\Norders, returns, and courier panels.
+Dialogue: 0,0:00:40.20,0:00:44.50,Default,,0,0,0,,A customer asks where her order is.
+Dialogue: 0,0:00:44.80,0:00:51.50,Default,,0,0,0,,The agent calls store and courier tools\Nand answers from live data.
+Dialogue: 0,0:00:52.00,0:01:04.50,Default,,0,0,0,,On failed delivery for a COD order,\Nthe agent re-routes to a new address.
+Dialogue: 0,0:01:05.00,0:01:09.20,Default,,0,0,0,,Now a harder case: a voice note\Nand an unboxing video.
+Dialogue: 0,0:01:09.60,0:01:17.80,Default,,0,0,0,,Order says white headphones.\NAt 00:05 the video shows black ones.
+Dialogue: 0,0:01:18.20,0:01:25.50,Default,,0,0,0,,No fraud accusation, no guessing.\NIt marks the barcode as unverified.
+Dialogue: 0,0:01:26.00,0:01:35.50,Default,,0,0,0,,It asks once for a photo of the box label,\Nand drafts the reply.
+Dialogue: 0,0:01:36.00,0:01:49.50,Default,,0,0,0,,The seller sees every source and decides.
+Dialogue: 0,0:01:50.00,0:01:59.80,Default,,0,0,0,,When the buyer returns later,\Nthe agent remembers case and context...
+Dialogue: 0,0:02:00.20,0:02:09.50,Default,,0,0,0,,...so it never asks twice.
+Dialogue: 0,0:02:10.00,0:02:16.00,Default,,0,0,0,,Autonomy is not a setting we hand out.
+Dialogue: 0,0:02:16.40,0:02:24.00,Default,,0,0,0,,Each case runs 5 times in a harness\Nchecking data, procedure, and messages.
+Dialogue: 0,0:02:24.40,0:02:29.20,Default,,0,0,0,,8 of 10 scenarios passed all five runs.
+Dialogue: 0,0:02:29.60,0:02:34.80,Default,,0,0,0,,Under 5 of 5 stays locked.\NOne click takes it back.
+Dialogue: 0,0:02:35.20,0:02:39.50,Default,,0,0,0,,Models observe.\NStore tools act.
+Dialogue: 0,0:02:39.80,0:02:47.50,Default,,0,0,0,,Code enforces the money limits.\NEvery tool call and block is logged.
+Dialogue: 0,0:02:48.00,0:02:59.50,Default,,0,0,0,,ReturnLens.\NEvery return decision, backed by evidence.
