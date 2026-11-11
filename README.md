@@ -2,7 +2,7 @@
 
 > **Autonomous post-purchase dispute resolution for solo D2C merchants — grounded in video evidence, constrained by real-world financial loss limits, and governed by deterministic reliability benchmarks.**
 
-[![Live Demo](https://img.shields.io/badge/Demo-Live%20Application-2d6a4f?style=for-the-badge&logo=fastapi)](TODO:Coordinator_Live_Demo_URL)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20Application-2d6a4f?style=for-the-badge&logo=fastapi)](https://returnlens-demo.onrender.com)
 [![Demo Video](https://img.shields.io/badge/Video-2.5--Min%20Walkthrough-d90429?style=for-the-badge&logo=youtube)](https://drive.google.com/file/d/1dhy6rv2TiLq6mTpy_VgWgXgWEs5W14LR/view)
 [![Pitch Deck](https://img.shields.io/badge/Deck-6--Slide%20Presentation-0077b6?style=for-the-badge&logo=googledrive)](https://docs.google.com/presentation/d/1jrQipaXDKy_4FcaD0eaU8Ez2VyQTQyjuT_GR231WbAg/edit)
 
