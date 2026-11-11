@@ -25,6 +25,7 @@ from app.backend.persistence.seed import seed_database, reset_database
 from app.backend.workflow.engine import WorkflowEngine
 from app.backend.api.cases import router as cases_router
 from app.backend.api.proposals import router as proposals_router
+from app.backend.api.operator import router as operator_router
 
 load_dotenv()
 
@@ -98,6 +99,14 @@ def create_app(
     # Include modular routers
     app.include_router(cases_router)
     app.include_router(proposals_router)
+    app.include_router(operator_router)
+
+    # Mount B's autonomy router when available
+    try:
+        from app.backend.autonomy.router import router as autonomy_router
+        app.include_router(autonomy_router)
+    except (ImportError, AttributeError):
+        pass
 
     # CORS configuration
     app.add_middleware(
@@ -183,6 +192,28 @@ def create_app(
         if not profile:
             raise HTTPException(status_code=404, detail="Customer not found")
         return profile.model_dump()
+
+    # Serve production frontend build if dist exists (17 §1, Wave 2 §6)
+    # MUST be registered at the very end so it acts as catch-all for SPA without shadowing /api/*
+    dist_dir = Path("app/web/dist")
+    if dist_dir.exists():
+        from fastapi.responses import FileResponse
+        from fastapi.staticfiles import StaticFiles
+
+        if (dist_dir / "assets").exists():
+            app.mount("/assets", StaticFiles(directory=str(dist_dir / "assets")), name="static_assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str):
+            if full_path.startswith("api"):
+                raise HTTPException(status_code=404, detail=f"API route /{full_path} not found")
+            file_path = dist_dir / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+            index_path = dist_dir / "index.html"
+            if index_path.exists():
+                return FileResponse(index_path)
+            raise HTTPException(status_code=404, detail="Not Found")
 
     return app
 
