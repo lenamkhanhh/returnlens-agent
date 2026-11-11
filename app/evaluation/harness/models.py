@@ -25,7 +25,7 @@ class TrialResult(BaseModel):
     scenario_id: str
     trial_no: int
     passed: bool
-    status: str  # "PASS", "FAIL", "BLOCKED", "PENDING"
+    status: str  # "passed", "failed", "blocked"
     reason: str = ""
     db_layer: Optional[LayerResult] = None
     process_layer: Optional[LayerResult] = None
@@ -43,9 +43,9 @@ class ScenarioRunSummary(BaseModel):
     pass_at_1: float
     pass_pow_k: float
     agent_version: str
-    model_id: str
+    model_id: Optional[str] = None
     ran_at: str
     synthetic: bool = False
-    status: str = "PENDING"  # PASS, FAIL, BLOCKED, PENDING
+    status: str = "blocked"  # "passed", "failed", "blocked"
     reason: str = ""
     trials: List[TrialResult] = Field(default_factory=list)

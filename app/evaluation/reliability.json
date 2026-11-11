@@ -1,202 +1,232 @@
 {
   "metadata": {
-    "generated_at": "2026-11-11T05:10:51.919629+00:00",
-    "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
+    "generated_at": "2026-11-11T05:39:02.889904+00:00",
+    "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
     "model_id": "gemini-3.8-flash",
     "k": 1
   },
   "results": [
     {
-      "run_id": "RUN-S01-1794373851",
+      "run_id": "RUN-S01-1794375542",
       "scenario_id": "S01",
       "case_type": "WISMO",
       "k": 1,
       "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:49.562814+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:01.431062+00:00",
+      "synthetic": false,
+      "status": "passed",
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S02-1794373851",
+      "run_id": "RUN-S02-1794375542",
       "scenario_id": "S02",
       "case_type": "WISMO",
       "k": 1,
       "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:49.906377+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:01.639196+00:00",
+      "synthetic": false,
+      "status": "passed",
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S03-1794373851",
+      "run_id": "RUN-S03-1794375542",
       "scenario_id": "S03",
       "case_type": "DAMAGE",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:50.399409+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:01.968013+00:00",
+      "synthetic": false,
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S04-1794373851",
+      "run_id": "RUN-S04-1794375542",
       "scenario_id": "S04",
       "case_type": "MISMATCH",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:50.399409+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:01.968013+00:00",
+      "synthetic": false,
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S05-1794373851",
+      "run_id": "RUN-S05-1794375542",
       "scenario_id": "S05",
       "case_type": "UNCLEAR",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:50.399409+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:01.968013+00:00",
+      "synthetic": false,
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S06-1794373851",
+      "run_id": "RUN-S06-1794375542",
       "scenario_id": "S06",
       "case_type": "LATE",
       "k": 1,
       "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:50.399409+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:01.968013+00:00",
+      "synthetic": false,
+      "status": "passed",
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S07-1794373851",
+      "run_id": "RUN-S07-1794375542",
       "scenario_id": "S07",
       "case_type": "NDR",
       "k": 1,
       "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:50.801851+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:02.169022+00:00",
+      "synthetic": false,
+      "status": "passed",
+      "reason": "All 1 trial(s) passed 3-layer verification"
     },
     {
-      "run_id": "RUN-S08-1794373851",
+      "run_id": "RUN-S08-1794375542",
       "scenario_id": "S08",
       "case_type": "MISMATCH",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:51.379433+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:02.570174+00:00",
+      "synthetic": false,
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S09-1794373851",
+      "run_id": "RUN-S09-1794375542",
       "scenario_id": "S09",
       "case_type": "UNCLEAR",
       "k": 1,
       "passes": 0,
       "pass_at_1": 0.0,
       "pass_pow_k": 0.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:51.379433+00:00",
-      "synthetic": false
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:02.570174+00:00",
+      "synthetic": false,
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set"
     },
     {
-      "run_id": "RUN-S10-1794373851",
+      "run_id": "RUN-S10-1794375542",
       "scenario_id": "S10",
       "case_type": "DAMAGE",
       "k": 1,
       "passes": 1,
       "pass_at_1": 1.0,
       "pass_pow_k": 1.0,
-      "agent_version": "69537294738554728bb090377022d34795e916b2c5ab23f2226c1fd24817b666",
-      "model_id": "gemini-3.8-flash",
-      "ran_at": "2026-11-11T05:10:51.379433+00:00",
-      "synthetic": true
+      "agent_version": "ba160276fbf601543f29ea46ac3717e341458de457c4a81edb5ec1a80ce6e614",
+      "model_id": null,
+      "ran_at": "2026-11-11T05:39:02.570174+00:00",
+      "synthetic": true,
+      "status": "passed",
+      "reason": "All 1 trial(s) passed 3-layer verification"
     }
   ],
   "scenario_metadata": {
     "S01": {
-      "status": "PASS",
+      "status": "passed",
       "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "WISMO",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S02": {
-      "status": "PASS",
+      "status": "passed",
       "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "WISMO",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S03": {
-      "status": "BLOCKED",
-      "reason": "blocked: no GEMINI_API_KEY",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "DAMAGE",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S04": {
-      "status": "BLOCKED",
-      "reason": "blocked: no GEMINI_API_KEY",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "MISMATCH",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S05": {
-      "status": "BLOCKED",
-      "reason": "blocked: no GEMINI_API_KEY",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "UNCLEAR",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S06": {
-      "status": "PASS",
+      "status": "passed",
       "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "LATE",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S07": {
-      "status": "PASS",
+      "status": "passed",
       "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "NDR",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S08": {
-      "status": "BLOCKED",
-      "reason": "blocked: no GEMINI_API_KEY",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "MISMATCH",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S09": {
-      "status": "BLOCKED",
-      "reason": "blocked: no GEMINI_API_KEY",
+      "status": "blocked",
+      "reason": "blocked: GEMINI_API_KEY not set",
       "case_type": "UNCLEAR",
-      "synthetic": false
+      "synthetic": false,
+      "model_id": null
     },
     "S10": {
-      "status": "PASS",
+      "status": "passed",
       "reason": "All 1 trial(s) passed 3-layer verification",
       "case_type": "DAMAGE",
-      "synthetic": true
+      "synthetic": true,
+      "model_id": null
     }
   }
 }

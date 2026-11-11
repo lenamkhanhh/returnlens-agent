@@ -28,8 +28,8 @@ class BaseScenario(abc.ABC):
                 scenario_id=self.scenario_id,
                 trial_no=trial_no,
                 passed=False,
-                status="BLOCKED",
-                reason="blocked: no GEMINI_API_KEY",
+                status="blocked",
+                reason="blocked: GEMINI_API_KEY not set",
             )
         return None
 

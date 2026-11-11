@@ -355,6 +355,10 @@ class PolicyCheck(AppBaseModel):
     reason_code: str
     source_refs: List[str] = Field(default_factory=list)
 
+    @property
+    def reason(self) -> str:
+        return self.reason_code
+
 
 class ProposalBasis(AppBaseModel):
     """Immutable state snapshot on which a proposal was generated (02 §2, 02 §7)."""
@@ -510,9 +514,11 @@ class ReliabilityResult(AppBaseModel):
     pass_at_1: float = 1.0
     pass_pow_k: float = 1.0
     agent_version: str
-    model_id: str
+    model_id: Optional[str] = None
     ran_at: str
     synthetic: bool = False
+    status: str = "passed"
+    reason: Optional[str] = None
 
 
 class PlanRecord(AppBaseModel):
@@ -617,7 +623,7 @@ class CreateCaseResponse(AppBaseModel):
 
 
 class CaseSnapshotResponse(AppBaseModel):
-    """Full snapshot of a case for the seller console (17 §5)."""
+    """Full snapshot of a case for the seller console (17 §5) and customer chat."""
     case_id: str
     case_type: CaseType
     state: CaseState
@@ -630,6 +636,8 @@ class CaseSnapshotResponse(AppBaseModel):
     proposals: List[Dict[str, Any]] = Field(default_factory=list)
     autonomy: Dict[str, Any] = Field(default_factory=dict)
     event_cursor: int = 0
+    messages: List[Dict[str, Any]] = Field(default_factory=list)
+    evidence: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 class ProposalDecisionRequest(AppBaseModel):

@@ -7,10 +7,13 @@ and renders a Markdown table for documentation per 18 §1–§2 and 17 §2–§3
 
 from __future__ import annotations
 
+import os
+# Per 17 §1 & 18 §1: HARNESS_MODE=1 disables dev cache and auto-dotenv in harness runs
+os.environ["HARNESS_MODE"] = "1"
+
 import argparse
 import asyncio
 import json
-import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -72,10 +75,10 @@ class HarnessRunner:
                 pass_at_1=0.0,
                 pass_pow_k=0.0,
                 agent_version=self.agent_version,
-                model_id=self.model_id,
+                model_id=None,  # Wave 3 Bug 4: null when no model call happened
                 ran_at=now_iso,
                 synthetic=(scenario.scenario_id == "S10"),
-                status=prereq.status,
+                status="blocked",
                 reason=prereq.reason,
                 trials=[prereq],
             )
@@ -91,7 +94,7 @@ class HarnessRunner:
                         scenario_id=scenario.scenario_id,
                         trial_no=trial_no,
                         passed=False,
-                        status="FAIL",
+                        status="failed",
                         reason=f"Unhandled exception: {str(ex)}",
                         error=str(ex),
                     )
@@ -101,22 +104,24 @@ class HarnessRunner:
         pass_at_1 = float(passes) / float(num_trials) if num_trials > 0 else 0.0
         pass_pow_k = 1.0 if (passes == num_trials and num_trials > 0) else 0.0
 
-        # Determine overall scenario status
+        # Determine overall scenario status per Wave 3: "passed", "failed", "blocked"
         if passes == num_trials:
-            overall_status = "PASS"
+            overall_status = "passed"
             overall_reason = f"All {num_trials} trial(s) passed 3-layer verification"
-        elif any(t.status == "BLOCKED" for t in trials):
-            overall_status = "BLOCKED"
-            blocked_t = next(t for t in trials if t.status == "BLOCKED")
+        elif any(t.status.lower() == "blocked" for t in trials):
+            overall_status = "blocked"
+            blocked_t = next(t for t in trials if t.status.lower() == "blocked")
             overall_reason = blocked_t.reason
-        elif any(t.status == "PENDING" for t in trials):
-            overall_status = "PENDING"
-            pending_t = next(t for t in trials if t.status == "PENDING")
-            overall_reason = pending_t.reason
         else:
-            overall_status = "FAIL"
+            overall_status = "failed"
             failed_reasons = [t.reason for t in trials if not t.passed]
             overall_reason = failed_reasons[0] if failed_reasons else f"{passes}/{num_trials} passed"
+
+        # Wave 3 Bug 4: record model_id: null when no model call happened
+        if overall_status == "blocked" or not scenario.requires_model:
+            scenario_model_id = None
+        else:
+            scenario_model_id = self.model_id
 
         return ScenarioRunSummary(
             scenario_id=scenario.scenario_id,
@@ -126,7 +131,7 @@ class HarnessRunner:
             pass_at_1=round(pass_at_1, 4),
             pass_pow_k=round(pass_pow_k, 4),
             agent_version=self.agent_version,
-            model_id=self.model_id,
+            model_id=scenario_model_id,
             ran_at=now_iso,
             synthetic=(scenario.scenario_id == "S10"),
             status=overall_status,
@@ -157,7 +162,7 @@ class HarnessRunner:
 
         results_list: List[Dict[str, Any]] = []
         for s in summaries:
-            # Map into strict ReliabilityResult format (02 §2, 17 §2)
+            # Map into strict ReliabilityResult format (02 §2, 17 §2, Wave 3 Bug 4)
             res = ReliabilityResult(
                 run_id=f"RUN-{s.scenario_id}-{int(time.time())}",
                 scenario_id=s.scenario_id,
@@ -170,6 +175,8 @@ class HarnessRunner:
                 model_id=s.model_id,
                 ran_at=s.ran_at,
                 synthetic=s.synthetic,
+                status=s.status,
+                reason=s.reason,
             )
             results_list.append(res.model_dump())
 
@@ -187,6 +194,7 @@ class HarnessRunner:
                     "reason": s.reason,
                     "case_type": s.case_type.value,
                     "synthetic": s.synthetic,
+                    "model_id": s.model_id,
                 }
                 for s in summaries
             },
@@ -218,29 +226,32 @@ class HarnessRunner:
         }
 
         status_badges = {
-            "PASS": "✅ PASS",
-            "FAIL": "❌ FAIL",
-            "BLOCKED": "🔒 BLOCKED",
-            "PENDING": "⏳ PENDING",
+            "passed": "✅ PASS",
+            "failed": "❌ FAIL",
+            "blocked": "🔒 BLOCKED",
+            "pass": "✅ PASS",
+            "fail": "❌ FAIL",
         }
 
         for s in summaries:
             name = scenario_names.get(s.scenario_id, s.scenario_id)
-            badge = status_badges.get(s.status, s.status)
+            badge = status_badges.get(s.status.lower(), s.status.upper())
             synthetic_tag = " *(synthetic)*" if s.synthetic else ""
             lines.append(
                 f"| `{s.scenario_id}` | `{s.case_type.value}` | {name}{synthetic_tag} | {s.k} | {s.passes} | {s.pass_at_1:.2f} | {s.pass_pow_k:.2f} | {badge} | {s.reason} |"
             )
 
         lines.append("")
-        total_pass = sum(1 for s in summaries if s.status == "PASS")
-        lines.append(f"**Total Passing**: {total_pass}/{len(summaries)} scenarios (k={self.k})")
+        total_pass = sum(1 for s in summaries if s.status.lower() in ("pass", "passed"))
+        total_blocked = sum(1 for s in summaries if s.status.lower() in ("blocked",))
+        total_failed = len(summaries) - total_pass - total_blocked
+        lines.append(f"**Total Passing**: {total_pass}/{len(summaries)} scenarios (k={self.k}) — {total_blocked} blocked (no GEMINI_API_KEY), {total_failed} failed")
         return "\n".join(lines)
 
 
 async def _main():
     parser = argparse.ArgumentParser(description="ReturnLens Reliability Harness Runner")
-    parser.add_argument("-k", "--trials", type=int, default=1, help="Number of trials per scenario (k)")
+    parser.add_argument("-k", "--k", "--trials", dest="trials", type=int, default=1, help="Number of trials per scenario (k)")
     parser.add_argument("-s", "--scenario", type=str, default=None, help="Run specific scenario ID (e.g. S01)")
     parser.add_argument("-o", "--output", type=str, default=None, help="Output path for reliability.json")
     args = parser.parse_args()

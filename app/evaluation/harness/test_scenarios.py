@@ -17,7 +17,13 @@ from app.evaluation.harness.runner import HarnessRunner
 from app.evaluation.harness.scenarios import ALL_SCENARIOS
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(autouse=True)
+def clean_model_key(monkeypatch):
+    """Ensure harness tests evaluate honesty in reproducible no-key mode."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+
+@pytest.fixture(scope="function")
 def harness_runner():
     """Harness runner instance configured for k=1 evaluation."""
     return HarnessRunner(k=1)
@@ -29,12 +35,12 @@ async def test_scenario_trial(scenario_id: str, harness_runner: HarnessRunner):
     """Execute a single scenario trial."""
     summary = await harness_runner.run_scenario(scenario_id, k=1)
 
-    if summary.status == "BLOCKED":
+    if summary.status.lower() == "blocked":
         pytest.skip(f"{scenario_id} blocked: {summary.reason}")
-    elif summary.status == "PENDING":
+    elif summary.status.lower() == "pending":
         pytest.skip(f"{scenario_id} pending: {summary.reason}")
 
-    assert summary.status == "PASS", f"{scenario_id} failed: {summary.reason}"
+    assert summary.status.lower() in ("pass", "passed"), f"{scenario_id} failed: {summary.reason}"
     assert summary.passes >= 1
     assert summary.pass_pow_k == 1.0
 
@@ -58,10 +64,21 @@ async def test_generate_reliability_json_and_markdown(harness_runner: HarnessRun
 
     # 2. Verify load_reliability_results loads cleanly
     loaded = load_reliability_results(file_path=rel_path, harness_mode=True)
-    assert len(loaded) >= 1
+    assert len(loaded) == 10
+
+    # Wave 3 Bug 4: Verify harness honesty across loaded results
+    for sid, res in loaded.items():
+        assert res.status in ("passed", "failed", "blocked")
+        if res.status == "blocked":
+            assert res.reason == "blocked: GEMINI_API_KEY not set"
+            assert res.model_id is None
+            assert res.passes == 0
+            assert res.pass_pow_k == 0.0
 
     # 3. Verify Markdown table renders
     md = harness_runner.render_markdown_table(summaries)
     assert "Reliability Benchmark" in md
     assert "S01" in md
     assert "S10" in md
+    assert "Reason / Details" in md
+    assert "blocked: GEMINI_API_KEY not set" in md
