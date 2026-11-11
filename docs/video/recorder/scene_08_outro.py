@@ -130,7 +130,7 @@ def record_scene_08() -> Path:
 
         print("[08] Displaying high-contrast outro title card...")
         page.set_content(OUTRO_HTML)
-        page.wait_for_timeout(7000)
+        page.wait_for_timeout(5000)
 
         video_obj = page.video
         context.close()

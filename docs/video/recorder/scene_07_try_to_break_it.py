@@ -50,50 +50,50 @@ def record_scene_07() -> Path:
         page.goto(f"{BASE_URL}/?tab=seller&demo=1")
         setup_page_cursor_and_ink(page)
         page.wait_for_selector(".app-header", timeout=10000)
-        time.sleep(1.2)
+        time.sleep(0.8)
 
         # 2. Click "⚡ Try to Break It" button in Header
         print("[07] Clicking 'Try to Break It' button in Header...")
         break_it_btn = page.locator("button:has-text('Try to Break It')")
-        smooth_click(page, break_it_btn.first, steps=20, delay_after=1.2)
+        smooth_click(page, break_it_btn.first, steps=15, delay_after=0.8)
         page.wait_for_selector(".modal-card", timeout=5000)
         setup_page_cursor_and_ink(page)
 
         # 3. Preset 1: Prompt Injection
         print("[07] Running Preset 1: Prompt Injection...")
         preset1 = page.locator("button:has-text('1. Prompt injection')")
-        smooth_click(page, preset1.first, steps=18, delay_after=1.2)
-        ink_circle(page, ".modal-card", text="Blocked: prompt injection neutralized", side="bottom", duration=2.5)
-        time.sleep(2.0)
+        smooth_click(page, preset1.first, steps=15, delay_after=0.8)
+        ink_circle(page, ".modal-card", text="Blocked: prompt injection neutralized", side="bottom", duration=2.0)
+        time.sleep(1.2)
         ink_clear(page)
 
         # 4. Preset 2: ₹1,800 Over-Refund
         print("[07] Running Preset 2: Over-refund...")
         preset2 = page.locator("button:has-text('2. Over-refund')")
-        smooth_click(page, preset2.first, steps=18, delay_after=1.2)
-        ink_circle(page, ".modal-card", text="Blocked: exceeds balance", side="bottom", duration=2.5)
-        time.sleep(2.0)
+        smooth_click(page, preset2.first, steps=15, delay_after=0.8)
+        ink_circle(page, ".modal-card", text="Blocked: exceeds balance", side="bottom", duration=2.0)
+        time.sleep(1.2)
         ink_clear(page)
 
         # 5. Preset 3: Cumulative Split Refund
         print("[07] Running Preset 3: Cumulative split...")
         preset3 = page.locator("button:has-text('3. Cumulative split')")
-        smooth_click(page, preset3.first, steps=18, delay_after=1.2)
-        ink_circle(page, ".modal-card", text="Blocked: cumulative limit", side="bottom", duration=2.5)
-        time.sleep(2.0)
+        smooth_click(page, preset3.first, steps=15, delay_after=0.8)
+        ink_circle(page, ".modal-card", text="Blocked: cumulative limit", side="bottom", duration=2.0)
+        time.sleep(1.2)
         ink_clear(page)
 
         # 6. Close Modal
         print("[07] Closing Break It modal...")
         done_btn = page.locator(".modal-footer button:has-text('Done')")
         if done_btn.count() > 0:
-            smooth_click(page, done_btn.first, steps=15, delay_after=1.0)
+            smooth_click(page, done_btn.first, steps=12, delay_after=0.6)
         else:
             close_btn = page.locator(".modal-header button:has-text('✕')")
             if close_btn.count() > 0:
-                smooth_click(page, close_btn.first, steps=15, delay_after=1.0)
+                smooth_click(page, close_btn.first, steps=12, delay_after=0.6)
 
-        time.sleep(1.0)
+        time.sleep(0.5)
 
         video_obj = page.video
         context.close()

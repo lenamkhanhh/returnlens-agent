@@ -55,68 +55,68 @@ def record_scene_06() -> Path:
         page.goto(f"{BASE_URL}/?tab=seller&demo=1")
         setup_page_cursor_and_ink(page)
         page.wait_for_selector(".app-header", timeout=10000)
-        time.sleep(1.2)
+        time.sleep(0.8)
 
         # Inspect Autonomy Bar
         autonomy_bar = page.locator("#autonomy-bar")
-        smooth_move(page, autonomy_bar.first, steps=20)
-        ink_circle(page, autonomy_bar.first, text="Measured on this exact code", side="bottom", duration=3.0)
-        time.sleep(2.0)
+        smooth_move(page, autonomy_bar.first, steps=15)
+        ink_circle(page, autonomy_bar.first, text="Measured on this exact code", side="bottom", duration=2.0)
+        time.sleep(1.2)
         ink_clear(page)
 
         # 2. Open Operator Controls to show System Provenance & Benchmark
         print("[06] Viewing System Provenance in Operator Controls...")
         op_tab = page.locator("button.tab-btn:has-text('Operator Controls')")
-        smooth_click(page, op_tab, steps=20, delay_after=1.0)
+        smooth_click(page, op_tab, steps=15, delay_after=0.6)
         setup_page_cursor_and_ink(page)
 
         provenance_card = page.locator(".seller-col:has-text('System provenance')")
         if provenance_card.count() > 0:
-            smooth_move(page, provenance_card.first, steps=20)
-            ink_circle(page, provenance_card.first, text="9 of 10 pass 5/5", side="left", duration=3.0)
-            time.sleep(2.2)
+            smooth_move(page, provenance_card.first, steps=15)
+            ink_circle(page, provenance_card.first, text="9 of 10 pass 5/5", side="left", duration=2.0)
+            time.sleep(1.2)
             ink_clear(page)
 
         # 3. Return to Seller Console
         print("[06] Returning to Seller Console...")
         seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
-        smooth_click(page, seller_tab, steps=20, delay_after=1.0)
+        smooth_click(page, seller_tab, steps=15, delay_after=0.6)
         setup_page_cursor_and_ink(page)
 
         # Select case ORD-1042 so activeCaseId is set
         ord_item = page.locator(".inbox-item:has-text('ORD-1042')")
         if ord_item.count() > 0:
-            smooth_click(page, ord_item.first, steps=18, delay_after=0.8)
+            smooth_click(page, ord_item.first, steps=15, delay_after=0.6)
 
         # Open "Why did it stop?" Checklist
         print("[06] Opening Why did it stop? checklist...")
         why_btn = page.locator("button:has-text('Why did it stop?')")
         if why_btn.count() > 0:
-            smooth_click(page, why_btn.first, steps=18, delay_after=1.2)
+            smooth_click(page, why_btn.first, steps=15, delay_after=0.8)
             page.wait_for_selector(".modal-card", timeout=3000)
 
             # Move cursor to Step 4: Reliability Gate
             step4 = page.locator(".checklist-step:has-text('Reliability Gate'), div:has-text('Step 4')")
             if step4.count() > 0:
-                smooth_move(page, step4.first, steps=18)
-            time.sleep(2.0)
+                smooth_move(page, step4.first, steps=15)
+            time.sleep(1.2)
 
             close_modal = page.locator(".modal-header button:has-text('✕')")
             if close_modal.count() > 0:
-                smooth_click(page, close_modal.first, steps=15, delay_after=0.8)
+                smooth_click(page, close_modal.first, steps=12, delay_after=0.5)
 
         # 4. Trigger Kill Switch!
         print("[06] Engaging Kill switch...")
         kill_btn = page.locator("button:has-text('Kill switch')")
         if kill_btn.count() > 0:
-            smooth_click(page, kill_btn.first, steps=20, delay_after=1.0)
+            smooth_click(page, kill_btn.first, steps=15, delay_after=0.8)
             print("[06] Kill Switch clicked! Red alert banner active...")
 
-            ink_arrow(page, "#autonomy-bar", text="one click takes it back", from_side="bottom", duration=3.5)
-            time.sleep(2.8)
+            ink_arrow(page, "#autonomy-bar", text="one click takes it back", from_side="bottom", duration=2.5)
+            time.sleep(1.8)
 
         ink_clear(page)
-        time.sleep(0.8)
+        time.sleep(0.5)
 
         video_obj = page.video
         context.close()

@@ -1,17 +1,21 @@
-"""Scene 01: Cold Open (0:00 - 0:25)
-Wave 16 (01:25 12/11) specification:
-- Autonomy bar shows "measured on this exact code" and DAMAGE eligible, MISMATCH locked 4/5.
-- Seller sets DAMAGE to L3 (caps ₹1,500 / ₹2,000).
-- Try to set MISMATCH to L3 and show it refused (ink: "locked until 5/5").
-- Operator fires RETURN_RECEIVED for ORD-1042 -> refund executes automatically (ink circle on the refund).
-- Then RETURN_RECEIVED for ORD-4401 -> deferred to the seller by the cumulative daily limit (ink: "₹2,000/day cap").
-- Open "Why did it stop?" for ORD-4401.
+"""Scene 01: Cold Open — Earned Autonomy & Limits (Honest Flow)
+Per Wave 16 Coordinator Directive:
+1. Autonomy bar shows "measured on this exact code · ffaccd04 · k=5".
+   DAMAGE locked (S10 missing in production), MISMATCH locked (4/5).
+2. Seller tries to set DAMAGE -> L3; app refuses with lock error.
+3. Show MISMATCH locked 4/5 (ink: "locked until 5/5").
+4. Operator fires RETURN_RECEIVED for SHP-1042 (select event type explicitly and verify).
+5. The agent creates a PROPOSE_REFUND ₹1,299 for the seller.
+6. Open "Why did it stop?" checklist modal.
+7. Seller reviews & approves the refund.
+8. Refund confirmed successfully.
 """
 
 from __future__ import annotations
 
-import json
 import time
+import urllib.request
+import json
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -20,27 +24,26 @@ from docs.video.recorder.common import (
     SCENES_DIR,
     convert_webm_to_mp4,
     get_video_duration,
-    ink_arrow,
-    ink_circle,
-    ink_clear,
     reset_demo_database,
     setup_page_cursor_and_ink,
-    smooth_click,
     smooth_move,
+    smooth_click,
+    ink_circle,
+    ink_arrow,
+    ink_clear,
 )
 
 def record_scene_01() -> Path:
-    print("\n=== RECORDING SCENE 01: COLD OPEN (WAVE 16) ===")
+    print("\n=== RECORDING SCENE 01: COLD OPEN (HONEST AUTONOMY & REFUND) ===")
     reset_demo_database()
 
-    SCENES_DIR.mkdir(parents=True, exist_ok=True)
     temp_dir = SCENES_DIR / "temp_01"
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
-            slow_mo=100,
+            slow_mo=50,
         )
         context = browser.new_context(
             viewport={"width": 1920, "height": 1080},
@@ -48,115 +51,173 @@ def record_scene_01() -> Path:
             record_video_size={"width": 1920, "height": 1080},
         )
         page = context.new_page()
+        page.on("dialog", lambda d: d.dismiss())
 
-        # Route interceptor ensuring PUT autonomy passes valid schema
+        # Intercept PUT /api/seller/autonomy to include required caps in body
         def handle_autonomy_put(route):
             req = route.request
-            if req.method == "PUT" and "/api/seller/autonomy" in req.url:
-                body = req.post_data_json or {}
-                clean_body = {
-                    "levels": body.get("levels", {}),
-                    "per_order_cap_minor": body.get("per_order_cap_minor", 150000),
-                    "per_customer_daily_cap_minor": body.get("per_customer_daily_cap_minor", 200000),
+            if req.method == "PUT":
+                post_data = req.post_data_json or {}
+                levels = post_data.get("levels", {})
+                sanitized = {
+                    "levels": levels,
+                    "per_order_cap_minor": 150000,
+                    "per_customer_daily_cap_minor": 200000,
                 }
-                route.continue_(post_data=json.dumps(clean_body))
+                route.continue_(post_data=json.dumps(sanitized))
             else:
                 route.continue_()
 
         page.route("**/api/seller/autonomy", handle_autonomy_put)
 
-        # Install cursor and ink overlay
-        setup_page_cursor_and_ink(page)
-
         # 1. Open Seller Console
-        print("[01] Opening Seller Console (?demo=1)...")
+        print("[01] Opening Seller Console (demo scale)...")
         page.goto(f"{BASE_URL}/?tab=seller&demo=1")
+        setup_page_cursor_and_ink(page)
         page.wait_for_selector(".app-header", timeout=10000)
-        time.sleep(1.0)
-
-        # 2. Highlight Autonomy Bar metadata ("measured on this exact code")
-        print("[01] Hovering on Autonomy Bar...")
-        smooth_move(page, "text=Measured on this exact code", steps=25)
         time.sleep(0.8)
 
-        # 3. Seller sets DAMAGE to L3
-        print("[01] Setting DAMAGE to L3 Autonomy...")
-        dmg_select = page.locator(".autonomy-bar-container select").nth(1)
-        smooth_move(page, dmg_select, steps=25)
-        dmg_select.select_option("L3")
-        time.sleep(1.0)
+        # Verify initial autonomy state from API
+        res = urllib.request.urlopen(f"{BASE_URL}/api/seller/autonomy")
+        autonomy_data = json.loads(res.read().decode())
+        print(f"[01 API] Version: {autonomy_data.get('agent_version')[:8]}, DAMAGE eligible: {autonomy_data['lock_status']['DAMAGE']['eligible_for_l2_l3']}")
 
-        # 4. Try to set MISMATCH to L3 -> show it refused/disabled ("locked until 5/5")
-        print("[01] Attempting MISMATCH L3 -> Refused/locked...")
-        mismatch_card = page.locator(".autonomy-bar-container select").nth(2)
-        smooth_move(page, mismatch_card, steps=25)
-        ink_circle(page, mismatch_card, text="locked until 5/5", side="bottom", duration=3.2)
-        time.sleep(1.5)
+        # 2. Inspect Autonomy Bar
+        autonomy_bar = page.locator("#autonomy-bar")
+        smooth_move(page, autonomy_bar.first, steps=15)
+        ink_circle(page, autonomy_bar.first, text="Measured on this exact code", side="bottom", duration=2.0)
+        time.sleep(1.2)
+        ink_clear(page)
 
-        # 5. Switch to Operator Controls tab
-        print("[01] Switching to Operator Controls...")
-        smooth_click(page, "button.tab-btn:has-text('Operator Controls')", steps=25, delay_after=0.8)
+        # 3. Seller tries to set DAMAGE -> L3; app refuses
+        print("[01] Attempting to set DAMAGE to L3...")
+        page.evaluate("""() => {
+            const select = Array.from(document.querySelectorAll('#autonomy-bar select'))[1];
+            if (select) {
+                const opt = select.querySelector('option[value="L3"]');
+                if (opt) opt.disabled = false;
+                select.value = 'L3';
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }""")
+        time.sleep(0.8)
 
-        # Fire RETURN_RECEIVED for SHP-1042
-        print("[01] Firing RETURN_RECEIVED for SHP-1042...")
-        shipment_input = page.locator("input.select-field").first
-        smooth_click(page, shipment_input, steps=20, delay_after=0.2)
-        shipment_input.fill("SHP-1042")
+        # Verify refusal message on screen
+        lock_error_loc = page.locator("div:has-text('Missing run for scenario S10'), div:has-text('Reliability locked')")
+        if lock_error_loc.count() > 0:
+            ink_arrow(page, lock_error_loc.first, text="refused: missing 5/5 run for S10", from_side="bottom", duration=2.5)
+            time.sleep(1.2)
+            ink_clear(page)
+
+        # 4. Show MISMATCH locked 4/5
+        print("[01] Highlighting locked MISMATCH...")
+        mismatch_col = page.locator("div:has-text('MISMATCH')").first
+        smooth_move(page, mismatch_col, steps=15)
+        ink_circle(page, mismatch_col, text="locked until 5/5", side="bottom", duration=2.0)
+        time.sleep(1.2)
+        ink_clear(page)
+
+        # 5. Switch to Operator Controls to fire RETURN_RECEIVED
+        print("[01] Navigating to Operator Controls...")
+        op_tab = page.locator("button.tab-btn:has-text('Operator Controls')")
+        smooth_click(page, op_tab, steps=15, delay_after=0.6)
+        setup_page_cursor_and_ink(page)
+
+        # Form: set SHP-1042 and explicitly select RETURN_RECEIVED
+        shp_input = page.locator(".seller-col:has-text('Fire a courier event') input").first
+        shp_input.fill("SHP-1042")
         time.sleep(0.3)
 
-        event_select = page.locator("select.select-field").first
-        event_select.select_option("RETURN_RECEIVED")
+        evt_select = page.locator(".seller-col:has-text('Fire a courier event') select").first
+        evt_select.select_option("RETURN_RECEIVED")
         time.sleep(0.3)
+        assert evt_select.input_value() == "RETURN_RECEIVED", f"Expected RETURN_RECEIVED, got {evt_select.input_value()}"
+        print(f"[01] Verified event dropdown value: {evt_select.input_value()}")
 
         dispatch_btn = page.locator("button:has-text('Dispatch Courier Webhook')")
-        smooth_click(page, dispatch_btn, steps=20, delay_after=1.2)
+        smooth_click(page, dispatch_btn, steps=15, delay_after=0.8)
 
-        # 6. Return to Seller Console: ORD-1042 auto-refunds
-        print("[01] Returning to Seller Console -> ORD-1042 auto-refunds...")
-        smooth_click(page, "button.tab-btn:has-text('Seller Console')", steps=25, delay_after=1.0)
+        # Verify event fired from API
+        res = urllib.request.urlopen(f"{BASE_URL}/api/seller/cases")
+        cases = json.loads(res.read().decode())
+        c1042 = next((c for c in cases if c.get("order_id") == "ORD-1042"), None)
+        assert c1042 is not None, "ORD-1042 not found"
+        print(f"[01 API] ORD-1042 state after event: {c1042['state']}")
 
-        # Click on ORD-1042 in inbox
-        ord1042_item = page.locator(".inbox-item:has-text('ORD-1042')").first
-        if ord1042_item.count() > 0:
-            smooth_click(page, ord1042_item, steps=20, delay_after=0.8)
+        ink_arrow(page, dispatch_btn, text="RETURN_RECEIVED dispatched", from_side="top", duration=2.0)
+        time.sleep(1.2)
+        ink_clear(page)
 
-        # Ink annotation on refund: "auto-refund ₹1,299"
-        refund_target = page.locator("text=PROPOSE RETURN, text=REFUND, text=PROPOSE_REFUND, text=Waiting, text=ORD-1042").first
-        ink_circle(page, refund_target if refund_target.count() > 0 else ord1042_item, text="auto-refund ₹1,299", side="top", duration=3.0)
-        time.sleep(1.8)
+        # 6. Switch back to Seller Console
+        print("[01] Returning to Seller Console...")
+        seller_tab = page.locator("button.tab-btn:has-text('Seller Console')")
+        smooth_click(page, seller_tab, steps=15, delay_after=0.6)
+        setup_page_cursor_and_ink(page)
 
-        # 7. Switch back to Operator Controls for ORD-4401
-        print("[01] Firing RETURN_RECEIVED for SHP-4401...")
-        smooth_click(page, "button.tab-btn:has-text('Operator Controls')", steps=25, delay_after=0.8)
-        shipment_input = page.locator("input.select-field").first
-        smooth_click(page, shipment_input, steps=20, delay_after=0.2)
-        shipment_input.fill("SHP-4401")
-        time.sleep(0.3)
-        dispatch_btn = page.locator("button:has-text('Dispatch Courier Webhook')")
-        smooth_click(page, dispatch_btn, steps=20, delay_after=1.2)
+        # Select case ORD-1042
+        ord_item = page.locator(".inbox-item:has-text('ORD-1042')")
+        smooth_click(page, ord_item.first, steps=15, delay_after=0.6)
 
-        # 8. Return to Seller Console: ORD-4401 is deferred to seller
-        print("[01] Returning to Seller Console -> ORD-4401 deferred by daily cap...")
-        smooth_click(page, "button.tab-btn:has-text('Seller Console')", steps=25, delay_after=1.0)
-        ord4401_item = page.locator(".inbox-item:has-text('ORD-4401')").first
-        if ord4401_item.count() > 0:
-            smooth_click(page, ord4401_item, steps=20, delay_after=0.8)
+        # Verify PROPOSE_REFUND ₹1,299 exists
+        res = urllib.request.urlopen(f"{BASE_URL}/api/cases/{c1042['case_id']}")
+        c_detail = json.loads(res.read().decode())
+        pending_props = [p for p in c_detail.get("proposals", []) if p.get("status") == "pending"]
+        assert len(pending_props) > 0, "No pending proposals found"
+        print(f"[01 API] Pending proposal: {pending_props[0]['action_type']} for {pending_props[0]['amount_minor']}")
 
-        # Ink arrow: "₹2,000/day cap"
-        ink_arrow(page, "text=Caps:", text="₹2,000/day cap", from_side="bottom", duration=3.0)
-        time.sleep(1.5)
+        # Annotate PROPOSE_REFUND ₹1,299
+        prop_box = page.locator(".proposal-box:has-text('PROPOSE REFUND')")
+        if prop_box.count() > 0:
+            ink_circle(page, prop_box.first, text="PROPOSE_REFUND ₹1,299 created", side="left", duration=2.5)
+            time.sleep(1.2)
+            ink_clear(page)
 
-        # 9. Open "Why did it stop?" modal for ORD-4401
+        # 7. Open "Why did it stop?"
         print("[01] Opening 'Why did it stop?' modal...")
-        why_btn = page.locator("button:has-text('Why did it stop?'), button:has-text('Why?')").first
+        why_btn = page.locator("button:has-text('Why did it stop?')")
         if why_btn.count() > 0:
-            smooth_click(page, why_btn, steps=20, delay_after=2.5)
-            # Close modal
-            close_btn = page.locator(".modal-header button:has-text('✕')").first
-            if close_btn.count() > 0:
-                smooth_click(page, close_btn, steps=15, delay_after=0.6)
+            smooth_click(page, why_btn.first, steps=15, delay_after=0.8)
+            page.wait_for_selector(".modal-card", timeout=3000)
 
-        # Finish recording
+            step4 = page.locator(".checklist-step:has-text('Reliability Gate'), div:has-text('Step 4')")
+            if step4.count() > 0:
+                smooth_move(page, step4.first, steps=15)
+                ink_arrow(page, step4.first, text="Stopped: DAMAGE requires 5/5", from_side="left", duration=2.5)
+                time.sleep(1.5)
+                ink_clear(page)
+
+            close_btn = page.locator(".modal-header button:has-text('✕')")
+            if close_btn.count() > 0:
+                smooth_click(page, close_btn.first, steps=12, delay_after=0.5)
+            else:
+                page.keyboard.press("Escape")
+            time.sleep(0.3)
+
+        # 8. Seller reviews and approves the refund
+        print("[01] Seller approving refund...")
+        rev_btn = page.locator("button:has-text('Review & Approve')")
+        if rev_btn.count() > 0:
+            rev_btn.first.scroll_into_view_if_needed()
+            smooth_click(page, rev_btn.first, steps=15, delay_after=0.6)
+            page.wait_for_selector(".modal-card:has-text('Seller authorization required')", timeout=5000)
+
+            app_btn = page.locator("button:has-text('Approve action')")
+            smooth_click(page, app_btn.first, steps=15, delay_after=1.0)
+
+            # Read confirmation from API
+            res = urllib.request.urlopen(f"{BASE_URL}/api/cases/{c1042['case_id']}")
+            updated_detail = json.loads(res.read().decode())
+            all_approved = all(p.get("status") == "approved" for p in updated_detail.get("proposals", []))
+            print(f"[01 API] All proposals approved: {all_approved}")
+
+            succ_msg = page.locator("div:has-text('Action executed successfully')")
+            if succ_msg.count() > 0:
+                ink_arrow(page, succ_msg.first, text="Refund approved & confirmed", from_side="bottom", duration=2.5)
+                time.sleep(1.5)
+                ink_clear(page)
+
+        time.sleep(0.5)
+
         video_obj = page.video
         context.close()
         browser.close()
@@ -174,11 +235,10 @@ def record_scene_01() -> Path:
         except Exception:
             pass
 
-        # Convert to mp4
         convert_webm_to_mp4(final_webm, final_mp4)
         duration = get_video_duration(final_mp4)
-        print(f"[01 DONE] scene_01 saved: {final_mp4.name} ({duration:.1f}s)")
-        return final_mp4
+        print(f"[01 DONE] scene_01 saved: {final_webm.name} & {final_mp4.name} ({duration:.1f}s)")
+        return final_webm
 
 if __name__ == "__main__":
     record_scene_01()
