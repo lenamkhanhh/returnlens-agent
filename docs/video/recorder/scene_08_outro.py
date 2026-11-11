@@ -95,7 +95,7 @@ OUTRO_HTML = """<!DOCTYPE html>
     <div class="badge highlight">AgentX Hackathon 2026 · Track PS-04</div>
     <div class="badge">Team Rookie</div>
   </div>
-  <div class="repo-url">github.com/.../returnlens-agent</div>
+  <div class="repo-url">github.com/lenamkhanhh/returnlens-agent</div>
 </body>
 </html>
 """
@@ -120,7 +120,7 @@ def record_scene_08() -> Path:
 
         print("[08] Displaying high-contrast outro title card...")
         page.set_content(OUTRO_HTML)
-        page.wait_for_timeout(3000)
+        page.wait_for_timeout(4500)
 
         video_obj = page.video
         context.close()

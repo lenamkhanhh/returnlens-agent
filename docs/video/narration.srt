@@ -47,7 +47,7 @@ A buyer sends a voice note and an unboxing video.
 11
 00:01:09,600 --> 00:01:17,800
 ReturnLens transcribes the request and checks the order:
-white headphones. At 00:07 the video shows black ones.
+white headphones. At 00:05 the video shows black ones.
 
 12
 00:01:18,200 --> 00:01:25,500

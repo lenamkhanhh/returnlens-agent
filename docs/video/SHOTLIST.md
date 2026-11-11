@@ -149,7 +149,7 @@ Follows specs:
 - **Visual Content**:
   - ReturnLens Logo & Icon
   - Slogan: *"ReturnLens — Every return decision, backed by evidence."*
-  - Repository URL: `github.com/.../returnlens-agent`
+  - Repository URL: `github.com/lenamkhanhh/returnlens-agent`
   - Hackathon Badge: AgentX Hackathon 2026 | Track PS-04
 - **Narration**:
   > *"ReturnLens. Every return decision, backed by evidence."*
