@@ -829,16 +829,29 @@ class WorkflowEngine:
                             else:
                                 if any(w in text.lower() for w in ["label", "barcode", "outer box", "ord-7729"]):
                                     label_verified = True
-                                elif case.state == CaseState.WAITING_CUSTOMER:
-                                    # Case is already awaiting customer's outer-box label photo
-                                    self._mark_job_completed(job_id, now_iso)
-                                    return True
                                 else:
                                     # Budget exhausted -> HUMAN_REVIEW
+                                    handoff_summary = f"Color mismatch verified but label unverified after clarification. Transferred for human review."
                                     self.repo.update_case_state(
                                         case_id=case_id,
                                         state=CaseState.HUMAN_REVIEW,
-                                        summary=f"Color mismatch verified but label unverified after clarification. Transferred for human review.",
+                                        summary=handoff_summary,
+                                    )
+                                    self.repo.append_audit_event(
+                                        event_id=f"EVT-{uuid.uuid4().hex[:8]}",
+                                        actor="agent:returnlens",
+                                        event_type="handoff_created",
+                                        outcome="Handed to seller with summary (unverified label)",
+                                        case_id=case_id,
+                                        safe_payload={"handoff_summary": handoff_summary},
+                                    )
+                                    outbound_msg_id = f"MSG-{case_id}-{uuid.uuid4().hex[:6]}"
+                                    self.repo.add_message(
+                                        message_id=outbound_msg_id,
+                                        case_id=case_id,
+                                        actor_id="agent:returnlens",
+                                        role=ActorRole.AGENT,
+                                        text="Your case has been forwarded to our seller support team for manual review.",
                                     )
                                     record_case_plan(
                                         repo=self.repo,
