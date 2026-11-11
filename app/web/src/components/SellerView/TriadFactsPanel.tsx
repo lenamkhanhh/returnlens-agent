@@ -32,9 +32,9 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
       {/* 1. Verified Order Facts */}
       <div className="triad-group">
         <div className="triad-header verified">
-          <span>✓ Verified Order Facts</span>
-          <span style={{ fontSize: '11px', textTransform: 'none', fontWeight: 500 }}>
-            Source: Store DB & Carrier API
+          <span>Order facts</span>
+          <span style={{ fontSize: '12px', textTransform: 'none', fontWeight: 400, color: 'var(--pine-green)' }}>
+            Store records & carrier API
           </span>
         </div>
         <div className="triad-content">
@@ -82,9 +82,9 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
       {/* 2. Observed in Evidence */}
       <div className="triad-group">
         <div className="triad-header observed">
-          <span>👁️ Observed in Evidence</span>
-          <span style={{ fontSize: '11px', textTransform: 'none', fontWeight: 500 }}>
-            Ground Truth from Model Observer
+          <span>What the agent saw</span>
+          <span style={{ fontSize: '12px', textTransform: 'none', fontWeight: 400, color: '#1e40af' }}>
+            From unboxing media
           </span>
         </div>
         <div className="triad-content">
@@ -138,17 +138,17 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
                     <span
                       className={`badge ${
                         obs.visibility === 'visible'
-                          ? 'badge-pass'
+                          ? 'badge-resolved'
                           : obs.visibility === 'unclear'
-                          ? 'badge-fail'
-                          : 'badge-unknown'
+                          ? 'badge-blocked'
+                          : 'badge-waiting'
                       }`}
                     >
                       {obs.visibility}
                     </span>
                   </div>
 
-                  <div style={{ fontSize: '12.5px', marginTop: '2px' }}>
+                  <div style={{ fontSize: '13px', marginTop: '2px' }}>
                     {obs.value}
                     {obs.color_class && isColorAttr && (
                       <span style={{ marginLeft: '6px', fontWeight: 600, color: isMismatch ? 'var(--terracotta)' : 'inherit' }}>
@@ -158,13 +158,13 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
                   </div>
 
                   {isMismatch && (
-                    <div style={{ fontSize: '11px', color: 'var(--terracotta)', fontWeight: 600, marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--terracotta)', fontWeight: 600, marginTop: '4px' }}>
                       ⚠️ Discrepancy: Ordered "{catalogColor}", but evidence shows "{obs.color_class}".
                     </div>
                   )}
 
                   {obs.limitation && (
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       Note: {obs.limitation}
                     </div>
                   )}
@@ -178,22 +178,22 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
       {/* 3. Still Unverified */}
       <div className="triad-group">
         <div className="triad-header unverified">
-          <span>❓ Still Unverified / Unknowns</span>
-          <span style={{ fontSize: '11px', textTransform: 'none', fontWeight: 500 }}>
-            Requires Evidence or Review
+          <span>Still unverified</span>
+          <span style={{ fontSize: '12px', textTransform: 'none', fontWeight: 400, color: 'var(--terracotta)' }}>
+            Requires evidence or review
           </span>
         </div>
         <div className="triad-content">
           {unknowns.length === 0 ? (
             <div style={{ color: 'var(--pine-green)', fontWeight: 500, padding: '4px 0' }}>
-              ✓ All required policy fields verified.
+              ✓ All return conditions verified.
             </div>
           ) : (
             <ul style={{ paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {unknowns.map((u, i) => (
                 <li key={i} style={{ color: 'var(--terracotta)', fontWeight: 600 }}>
                   {u.replace(/_/g, ' ')}
-                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px', fontSize: '11.5px' }}>
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '6px', fontSize: '12px' }}>
                     (not conclusively visible in submitted media)
                   </span>
                 </li>

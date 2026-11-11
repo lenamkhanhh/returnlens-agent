@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { AudioRecordingSession, RecordedAudio, getSupportedAudioMimeType } from '../../utils/audioRecorder';
+import { AudioRecordingSession, RecordedAudio } from '../../utils/audioRecorder';
 import { formatSecondsToTimestamp } from '../../utils/format';
 
 interface VoiceRecorderProps {
@@ -72,7 +72,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onAudioReady, disa
             onClick={handleStart}
             disabled={disabled}
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            title={`Supported Mime: ${getSupportedAudioMimeType()}`}
+            title="Record voice note"
           >
             <span>🎙️</span>
             <span>Record Voice Note</span>

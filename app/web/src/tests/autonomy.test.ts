@@ -62,7 +62,7 @@ describe('Autonomy Bar & 7-Step "Why?" Checklist (17 §6 & 23 W4)', () => {
     expect(explanation.checks[1].step).toBe(2);
     expect(explanation.checks[1].title).toBe('Prohibited Actions Check');
     expect(explanation.checks[3].step).toBe(4);
-    expect(explanation.checks[3].title).toBe('Reliability Gate (17 §3)');
+    expect(explanation.checks[3].title).toBe('Reliability Gate');
     expect(explanation.checks[5].step).toBe(6);
     expect(explanation.checks[5].title).toBe('Ledger & Cumulative Cap Check');
     expect(explanation.checks[6].step).toBe(7);

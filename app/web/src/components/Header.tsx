@@ -42,8 +42,8 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange, onOpenBr
           type="button"
           onClick={onOpenBreakIt}
           className="btn-danger"
-          style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 700 }}
-          title="Open Judge Attack Sandbox (23 W1)"
+          style={{ padding: '6px 14px', fontSize: '13px', fontWeight: 600 }}
+          title="Security guardrails sandbox"
         >
           ⚡ Try to Break It
         </button>

@@ -30,10 +30,10 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--pine-green)' }}>
-            Seller Authorization Required
+          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--pine-green)' }}>
+            Seller authorization required
           </h3>
-          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '16px' }}>
+          <button type="button" onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}>
             ✕
           </button>
         </div>
@@ -90,7 +90,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
             className="btn-danger"
             disabled={submitting}
           >
-            Decline Proposal
+            Decline proposal
           </button>
           <button
             type="button"
@@ -98,7 +98,7 @@ export const ApprovalModal: React.FC<ApprovalModalProps> = ({
             className="btn-primary"
             disabled={submitting}
           >
-            {submitting ? 'Executing Mutation…' : 'Approve Action'}
+            {submitting ? 'Processing…' : 'Approve action'}
           </button>
         </div>
       </div>

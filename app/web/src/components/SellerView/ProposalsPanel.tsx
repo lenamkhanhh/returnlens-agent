@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Proposal } from '../../types';
-import { formatPaise } from '../../utils/format';
+import { formatPaise, getStatusBadge } from '../../utils/format';
 import { ApprovalModal } from './ApprovalModal';
 
 interface ProposalsPanelProps {
@@ -16,6 +16,8 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
   const [staleError, setStaleError] = useState<string | null>(null);
   const [blockedError, setBlockedError] = useState<{ code: string; message: string } | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const isDebugMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1';
 
   const handleConfirmDecision = async (
     decision: 'approve' | 'decline' | 'manual_review',
@@ -48,9 +50,9 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
   return (
     <div>
       <div className="col-header" style={{ marginBottom: '10px' }}>
-        <h3>Action Proposals ({proposals.length})</h3>
-        <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>
-          Immutable Action Drafts
+        <h3>Proposals awaiting you ({proposals.length})</h3>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          Pending your review
         </span>
       </div>
 
@@ -95,17 +97,18 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
       )}
 
       {proposals.length === 0 ? (
-        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-light)', fontSize: '12px', background: '#fbfbfa', borderRadius: '4px', border: 'var(--border-thin)' }}>
-          No pending proposals. Agent has not formulated an authorized next step yet.
+        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px', background: '#fbfbfa', borderRadius: '6px', border: 'var(--border-thin)' }}>
+          No proposals awaiting your review right now.
         </div>
       ) : (
         proposals.map((prop) => {
           const isPending = prop.status === 'pending';
+          const badgeInfo = getStatusBadge(prop.status);
 
           return (
             <div key={prop.proposal_id} className="proposal-box">
               <div className="proposal-action">
-                <span>{prop.action_type}</span>
+                <span>{prop.action_type.replace(/_/g, ' ')}</span>
                 {prop.amount_minor !== undefined && (
                   <span style={{ color: 'var(--terracotta)', fontWeight: 700 }}>
                     {formatPaise(prop.amount_minor)}
@@ -124,16 +127,8 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span
-                  className={`badge ${
-                    prop.status === 'approved'
-                      ? 'badge-pass'
-                      : prop.status === 'declined'
-                      ? 'badge-fail'
-                      : 'badge-waiting'
-                  }`}
-                >
-                  {prop.status}
+                <span className={`badge ${badgeInfo.className}`}>
+                  {badgeInfo.label}
                 </span>
 
                 {isPending && (
@@ -142,7 +137,7 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
                       type="button"
                       className="btn-primary"
                       onClick={() => setSelectedProposal(prop)}
-                      style={{ padding: '4px 10px', fontSize: '12px' }}
+                      style={{ padding: '6px 14px', fontSize: '13px' }}
                     >
                       Review & Approve
                     </button>
@@ -154,41 +149,43 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
         })
       )}
 
-      {/* Test Error Triggers for Demo Verification */}
-      <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed #e2e0db' }}>
-        <div style={{ fontSize: '11px', color: 'var(--text-light)', marginBottom: '6px', textTransform: 'uppercase' }}>
-          Verify Response Handlers
+      {/* Dev-only controls (moved behind ?debug=1 per Wave 14 D §1) */}
+      {isDebugMode && (
+        <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed #e2e0db' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-light)', marginBottom: '6px' }}>
+            Debug test error triggers
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (proposals[0]) {
+                  handleConfirmDecision('approve', 'stale', 'test-stale-key');
+                } else {
+                  setStaleError('409 Conflict: Proposal is stale. Order basis has changed since creation.');
+                }
+              }}
+              style={{ fontSize: '11px', padding: '3px 8px' }}
+              title="Simulate 409 Conflict response"
+            >
+              Simulate 409 Stale
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setBlockedError({
+                  code: 'P_BALANCE',
+                  message: 'Refund ₹1,800 exceeds remaining refundable balance ₹1,499.',
+                });
+              }}
+              style={{ fontSize: '11px', padding: '3px 8px' }}
+              title="Simulate 422 Blocked response"
+            >
+              Simulate 422 Blocked
+            </button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={() => {
-              if (proposals[0]) {
-                handleConfirmDecision('approve', 'stale', 'test-stale-key');
-              } else {
-                setStaleError('409 Conflict: Proposal is stale. Order basis has changed since creation.');
-              }
-            }}
-            style={{ fontSize: '11px', padding: '3px 8px' }}
-            title="Simulate 409 Conflict response"
-          >
-            Simulate 409 Stale
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setBlockedError({
-                code: 'P_BALANCE',
-                message: 'Refund ₹1,800 exceeds remaining refundable balance ₹1,499.',
-              });
-            }}
-            style={{ fontSize: '11px', padding: '3px 8px' }}
-            title="Simulate 422 Blocked response"
-          >
-            Simulate 422 Blocked
-          </button>
-        </div>
-      </div>
+      )}
 
       {selectedProposal && (
         <ApprovalModal

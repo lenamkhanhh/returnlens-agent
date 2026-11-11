@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SellerCaseSummary, CaseDetail, AuditEvent, AutonomyPolicy, AutonomyExplanation } from '../../types';
 import { api } from '../../api/client';
+import { getStatusBadge } from '../../utils/format';
 import { AutonomyBar } from './AutonomyBar';
 import { WhyExplanationModal } from './WhyExplanationModal';
 import { InboxList } from './InboxList';
@@ -187,8 +188,8 @@ export const SellerView: React.FC = () => {
           <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--pine-green)' }}>
             Seller Review Console
           </h2>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Review unboxing evidence, ground-truth observations, and authorize dispute resolutions.
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            Review unboxing evidence, verified facts, and authorize dispute resolutions.
           </div>
         </div>
 
@@ -198,9 +199,9 @@ export const SellerView: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
         >
           <span>📜</span>
-          <span>{isTimelineOpen ? 'Close Timeline' : 'Open Timeline Drawer'}</span>
+          <span>{isTimelineOpen ? 'Close timeline' : 'Case audit timeline'}</span>
           {events.length > 0 && (
-            <span style={{ background: 'var(--pine-green)', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '10px' }}>
+            <span style={{ background: 'var(--pine-green)', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '11px' }}>
               {events.length}
             </span>
           )}
@@ -250,20 +251,15 @@ export const SellerView: React.FC = () => {
         {/* Column 2: Triad Facts & Policy Checks */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>Dispute Ground Truth</h3>
-            {activeCase && (
-              <span
-                className={`badge ${
-                  activeCase.state === 'RESOLVED'
-                    ? 'badge-pass'
-                    : activeCase.state === 'WAITING_SELLER'
-                    ? 'badge-waiting'
-                    : 'badge-unknown'
-                }`}
-              >
-                {activeCase.state}
-              </span>
-            )}
+            <h3>Case facts & evidence</h3>
+            {activeCase && (() => {
+              const b = getStatusBadge(activeCase.state);
+              return (
+                <span className={`badge ${b.className}`}>
+                  {b.label}
+                </span>
+              );
+            })()}
           </div>
 
           {caseError && (
@@ -294,7 +290,7 @@ export const SellerView: React.FC = () => {
               <PolicyChecks checks={activeCase.policy_checks} />
             </>
           ) : (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)' }}>
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
               Select a case from the inbox to inspect facts and evidence.
             </div>
           )}
@@ -303,7 +299,7 @@ export const SellerView: React.FC = () => {
         {/* Column 3: Plan Cards & Proposals Panel */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>Decisions & Plan</h3>
+            <h3>Plan & proposals</h3>
           </div>
 
           {activeCase ? (
@@ -315,7 +311,7 @@ export const SellerView: React.FC = () => {
               />
             </>
           ) : (
-            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)' }}>
+            <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
               No case selected.
             </div>
           )}

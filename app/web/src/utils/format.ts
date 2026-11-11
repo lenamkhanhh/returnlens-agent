@@ -98,3 +98,65 @@ export function formatDetectedLanguage(lang?: string | null): string {
   return lang.charAt(0).toUpperCase() + lang.slice(1);
 }
 
+/**
+ * Returns consistent status chip presentation per Wave 14 D §3:
+ * - waiting = amber (.badge-waiting)
+ * - needs you = blue (.badge-needs-you)
+ * - resolved = green (.badge-resolved)
+ * - blocked = red (.badge-blocked)
+ */
+export function getStatusBadge(raw?: string | null): { label: string; className: string } {
+  if (!raw) return { label: 'Unknown', className: 'badge-unknown' };
+  const s = raw.trim().toUpperCase();
+
+  switch (s) {
+    case 'RESOLVED':
+    case 'APPROVED':
+    case 'PASS':
+    case 'SUCCEEDED':
+    case 'DONE':
+    case 'VISIBLE':
+      return { label: 'Resolved', className: 'badge-resolved' };
+
+    case 'WAITING_SELLER':
+    case 'HUMAN_REVIEW':
+    case 'NEEDS_REVIEW':
+    case 'PENDING':
+      return { label: 'Needs review', className: 'badge-needs-you' };
+
+    case 'WAITING_CUSTOMER':
+    case 'PROCESSING':
+    case 'ACTION_PENDING':
+    case 'RECONCILIATION':
+    case 'NEW':
+    case 'WAITING':
+    case 'WAITING_RETURN':
+    case 'SENDING':
+      return { label: s === 'PROCESSING' ? 'Processing' : s === 'WAITING_CUSTOMER' ? 'Waiting customer' : 'Waiting', className: 'badge-waiting' };
+
+    case 'BLOCKED':
+    case 'DECLINED':
+    case 'FAIL':
+    case 'FAILED':
+    case 'ERROR':
+    case 'UNCLEAR':
+      return { label: s === 'BLOCKED' ? 'Blocked' : s === 'DECLINED' ? 'Declined' : s === 'UNCLEAR' ? 'Unclear' : 'Failed', className: 'badge-blocked' };
+
+    default:
+      return { label: raw, className: 'badge-unknown' };
+  }
+}
+
+/**
+ * Removes internal citations (e.g. 17 §3, 23 W1, Card B15, Test 14) from strings for visible display.
+ */
+export function sanitizeVisibleText(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .replace(/\s*\(\d+\s*§\d+\)/g, '')
+    .replace(/\s*\(\d+\s*W\d+[^)]*\)/g, '')
+    .replace(/\s*\(Card\s*[A-Z0-9]+[^)]*\)/gi, '')
+    .replace(/\s*\(Test\s*\d+[^)]*\)/gi, '')
+    .trim();
+}
+

@@ -1,6 +1,6 @@
 import React from 'react';
 import { SellerCaseSummary } from '../../types';
-import { formatPaise } from '../../utils/format';
+import { formatPaise, getStatusBadge } from '../../utils/format';
 
 interface InboxListProps {
   cases: SellerCaseSummary[];
@@ -24,6 +24,12 @@ export const InboxList: React.FC<InboxListProps> = ({
     return true;
   });
 
+  const filterLabels: Record<string, string> = {
+    ALL: 'All',
+    WAITING_SELLER: 'Needs review',
+    PROCESSING: 'Processing',
+  };
+
   return (
     <div>
       <div className="col-header">
@@ -35,14 +41,16 @@ export const InboxList: React.FC<InboxListProps> = ({
               type="button"
               onClick={() => onFilterChange(f)}
               style={{
-                padding: '2px 6px',
+                padding: '3px 8px',
                 fontSize: '11px',
+                borderRadius: '4px',
+                fontWeight: 600,
                 background: filter === f ? 'var(--pine-green)' : '#ffffff',
                 color: filter === f ? '#ffffff' : 'var(--text-muted)',
                 borderColor: filter === f ? 'var(--pine-green)' : '#e2e0db',
               }}
             >
-              {f === 'WAITING_SELLER' ? 'Needs Review' : f}
+              {filterLabels[f] || f}
             </button>
           ))}
         </div>
@@ -50,13 +58,14 @@ export const InboxList: React.FC<InboxListProps> = ({
 
       <div className="inbox-list" style={{ marginTop: '10px' }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-light)', fontSize: '12px' }}>
-            No cases match the selected filter.
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-light)', fontSize: '13px' }}>
+            No cases found in this view.
           </div>
         ) : (
           filtered.map((c) => {
             const isSelected = c.case_id === selectedCaseId;
             const isPendingMoney = c.state === 'WAITING_SELLER' && c.pending_amount_minor > 0;
+            const badgeInfo = getStatusBadge(c.state);
 
             return (
               <div
@@ -71,16 +80,8 @@ export const InboxList: React.FC<InboxListProps> = ({
                       {formatPaise(c.pending_amount_minor)}
                     </span>
                   ) : (
-                    <span
-                      className={`badge ${
-                        c.state === 'RESOLVED'
-                          ? 'badge-pass'
-                          : c.state === 'WAITING_SELLER'
-                          ? 'badge-waiting'
-                          : 'badge-unknown'
-                      }`}
-                    >
-                      {c.state}
+                    <span className={`badge ${badgeInfo.className}`}>
+                      {badgeInfo.label}
                     </span>
                   )}
                 </div>

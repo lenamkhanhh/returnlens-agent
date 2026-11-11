@@ -59,9 +59,9 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
         <div className="modal-header">
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--terracotta)' }}>
-              ⚡ Try to Break It (23 W1 — Judge Sandbox)
+              ⚡ Try to Break It — Guardrail Sandbox
             </h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>
               Verify code-enforced financial guardrails, prompt injection defenses, and cumulative velocity caps.
             </span>
           </div>
@@ -77,8 +77,8 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
         <div className="modal-body" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
           {/* Preset Buttons */}
           <div>
-            <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>
-              Select Preset Attack Vector:
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
+              Select preset attack vector:
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
               <button
@@ -87,7 +87,7 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
                 className={selectedPreset === 'injection' ? 'btn-primary' : ''}
                 style={{ padding: '8px', fontSize: '12px', textAlign: 'left' }}
               >
-                <div style={{ fontWeight: 700 }}>1. Prompt Injection</div>
+                <div style={{ fontWeight: 700 }}>1. Prompt injection</div>
                 <div style={{ fontSize: '11px', opacity: 0.85 }}>CLIP-INJ with paper text</div>
               </button>
 
@@ -97,7 +97,7 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
                 className={selectedPreset === 'over_refund' ? 'btn-primary' : ''}
                 style={{ padding: '8px', fontSize: '12px', textAlign: 'left' }}
               >
-                <div style={{ fontWeight: 700 }}>2. ₹1,800 Over-Refund</div>
+                <div style={{ fontWeight: 700 }}>2. Over-refund (₹1,800)</div>
                 <div style={{ fontSize: '11px', opacity: 0.85 }}>Order paid only ₹1,499</div>
               </button>
 
@@ -107,7 +107,7 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
                 className={selectedPreset === 'split_refund' ? 'btn-primary' : ''}
                 style={{ padding: '8px', fontSize: '12px', textAlign: 'left' }}
               >
-                <div style={{ fontWeight: 700 }}>3. Cumulative Split</div>
+                <div style={{ fontWeight: 700 }}>3. Cumulative split</div>
                 <div style={{ fontSize: '11px', opacity: 0.85 }}>Exceeds ₹2,000 daily cap</div>
               </button>
             </div>
@@ -115,8 +115,8 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
 
           {/* Free-Text Input */}
           <div style={{ marginTop: '10px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-              Or Free-Text Prompt Attack (Judge Input):
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
+              Or custom prompt attack:
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
@@ -148,8 +148,8 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
                 marginTop: '14px',
                 padding: '14px',
                 borderRadius: '6px',
-                background: result.status === 'BLOCKED' ? 'var(--terracotta-light)' : 'var(--pine-green-light)',
-                border: `1px solid ${result.status === 'BLOCKED' ? 'var(--terracotta)' : '#b7dcce'}`,
+                background: result.status === 'BLOCKED' ? 'var(--status-blocked-bg)' : 'var(--status-resolved-bg)',
+                border: `1px solid ${result.status === 'BLOCKED' ? 'var(--status-blocked-border)' : 'var(--status-resolved-border)'}`,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -157,10 +157,10 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
                   {result.attackName}
                 </strong>
                 <span
-                  className={`badge ${result.status === 'BLOCKED' ? 'badge-fail' : 'badge-pass'}`}
+                  className={`badge ${result.status === 'BLOCKED' ? 'badge-blocked' : 'badge-resolved'}`}
                   style={{ fontSize: '12px', padding: '3px 8px' }}
                 >
-                  {result.status}
+                  {result.status === 'BLOCKED' ? 'Blocked' : 'Sanitized'}
                 </span>
               </div>
 

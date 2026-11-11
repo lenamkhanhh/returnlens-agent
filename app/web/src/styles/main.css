@@ -1,35 +1,70 @@
-/* ReturnLens Design System (per 01 §7 & BRIEF_D_WEB) */
+/* ReturnLens Design System (per Wave 14 D Polish) */
 :root {
   --bg-app: #f8f7f4;
   --bg-card: #ffffff;
   --bg-panel: #fdfdfc;
-  --text-main: #222222;
-  --text-muted: #666666;
-  --text-light: #888888;
+  --text-main: #1f2937;
+  --text-muted: #4b5563;
+  --text-light: #6b7280;
   --border-thin: 1px solid #e2e0db;
   --border-strong: 1px solid #c9c7c0;
+  --border-subtle: 1px solid #eeede8;
 
   /* Accent Colors */
   --pine-green: #1b4d3e;
-  --pine-green-hover: #153e31;
+  --pine-green-hover: #143c30;
   --pine-green-light: #eaf2ee;
   --terracotta: #c85a32;
   --terracotta-hover: #b24e29;
   --terracotta-light: #faeeea;
 
-  /* Status Colors */
-  --status-pending-bg: #fdf6e2;
-  --status-pending-text: #8c6b12;
-  --status-pass-bg: #eaf2ee;
-  --status-pass-text: #1b4d3e;
-  --status-fail-bg: #faeeea;
-  --status-fail-text: #c85a32;
+  /* Type Scale: 12 / 14 / 16 / 20 / 28 px */
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 20px;
+  --font-xl: 28px;
+
+  /* Spacing Scale: 4 / 8 / 12 / 16 / 24 px */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* Status Colors per Wave 14 D §3:
+     waiting = amber, needs you = blue, resolved = green, blocked = red */
+  --status-waiting-bg: #fef3c7;
+  --status-waiting-text: #92400e;
+  --status-waiting-border: #fde68a;
+
+  --status-needs-bg: #eff6ff;
+  --status-needs-text: #1d4ed8;
+  --status-needs-border: #bfdbfe;
+
+  --status-resolved-bg: #ecfdf5;
+  --status-resolved-text: #065f46;
+  --status-resolved-border: #a7f3d0;
+
+  --status-blocked-bg: #fef2f2;
+  --status-blocked-text: #991b1b;
+  --status-blocked-border: #fecaca;
+
+  /* Fallback aliases for backward compatibility */
+  --status-pending-bg: var(--status-waiting-bg);
+  --status-pending-text: var(--status-waiting-text);
+  --status-pass-bg: var(--status-resolved-bg);
+  --status-pass-text: var(--status-resolved-text);
+  --status-fail-bg: var(--status-blocked-bg);
+  --status-fail-text: var(--status-blocked-text);
   --status-unknown-bg: #f0f0ed;
   --status-unknown-text: #666666;
 
   --font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
-  --radius-sm: 4px;
-  --radius-md: 6px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --shadow-none: none;
   --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -45,7 +80,7 @@ body {
   background-color: var(--bg-app);
   color: var(--text-main);
   line-height: 1.5;
-  font-size: 14px;
+  font-size: var(--font-sm);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -56,10 +91,10 @@ button {
   border: var(--border-thin);
   background: #ffffff;
   padding: 6px 14px;
-  font-size: 13px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--text-main);
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 button:hover:not(:disabled) {
@@ -71,33 +106,46 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Primary buttons look unmistakably primary */
 .btn-primary {
   background: var(--pine-green);
   color: #ffffff;
-  border: 1px solid var(--pine-green);
+  border: 1px solid var(--pine-green-hover);
+  box-shadow: 0 1px 2px rgba(27, 77, 62, 0.2);
+  font-weight: 600;
+  padding: 8px 16px;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--pine-green-hover);
   border-color: var(--pine-green-hover);
+  box-shadow: 0 2px 4px rgba(27, 77, 62, 0.3);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .btn-danger {
   background: var(--terracotta);
   color: #ffffff;
-  border: 1px solid var(--terracotta);
+  border: 1px solid var(--terracotta-hover);
+  box-shadow: 0 1px 2px rgba(200, 90, 50, 0.2);
+  font-weight: 600;
+  padding: 8px 16px;
 }
 
 .btn-danger:hover:not(:disabled) {
   background: var(--terracotta-hover);
   border-color: var(--terracotta-hover);
+  box-shadow: 0 2px 4px rgba(200, 90, 50, 0.3);
 }
 
 /* App Header & Navigation */
 .app-header {
   background: var(--bg-card);
   border-bottom: var(--border-thin);
-  padding: 12px 24px;
+  padding: var(--space-3) var(--space-5);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -109,18 +157,18 @@ button:disabled {
 .brand-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .brand-title {
-  font-size: 18px;
+  font-size: var(--font-lg);
   font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--pine-green);
 }
 
 .store-badge {
-  font-size: 11px;
+  font-size: var(--font-xs);
   background: var(--pine-green-light);
   color: var(--pine-green);
   padding: 2px 8px;
@@ -131,7 +179,7 @@ button:disabled {
 
 .nav-tabs {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   background: #eeede8;
   padding: 3px;
   border-radius: var(--radius-sm);
@@ -141,7 +189,7 @@ button:disabled {
   background: transparent;
   border: none;
   padding: 6px 16px;
-  font-size: 13px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--text-muted);
   border-radius: var(--radius-sm);
@@ -153,28 +201,44 @@ button:disabled {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* Status Badges */
+/* Status Badges with consistent colors:
+   waiting = amber, needs you = blue, resolved = green, blocked = red */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 7px;
-  border-radius: var(--radius-sm);
-  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-size: var(--font-xs);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  text-transform: capitalize;
+  letter-spacing: 0.2px;
+  line-height: 1.4;
 }
 
-.badge-pass {
-  background: var(--status-pass-bg);
-  color: var(--status-pass-text);
-  border: 1px solid #b7dcce;
+.badge-waiting {
+  background: var(--status-waiting-bg);
+  color: var(--status-waiting-text);
+  border: 1px solid var(--status-waiting-border);
 }
 
-.badge-fail {
-  background: var(--status-fail-bg);
-  color: var(--status-fail-text);
-  border: 1px solid #f3cfc3;
+.badge-needs-you {
+  background: var(--status-needs-bg);
+  color: var(--status-needs-text);
+  border: 1px solid var(--status-needs-border);
+}
+
+.badge-pass,
+.badge-resolved {
+  background: var(--status-resolved-bg);
+  color: var(--status-resolved-text);
+  border: 1px solid var(--status-resolved-border);
+}
+
+.badge-fail,
+.badge-blocked {
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-text);
+  border: 1px solid var(--status-blocked-border);
 }
 
 .badge-unknown {
@@ -183,25 +247,19 @@ button:disabled {
   border: 1px solid #dedcd6;
 }
 
-.badge-waiting {
-  background: var(--status-pending-bg);
-  color: var(--status-pending-text);
-  border: 1px solid #fae6a6;
-}
-
-/* Main Container */
+/* Main Container - Full 1080p Readability */
 .main-content {
-  max-width: 1440px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 20px 24px;
+  padding: var(--space-5) var(--space-5);
   min-height: calc(100vh - 65px);
 }
 
 /* Customer View Styles */
 .customer-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 20px;
+  grid-template-columns: 340px 1fr;
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -209,16 +267,16 @@ button:disabled {
   background: var(--bg-card);
   border: var(--border-thin);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .sidebar-title {
-  font-size: 13px;
+  font-size: var(--font-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-  letter-spacing: 0.5px;
+  text-transform: none; /* sentence case */
+  color: var(--text-main);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.2px;
 }
 
 .select-field {
@@ -296,9 +354,9 @@ button:disabled {
 }
 
 .status-pill.waiting-for-seller {
-  background: var(--status-pending-bg);
-  color: var(--status-pending-text);
-  border: 1px solid #fae6a6;
+  background: var(--status-needs-bg);
+  color: var(--status-needs-text);
+  border: 1px solid var(--status-needs-border);
 }
 
 .status-pill.sending {
@@ -307,23 +365,27 @@ button:disabled {
 }
 
 .status-pill.processing {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--status-waiting-bg);
+  color: var(--status-waiting-text);
+  border: 1px solid var(--status-waiting-border);
 }
 
 .status-pill.waiting-for-you {
-  background: var(--terracotta-light);
-  color: var(--terracotta);
+  background: var(--status-waiting-bg);
+  color: var(--status-waiting-text);
+  border: 1px solid var(--status-waiting-border);
 }
 
 .status-pill.done {
-  background: var(--pine-green-light);
-  color: var(--pine-green);
+  background: var(--status-resolved-bg);
+  color: var(--status-resolved-text);
+  border: 1px solid var(--status-resolved-border);
 }
 
 .status-pill.error {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--status-blocked-bg);
+  color: var(--status-blocked-text);
+  border: 1px solid var(--status-blocked-border);
 }
 
 .status-pulse {
@@ -460,8 +522,8 @@ button:disabled {
 /* Seller 3-Column Layout */
 .seller-layout {
   display: grid;
-  grid-template-columns: 360px minmax(380px, 1fr) 380px;
-  gap: 16px;
+  grid-template-columns: 380px minmax(420px, 1fr) 400px;
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -469,10 +531,11 @@ button:disabled {
   background: var(--bg-card);
   border: var(--border-thin);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .col-header {
@@ -480,14 +543,14 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   border-bottom: var(--border-thin);
-  padding-bottom: 10px;
+  padding-bottom: var(--space-2);
 }
 
 .col-header h3 {
-  font-size: 14px;
+  font-size: var(--font-md);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: none; /* sentence case */
+  letter-spacing: -0.2px;
   color: var(--text-main);
 }
 
@@ -582,15 +645,16 @@ button:disabled {
   border: var(--border-thin);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
+  background: #ffffff;
 }
 
 .triad-header {
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 10px 14px;
+  font-size: var(--font-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  text-transform: none; /* sentence case */
+  letter-spacing: normal;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -615,12 +679,12 @@ button:disabled {
 }
 
 .triad-content {
-  padding: 10px 12px;
-  font-size: 12.5px;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-sm);
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .fact-row {
@@ -643,29 +707,29 @@ button:disabled {
 .plan-card {
   border: var(--border-thin);
   border-radius: var(--radius-sm);
-  padding: 12px;
+  padding: var(--space-4);
   background: #fbfbfa;
 }
 
 .plan-card-title {
-  font-size: 11px;
+  font-size: var(--font-sm);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-muted);
-  margin-bottom: 8px;
+  text-transform: none; /* sentence case */
+  letter-spacing: normal;
+  color: var(--text-main);
+  margin-bottom: var(--space-2);
 }
 
 .plan-field {
   margin-bottom: 8px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .plan-field-label {
-  font-size: 10.5px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--text-light);
-  text-transform: uppercase;
+  text-transform: none; /* sentence case */
 }
 
 .tool-chip {
@@ -693,11 +757,12 @@ button:disabled {
 
 /* Proposals & Approvals */
 .proposal-box {
-  border: 1px solid #cbd5e1;
+  border: var(--border-thin);
   border-radius: var(--radius-sm);
-  padding: 12px;
+  padding: var(--space-4);
   background: #ffffff;
-  margin-bottom: 10px;
+  margin-bottom: var(--space-3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .proposal-action {

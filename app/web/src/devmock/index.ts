@@ -539,7 +539,7 @@ class DevMockService {
       },
       {
         step: 4,
-        title: 'Reliability Gate (17 §3)',
+        title: 'Reliability Gate',
         passed: reliabilityMet,
         detail: reliabilityMet
           ? `${caseType} passed 5/5 in harness benchmark on current agent_version`

@@ -56,7 +56,7 @@ export const OperatorView: React.FC = () => {
     setResetMessage(null);
     try {
       await api.resetDemo();
-      setResetMessage('✓ Demo database cleanly reset to seed fixtures (14 §5).');
+      setResetMessage('✓ Demo database cleanly reset to seed fixtures.');
     } catch (err: any) {
       setResetMessage(`✗ Error: ${err.message || 'Reset failed'}`);
     } finally {
@@ -79,7 +79,7 @@ export const OperatorView: React.FC = () => {
         {/* Card 1: Courier Webhook Event Simulation */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>🚚 Fire Courier Event (17 §6)</h3>
+            <h3>🚚 Fire courier event</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>POST /api/operator/courier-events</span>
           </div>
 
@@ -160,8 +160,8 @@ export const OperatorView: React.FC = () => {
         {/* Card 2: Counterfactual Tracking Injection */}
         <div className="seller-col">
           <div className="col-header">
-            <h3>🔄 Counterfactual Tracking (23 W3)</h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Change Order Facts Live</span>
+            <h3>🔄 Counterfactual tracking</h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Change order facts live</span>
           </div>
 
           <form onSubmit={handleUpdateTracking} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -235,8 +235,8 @@ export const OperatorView: React.FC = () => {
             <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>POST /api/operator/reset</span>
           </div>
 
-          <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Resets the domain database, clears created jobs and uploaded evidence, and restores the pristine cold-open demo seed (14 §5).
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            Resets the domain database, clears created jobs and uploaded evidence, and restores the pristine cold-open demo seed.
           </p>
 
           <button

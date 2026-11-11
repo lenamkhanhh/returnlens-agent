@@ -33,11 +33,11 @@ export const TimelineDrawer: React.FC<TimelineDrawerProps> = ({
     <div className="timeline-drawer">
       <div className="drawer-header">
         <div>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--pine-green)' }}>
-            Case Audit Timeline
+          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--pine-green)' }}>
+            Case audit timeline
           </h3>
           <span style={{ fontSize: '11px', color: 'var(--text-light)', fontFamily: 'monospace' }}>
-            {caseId} · Sequential Event Ledger
+            {caseId} · Sequential audit ledger
           </span>
         </div>
         <button

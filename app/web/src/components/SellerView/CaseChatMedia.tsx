@@ -27,7 +27,7 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
       {videoEvidence && (
         <div>
           <div className="col-header" style={{ marginBottom: '8px' }}>
-            <h3>Customer Unboxing Video</h3>
+            <h3>Customer unboxing video</h3>
             <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>
               {videoEvidence.filename}
             </span>
@@ -72,7 +72,7 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
       {/* 3. Case Chat History */}
       <div>
         <div className="col-header" style={{ marginBottom: '8px' }}>
-          <h3>Conversation History</h3>
+          <h3>Conversation history</h3>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AutonomyExplanation } from '../../types';
+import { sanitizeVisibleText } from '../../utils/format';
 
 interface WhyExplanationModalProps {
   explanation: AutonomyExplanation | null;
@@ -14,20 +15,20 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" style={{ width: '560px' }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal-card" style={{ width: '580px' }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--pine-green)' }}>
-              "Why?" — 7-Step Autonomy Gate Evaluation (17 §3)
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--pine-green)' }}>
+              "Why did it stop?" — 7-Step Autonomy Evaluation
             </h3>
-            <span style={{ fontSize: '11px', color: 'var(--text-light)', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-light)', fontFamily: 'monospace' }}>
               Case {explanation.case_id} · Type: {explanation.case_type} · Action: {explanation.action_type}
             </span>
           </div>
           <button
             type="button"
             onClick={onClose}
-            style={{ border: 'none', background: 'none', fontSize: '16px', cursor: 'pointer' }}
+            style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer' }}
           >
             ✕
           </button>
@@ -36,20 +37,20 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
         <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <div
             style={{
-              padding: '10px 14px',
-              borderRadius: '4px',
+              padding: '12px 16px',
+              borderRadius: '6px',
               background:
                 explanation.decision === 'AUTO'
                   ? 'var(--pine-green-light)'
                   : explanation.decision === 'BLOCK'
                   ? 'var(--terracotta-light)'
-                  : 'var(--status-pending-bg)',
+                  : 'var(--status-waiting-bg)',
               border: `1px solid ${
                 explanation.decision === 'AUTO'
                   ? '#b7dcce'
                   : explanation.decision === 'BLOCK'
                   ? 'var(--terracotta)'
-                  : '#fae6a6'
+                  : 'var(--status-waiting-border)'
               }`,
               display: 'flex',
               justifyContent: 'space-between',
@@ -58,7 +59,7 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
           >
             <div>
               <div style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Resulting Verdict
+                Resulting verdict
               </div>
               <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>
                 {explanation.decision} ({explanation.reason_code})
@@ -67,10 +68,10 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
             <span
               className={`badge ${
                 explanation.decision === 'AUTO'
-                  ? 'badge-pass'
+                  ? 'badge-resolved'
                   : explanation.decision === 'BLOCK'
-                  ? 'badge-fail'
-                  : 'badge-waiting'
+                  ? 'badge-blocked'
+                  : 'badge-needs-you'
               }`}
               style={{ fontSize: '12px', padding: '4px 10px' }}
             >
@@ -78,7 +79,7 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
             </span>
           </div>
 
-          <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {(explanation.checks || []).map((chk) => (
               <div
                 key={chk.step}
@@ -86,8 +87,8 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
                   display: 'flex',
                   gap: '12px',
                   alignItems: 'flex-start',
-                  padding: '8px 12px',
-                  borderRadius: '4px',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
                   background: chk.passed ? '#fcfdfc' : 'var(--terracotta-light)',
                   border: `1px solid ${chk.passed ? '#e2e0db' : '#f8d7cc'}`,
                 }}
@@ -113,13 +114,13 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
 
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong style={{ fontSize: '12.5px', color: 'var(--text-main)' }}>
-                      Step {chk.step}: {chk.title}
+                    <strong style={{ fontSize: '13px', color: 'var(--text-main)' }}>
+                      Step {chk.step}: {sanitizeVisibleText(chk.title)}
                     </strong>
                     <span
                       style={{
                         fontSize: '11px',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: chk.passed ? 'var(--pine-green)' : 'var(--terracotta)',
                       }}
                     >
@@ -127,7 +128,7 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
                     </span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {chk.detail}
+                    {sanitizeVisibleText(chk.detail)}
                   </div>
                 </div>
               </div>
@@ -137,7 +138,7 @@ export const WhyExplanationModal: React.FC<WhyExplanationModalProps> = ({
 
         <div className="modal-footer">
           <button type="button" onClick={onClose} className="btn-primary">
-            Close Explanation
+            Close
           </button>
         </div>
       </div>

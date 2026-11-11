@@ -64,15 +64,15 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <strong style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.5px', color: isKilled ? '#b91c1c' : 'var(--pine-green)' }}>
-            🛡️ Autonomy Bar
+          <strong style={{ fontSize: '14px', letterSpacing: '-0.2px', color: isKilled ? '#b91c1c' : 'var(--pine-green)' }}>
+            🛡️ Autonomy bar
           </strong>
 
           <span
-            className={`badge ${isKilled ? 'badge-fail' : 'badge-pass'}`}
-            style={{ fontSize: '11px' }}
+            className={`badge ${isKilled ? 'badge-blocked' : 'badge-resolved'}`}
+            style={{ fontSize: '12px' }}
           >
-            {isKilled ? 'KILL SWITCH ENGAGED (ALL L0)' : 'AUTONOMY ACTIVE'}
+            {isKilled ? 'Kill switch active (all L0)' : 'Autonomy active'}
           </span>
 
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -90,13 +90,13 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                 background: 'var(--pine-green-light)',
                 color: 'var(--pine-green)',
                 borderColor: '#b7dcce',
-                fontWeight: 700,
+                fontWeight: 600,
                 fontSize: '12px',
                 padding: '4px 10px',
               }}
-              title="Inspect 7-Step Autonomy Evaluation Checklist (23 W4)"
+              title="Inspect 7-step autonomy evaluation checklist"
             >
-              ❓ "Why?" Checklist
+              ❓ Why did it stop?
             </button>
           )}
 
@@ -107,10 +107,10 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
             style={{
               padding: '4px 12px',
               fontSize: '12px',
-              fontWeight: 700,
+              fontWeight: 600,
             }}
           >
-            {isKilled ? '⚠️ Autonomy Killed' : '⚡ Kill Switch'}
+            {isKilled ? '⚠️ Autonomy killed' : '⚡ Kill switch'}
           </button>
         </div>
       </div>

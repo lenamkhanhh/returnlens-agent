@@ -21,7 +21,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
 }) => {
   return (
     <div className="customer-sidebar">
-      <div className="sidebar-title">Select Customer Profile</div>
+      <div className="sidebar-title">Customer profile</div>
       <select
         className="select-field"
         value={selectedCustomer?.customer_id || ''}
@@ -45,7 +45,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
       )}
 
       <div className="sidebar-title" style={{ marginTop: '10px' }}>
-        Select Order
+        Order details
       </div>
       <select
         className="select-field"
@@ -72,15 +72,15 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
             <div><strong>Product:</strong> {selectedOrder.item_name}</div>
             <div><strong>Color:</strong> {selectedOrder.catalog_color}</div>
             <div><strong>SKU:</strong> {selectedOrder.sku}</div>
-            <div><strong>Shipment Status:</strong> <span style={{ fontWeight: 600, color: selectedOrder.shipping_status.toLowerCase().includes('transit') ? 'var(--pine-green)' : 'inherit' }}>{selectedOrder.shipping_status}</span></div>
+            <div><strong>Shipment status:</strong> <span style={{ fontWeight: 600, color: selectedOrder.shipping_status.toLowerCase().includes('transit') ? 'var(--pine-green)' : 'inherit' }}>{selectedOrder.shipping_status}</span></div>
             {selectedOrder.delivered_date && (
-              <div><strong>Delivered Date:</strong> {selectedOrder.delivered_date}</div>
+              <div><strong>Delivered date:</strong> {selectedOrder.delivered_date}</div>
             )}
             {selectedOrder.eta_days_relative && (
-              <div><strong>Estimated Arrival (ETA):</strong> {typeof selectedOrder.eta_days_relative === 'number' ? `in ${selectedOrder.eta_days_relative} days` : selectedOrder.eta_days_relative}</div>
+              <div><strong>Estimated arrival:</strong> {typeof selectedOrder.eta_days_relative === 'number' ? `in ${selectedOrder.eta_days_relative} days` : selectedOrder.eta_days_relative}</div>
             )}
             <div style={{ marginTop: '6px', color: 'var(--pine-green)', fontWeight: 600 }}>
-              Scenario: {selectedOrder.scenario_tag}
+              Case type: {selectedOrder.scenario_tag}
             </div>
           </div>
         </div>

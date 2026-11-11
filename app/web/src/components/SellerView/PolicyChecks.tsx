@@ -10,24 +10,24 @@ export const PolicyChecks: React.FC<PolicyChecksProps> = ({ checks }) => {
   return (
     <div style={{ marginTop: '12px' }}>
       <div className="col-header" style={{ marginBottom: '8px' }}>
-        <h3>Domain Policy Guardrails</h3>
-        <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>
-          Strict Code-Enforced Checks
+        <h3>Domain policy guardrails</h3>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          Code-enforced checks
         </span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {safeChecks.length === 0 ? (
-          <div style={{ fontSize: '12px', color: 'var(--text-light)', fontStyle: 'italic' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-light)', fontStyle: 'italic', padding: '8px 0' }}>
             No policy checks evaluated yet.
           </div>
         ) : (
           safeChecks.map((pc) => {
             const badgeClass =
               pc.result === 'PASS'
-                ? 'badge-pass'
+                ? 'badge-resolved'
                 : pc.result === 'FAIL'
-                ? 'badge-fail'
+                ? 'badge-blocked'
                 : 'badge-unknown';
 
             return (
