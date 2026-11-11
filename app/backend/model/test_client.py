@@ -192,6 +192,78 @@ class TestGeminiModelAdapter(unittest.TestCase):
         self.assertEqual(err.code, "MODEL_UNAVAILABLE")
         self.assertFalse(err.retryable)
 
+    def test_29_transient_error_retries_once_before_raising_model_unavailable(self):
+        """Test 29: Provider transient errors (503, 429, timeout) retry exactly once with backoff."""
+        fake_client = MagicMock()
+        fake_client.models.generate_content.side_effect = RuntimeError(
+            "503 Service Unavailable: The model is currently overloaded. Please try again later."
+        )
+
+        adapter = GeminiModelAdapter(client=fake_client)
+        with self.assertRaises(ModelUnavailableError) as ctx:
+            adapter.generate("Test prompt", correlation_id="CORR-503")
+
+        # Initial call + exactly 1 retry = 2 attempts total
+        self.assertEqual(fake_client.models.generate_content.call_count, 2)
+        err = ctx.exception
+        self.assertEqual(err.code, "MODEL_UNAVAILABLE")
+        self.assertTrue(err.retryable)
+        self.assertEqual(err.correlation_id, "CORR-503")
+
+    def test_29_transient_error_succeeds_on_second_attempt(self):
+        """Test 29: Transient error recovers if retry succeeds within budget."""
+        mock_success_response = MagicMock()
+        mock_success_response.text = '{"intent": "WISMO"}'
+        mock_success_response.usage_metadata = None
+
+        fake_client = MagicMock()
+        # First call fails with 429, second call succeeds
+        fake_client.models.generate_content.side_effect = [
+            RuntimeError("429 Resource Exhausted"),
+            mock_success_response,
+        ]
+
+        adapter = GeminiModelAdapter(client=fake_client)
+        res, model_run = adapter.generate("Test prompt", correlation_id="CORR-RECOVER")
+
+        self.assertEqual(fake_client.models.generate_content.call_count, 2)
+        self.assertEqual(res.text, '{"intent": "WISMO"}')
+        self.assertTrue(model_run.output_validated)
+        self.assertEqual(model_run.model_id, "gemini-3.8-flash")
+
+    def test_29_auth_error_fails_immediately_without_retry(self):
+        """Test 29: Authentication / authorization errors must never be retried."""
+        fake_client = MagicMock()
+        fake_client.models.generate_content.side_effect = ValueError(
+            "403 Forbidden: API key not valid. Please pass a valid API key."
+        )
+
+        adapter = GeminiModelAdapter(client=fake_client)
+        with self.assertRaises(ModelUnavailableError) as ctx:
+            adapter.generate("Test prompt", correlation_id="CORR-403")
+
+        # Exactly 1 call: NO retry for auth errors
+        self.assertEqual(fake_client.models.generate_content.call_count, 1)
+        err = ctx.exception
+        self.assertEqual(err.code, "MODEL_UNAVAILABLE")
+        self.assertFalse(err.retryable)
+
+    def test_29_no_fake_success_on_failure(self):
+        """Test 29: On provider failure, adapter must raise ModelUnavailableError and NEVER fake success."""
+        fake_client = MagicMock()
+        fake_client.models.generate_content.side_effect = TimeoutError("Deadline exceeded")
+
+        adapter = GeminiModelAdapter(client=fake_client)
+        with self.assertRaises(ModelUnavailableError) as ctx:
+            adapter.generate("Test prompt")
+
+        err = ctx.exception
+        self.assertEqual(err.code, "MODEL_UNAVAILABLE")
+        # Ensure ErrorShape contains canonical fields and no fake content
+        error_shape = err.to_error_shape()
+        self.assertEqual(error_shape["code"], "MODEL_UNAVAILABLE")
+        self.assertTrue(error_shape["retryable"])
+
 
 if __name__ == "__main__":
     unittest.main()

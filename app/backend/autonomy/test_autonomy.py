@@ -253,6 +253,91 @@ class TestAutonomyDecision(unittest.TestCase):
         self.assertEqual(detail["code"], "reliability_locked")
         self.assertEqual(detail["case_type"], "UNCLEAR")
 
+    def test_bug_4_blocked_scenario_treated_as_not_passed(self):
+        """Bug 4: Autonomy gate treats 'blocked' status in reliability.json as not passed.
+
+        Per Wave 3 Bug 4:
+        - When model key is not set, harness records status='blocked' and reason='blocked: GEMINI_API_KEY not set'.
+        - Autonomy must treat 'blocked' as not passed and include the honest reason.
+        - Step 4 of the 7-step checklist reflects the failure with status icon '✗'.
+        """
+        # S03 is blocked because GEMINI_API_KEY is not set
+        res_s03 = ReliabilityResult(
+            run_id="RUN-S03-BLOCKED",
+            scenario_id="S03",
+            case_type=CaseType.DAMAGE,
+            k=5,
+            passes=0,
+            pass_at_1=0.0,
+            pass_pow_k=0.0,
+            agent_version=self.agent_ver,
+            model_id="",  # model_id is empty/null when blocked
+            ran_at="2026-11-11T12:00:00Z",
+            synthetic=False,
+            status="blocked",
+            reason="blocked: GEMINI_API_KEY not set",
+        )
+
+        # S10 passed
+        res_s10 = ReliabilityResult(
+            run_id="RUN-S10-PASS",
+            scenario_id="S10",
+            case_type=CaseType.DAMAGE,
+            k=5,
+            passes=5,
+            pass_at_1=1.0,
+            pass_pow_k=1.0,
+            agent_version=self.agent_ver,
+            model_id=self.model_id,
+            ran_at="2026-11-11T12:00:00Z",
+            synthetic=False,
+            status="passed",
+        )
+
+        rel_data = {"S03": res_s03, "S10": res_s10}
+
+        # 1. Check reliability gate
+        passed, reason, metrics = check_case_type_reliability(
+            case_type=CaseType.DAMAGE,
+            current_agent_version=self.agent_ver,
+            current_model_id=self.model_id,
+            reliability_data=rel_data,
+        )
+        self.assertFalse(passed)
+        self.assertIn("S03 is blocked (blocked: GEMINI_API_KEY not set)", reason)
+        self.assertEqual(metrics["S03"]["status"], "blocked")
+        self.assertEqual(metrics["S03"]["reason"], "blocked: GEMINI_API_KEY not set")
+
+        # 2. Check autonomy decision defers to seller
+        obs = ObservationItem(
+            id="OBS-01",
+            evidence_id="EVI-01",
+            t="00:03",
+            attribute=ObservationAttribute.DAMAGE,
+            value="cracked casing",
+            visibility=Visibility.VISIBLE,
+        )
+        eval_res = evaluate_autonomy_decision(
+            action_type=ActionType.ISSUE_REFUND.value,
+            case_type=CaseType.DAMAGE,
+            policy=self.policy,
+            amount_minor=129900,
+            order_paid_minor=129900,
+            customer_daily_refund_total_minor=0,
+            is_receipt_received=True,
+            observations=[obs],
+            reliability_data=rel_data,
+            current_agent_version=self.agent_ver,
+            current_model_id=self.model_id,
+        )
+        self.assertEqual(eval_res.decision, AutonomyDecision.DEFER_TO_SELLER)
+        self.assertEqual(eval_res.reason_code, "reliability_locked")
+        # Step 4 (Reliability) failed
+        step4 = eval_res.checklist[3]
+        self.assertFalse(step4.passed)
+        self.assertEqual(step4.status_icon, "✗")
+        self.assertIn("blocked", step4.details)
+
 
 if __name__ == "__main__":
     unittest.main()

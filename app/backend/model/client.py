@@ -204,32 +204,57 @@ class GeminiModelAdapter:
         config = types.GenerateContentConfig(**config_kwargs) if types else None
 
         start_time = time.perf_counter()
-        try:
-            response = self._client.models.generate_content(
-                model=target_model,
-                contents=contents,
-                config=config,
-            )
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-        except Exception as exc:
-            latency_ms = int((time.perf_counter() - start_time) * 1000)
-            # Classify error retryability (429, 503, timeout are retryable)
-            err_str = str(exc).lower()
-            is_retryable = (
-                "429" in err_str
-                or "resource_exhausted" in err_str
-                or "503" in err_str
-                or "unavailable" in err_str
-                or "timeout" in err_str
-                or "timed out" in err_str
-            )
-            raise ModelUnavailableError(
-                message=f"Model call failed: {exc}",
-                code="MODEL_UNAVAILABLE",
-                retryable=is_retryable,
-                correlation_id=correlation_id,
-                original_error=exc,
-            ) from exc
+        max_retries = 1
+        last_exc: Optional[Exception] = None
+        response = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                response = self._client.models.generate_content(
+                    model=target_model,
+                    contents=contents,
+                    config=config,
+                )
+                break
+            except Exception as exc:
+                last_exc = exc
+                err_str = str(exc).lower()
+                is_retryable = (
+                    isinstance(exc, (TimeoutError, ConnectionError))
+                    or "429" in err_str
+                    or "resource_exhausted" in err_str
+                    or "503" in err_str
+                    or "502" in err_str
+                    or "504" in err_str
+                    or "unavailable" in err_str
+                    or "timeout" in err_str
+                    or "timed out" in err_str
+                    or "deadline" in err_str
+                )
+                # Auth and argument errors must NOT be retried (Test 29)
+                is_auth_error = (
+                    "401" in err_str
+                    or "unauthorized" in err_str
+                    or "api_key" in err_str
+                    or "403" in err_str
+                    or "permission_denied" in err_str
+                    or "invalid_argument" in err_str
+                )
+
+                if is_auth_error or not is_retryable or attempt >= max_retries:
+                    latency_ms = int((time.perf_counter() - start_time) * 1000)
+                    raise ModelUnavailableError(
+                        message=f"Model call failed: {exc}",
+                        code="MODEL_UNAVAILABLE",
+                        retryable=is_retryable and not is_auth_error,
+                        correlation_id=correlation_id,
+                        original_error=exc,
+                    ) from exc
+
+                # Transient backoff before 1 retry (03 §7)
+                time.sleep(0.05)
+
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
 
         # Extract usage metadata
         usage_meta = getattr(response, "usage_metadata", None)

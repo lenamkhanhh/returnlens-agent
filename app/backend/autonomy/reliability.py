@@ -62,10 +62,11 @@ def load_reliability_results(
     results_by_scenario: Dict[str, ReliabilityResult] = {}
     for item in raw_list:
         try:
+            # Handle item with ReliabilityResult schema
             res = ReliabilityResult.model_validate(item)
-            # 17 §2 & 02 §2: synthetic results only allowed in harness mode
             if res.synthetic and not harness_mode:
                 continue
+
             results_by_scenario[res.scenario_id] = res
         except Exception:
             continue
@@ -104,6 +105,9 @@ def check_case_type_reliability(
             scenario_metrics[sid] = {"status": "MISSING"}
             continue
 
+        status_val = res.status.lower() if res.status else "passed"
+        reason_val = res.reason or ""
+
         scenario_metrics[sid] = {
             "k": res.k,
             "passes": res.passes,
@@ -111,7 +115,18 @@ def check_case_type_reliability(
             "agent_version": res.agent_version,
             "model_id": res.model_id,
             "synthetic": res.synthetic,
+            "status": status_val,
+            "reason": reason_val,
         }
+
+        # Wave 3 Bug 4: Autonomy must treat 'blocked' as not passed
+        if status_val in ("blocked", "failed"):
+            all_passed = False
+            msg = f"{sid} is {status_val}"
+            if reason_val:
+                msg += f" ({reason_val})"
+            failure_reasons.append(msg)
+            continue
 
         # Validate trial count k >= 5
         if res.k < required_k:
@@ -134,8 +149,8 @@ def check_case_type_reliability(
                 f"{sid} agent_version '{res.agent_version[:8]}' != current '{current_agent_version[:8]}'"
             )
 
-        # Validate model_id
-        if res.model_id != current_model_id:
+        # Validate model_id: if model was used, it must match current_model_id
+        if res.model_id and res.model_id != current_model_id:
             all_passed = False
             failure_reasons.append(
                 f"{sid} model_id '{res.model_id}' != current '{current_model_id}'"

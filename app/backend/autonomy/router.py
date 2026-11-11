@@ -22,6 +22,7 @@ from app.backend.contracts import (
     AutonomyLevel,
     AutonomyPolicy,
     CaseType,
+    ObservationItem,
     UpdateAutonomyRequest,
 )
 from app.backend.autonomy.decision import (
@@ -247,7 +248,32 @@ def get_autonomy_why_checklist(
     amount_minor = target_proposal.amount_minor if target_proposal else None
 
     # Load observations for grounding check
-    observations = repo.list_case_observations(case_id)
+    observations = []
+    if hasattr(repo, "list_case_observations"):
+        observations = repo.list_case_observations(case_id)
+    else:
+        with repo.db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT observation_id, evidence_id, t, attribute, value,
+                       color_class, visibility, uncertainty_reason
+                FROM observations WHERE case_id = ?
+                """,
+                (case_id,),
+            )
+            for r in cur.fetchall():
+                observations.append(
+                    ObservationItem(
+                        id=r["observation_id"],
+                        evidence_id=r["evidence_id"],
+                        t=r["t"],
+                        attribute=r["attribute"],
+                        value=r["value"],
+                        color_class=r["color_class"],
+                        visibility=r["visibility"],
+                        limitation=r["uncertainty_reason"],
+                    )
+                )
 
     # Check cumulative totals
     demo_today = os.environ.get("DEMO_TODAY", datetime.now().strftime("%Y-%m-%d"))
