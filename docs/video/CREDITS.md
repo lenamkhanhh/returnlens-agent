@@ -6,7 +6,7 @@ This document lists all media assets, voices, music, and tools used in the produ
 
 ## 1. Narration & Voice-Over (Synthetic)
 
-- **Voice**: `en-IN-NeerjaNeural` (Indian English neural voice)
+- **Voice**: `en-US-AndrewMultilingualNeural` (American English / Multilingual neural voice)
 - **Engine**: Microsoft Edge Neural TTS via open-source `edge-tts` 7.3.1
 - **License**: Generated output for educational/competition demonstration.
 - **Notice**: In accordance with competition rules, the narration voice-over is **synthetic**. Zero paid APIs, zero human voice actors, and zero unauthorized third-party recordings were used.
