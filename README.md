@@ -115,6 +115,7 @@ All benchmark metrics are recorded directly by running `python -m app.evaluation
 **Benchmark Summary:**
 - **9 / 10 scenarios passed at $k=5$ ($pass^5 = 1.00$)**
 - **1 measured failure at $k=5$** (`S04`: 4/5 passed, $pass@1 = 0.80$, $pass^5 = 0.00$ on `gemini-3.5-flash-lite` due to real-world vision model variance across multi-turn clarification). Because $pass^5 < 1.00$, the Earned Autonomy gate safely locks Case B (`MISMATCH`) to human seller review.
+- **Production Autonomy Gate Rule (Synthetic Evidence Never Unlocks Money):** In production (`HARNESS_MODE=0`), results from synthetic scenarios do not count toward autonomy (`app/backend/autonomy/reliability.py` in `load_reliability_results`). Because `DAMAGE` requires both S03 (real photo, 5/5) and S10 (synthetic cumulative-limit test, 5/5), `DAMAGE` stays locked for L2/L3 on the live demo; all damage refunds go to the seller for approval. **No case type auto-refunds on the live demo.** The only case types unlocked for L2/L3 in production are non-payout operational actions: **WISMO** (carrier tracking answers), **UNCLEAR** (clarification requests), **LATE** (informing customer of return window expiration), and **NDR** (courier address updates).
 
 ---
 
