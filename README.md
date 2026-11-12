@@ -3,7 +3,7 @@
 > **Autonomous post-purchase dispute resolution for solo D2C merchants — grounded in video evidence, constrained by real-world financial loss limits, and governed by deterministic reliability benchmarks.**
 
 [![Live Demo](https://img.shields.io/badge/Demo-Live%20Application-2d6a4f?style=for-the-badge&logo=fastapi)](https://returnlens-demo.onrender.com)
-[![Demo Video](https://img.shields.io/badge/Video-2.5--Min%20Walkthrough-d90429?style=for-the-badge&logo=youtube)](https://drive.google.com/file/d/1dhy6rv2TiLq6mTpy_VgWgXgWEs5W14LR/view)
+[![Demo Video](https://img.shields.io/badge/Video-Under%203%20Min-d90429?style=for-the-badge&logo=youtube)](https://drive.google.com/file/d/1dhy6rv2TiLq6mTpy_VgWgXgWEs5W14LR/view)
 [![Pitch Deck](https://img.shields.io/badge/Deck-6--Slide%20Presentation-0077b6?style=for-the-badge&logo=googledrive)](https://docs.google.com/presentation/d/1jrQipaXDKy_4FcaD0eaU8Ez2VyQTQyjuT_GR231WbAg/edit)
 
 * **Hackathon Track:** AgentX Hackathon 2026 — Track PS-04 (Customer Support & E-Commerce Operations)
@@ -27,7 +27,7 @@ Solo Direct-to-Consumer (D2C) merchants in India lose up to **18% of operating m
 
 ![ReturnLens Seller Console — Case B Color Mismatch](docs/screenshots/seller_case_b.png)
 
-*Figure 1: ReturnLens Seller Console showing unboxing video frame-scrubbing at `00:07`, model ground-truth observation (black headphones detected against white catalog order), 7-step Autonomy Gate, and one-click proposal review.*
+*Figure 1: ReturnLens Seller Console showing timestamped unboxing-video evidence (click a timestamp to seek), model ground-truth observation (black headphones detected against white catalog order), 7-step Autonomy Gate, and one-click proposal review.*
 
 ---
 
@@ -41,7 +41,7 @@ Follow this 60-second walkthrough:
 2. **Customer Chat**: In **Customer Portal**, select customer **Arjun Mehta (`CUS-02`)** on order **`ORD-7729`** (or pick any customer/order).
 3. **Upload Any Photo or Short Clip**: Click the attachment button (`📎`) and upload any photo or short clip of any object. The agent ingests evidence in seconds.
 4. **See What the Agent Saw vs. What It Could Not Verify**:
-   - **What the agent saw**: Fine-grained visual attributes with video timestamps (e.g., `00:07: black headphones` detected against white catalog order).
+   - **What the agent saw**: Fine-grained visual attributes with video timestamps (e.g., `▶ 00:05 Colour: black` against a white catalog order; the timestamp comes from the model and can differ between runs).
    - **Still unverified**: Missing physical proof the vision model could not confirm (e.g., outer box shipping label barcode).
 5. **Seller Console & "Why did it stop?"**: Switch to **Seller Console** (open on demo, no password required). Click case `ORD-7729` and click the **"Why did it stop?"** button (or check the Autonomy Bar). The 7-step Autonomy Gate displays the exact code and policy checks that stopped autonomous execution and deferred to human review.
 
@@ -49,7 +49,7 @@ Follow this 60-second walkthrough:
 |:---|:---|:---|:---|
 | **A. Instant WISMO** | In **Customer Portal**, select **Priya Sharma** (`CUS-01`), order `ORD-2030`. Ask: *"Where is my order?"* | Agent queries live carrier API, verifies status is `IN_TRANSIT` with ETA `2026-11-13` (Delhivery), and delivers instant tracking reply. | Status pill turns `Case resolved`; both messages render in thread. |
 | **B. Try to Break It** | Click the orange **⚡ Try to Break It** button in the header. Run **Preset 1 (Prompt Injection)** or **Preset 2 (₹1,800 Over-Refund)**. | Code-enforced guardrails sanitize adversarial text on paper (`CLIP-INJ`) and reject refund requests exceeding order balance (`P_BALANCE`). | Modal displays `SANITIZED` / `BLOCKED` with architectural defense details. |
-| **C. Video Grounding** | Switch to **Seller Console** and click case `ORD-7729` (Arjun Mehta). Click timestamp **`▶ 00:07`**. | Video player seeks directly to 00:07 where the observer model identified black headphones in the box vs. ordered white headphones. Click **Review & Approve**. | Discrepancy warning renders; return proposal approved and case transitions to `WAITING_RETURN`. |
+| **C. Video Grounding** | In **Customer Portal**, pick **Arjun Mehta** (`CUS-02`), order `ORD-7729`, attach [this sample clip](https://github.com/lenamkhanhh/returnlens-agent/raw/main/app/demo/media/stock/stock_black_headphones_pexels_9130360.mp4) (📎) and send *"I ordered white headphones but received black ones."* Then open **Seller Console** → case `ORD-7729` and click the timestamp pill under **What the agent saw**. | The observer reports colour **black** with a timestamp (ordered: white); the barcode stays under **Still unverified**, so the agent asks the customer once for a label photo instead of proposing a refund. | Discrepancy warning renders; clicking the timestamp seeks the video; case shows **Waiting Customer** with 0 proposals. |
 
 ---
 
