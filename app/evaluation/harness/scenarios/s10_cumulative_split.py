@@ -60,8 +60,12 @@ class Scenario10CumulativeSplit(BaseScenario):
         env.app.dependency_overrides[get_repository] = lambda: env.repo
 
         now_iso = datetime.now(timezone.utc).isoformat()
+        # The prior refund must fall on the same calendar day the autonomy router checks
+        # (DEMO_TODAY), not on the wall-clock UTC day, or the test breaks after midnight UTC.
+        os.environ["DEMO_TODAY"] = env.demo_today
+        prior_refund_at = f"{env.demo_today}T06:00:00+00:00"
         agent_ver = compute_agent_version()
-        model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.8-flash")
+        model_id = os.environ.get("MODEL_PRIMARY", "gemini-3.5-flash-lite")  # same default as the autonomy router
 
         # 1. Seed prior refund of 129900 paise (₹1,299) for CUS-03 on ORD-1042 in DEMO_TODAY
         with env.repo.db.transaction() as conn:
@@ -70,7 +74,7 @@ class Scenario10CumulativeSplit(BaseScenario):
                 INSERT INTO refunds (refund_id, order_id, amount_minor, currency, status, created_action_id, created_at)
                 VALUES ('REF-1042-PRIOR', 'ORD-1042', 129900, 'INR', 'processed', 'ACT-PRIOR', ?)
                 """,
-                (now_iso,),
+                (prior_refund_at,),
             )
             conn.execute("UPDATE orders SET refunded_minor = 129900 WHERE order_id = 'ORD-1042'")
 
