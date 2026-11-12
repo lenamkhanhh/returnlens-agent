@@ -8,32 +8,32 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H80000000,&H80000000,0,0,0,0,100,100,0,0,3,4,0,2,60,60,60,1
+Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H59000000,&H59000000,0,0,0,0,100,100,0,0,3,10,0,2,60,60,56,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.80,0:00:04.50,Default,,0,0,0,,Can an AI agent refund on its own?\NSounds risky, right?
-Dialogue: 0,0:00:05.00,0:00:10.00,Default,,0,0,0,,ReturnLens says not yet: damage refunds\Nstay locked on the live demo.
-Dialogue: 0,0:00:10.50,0:00:16.00,Default,,0,0,0,,The courier confirms the return parcel.\NDoes the agent refund immediately?
-Dialogue: 0,0:00:16.50,0:00:22.00,Default,,0,0,0,,Not here. It drafts a refund proposal,\Nand waits for seller review.
-Dialogue: 0,0:00:22.50,0:00:27.50,Default,,0,0,0,,Why? One of its tests is synthetic,\Nand that never counts.
-Dialogue: 0,0:00:30.20,0:00:35.50,Default,,0,0,0,,Meet the multi-case inbox:\Norder facts, seen evidence, unverified.
-Dialogue: 0,0:00:35.80,0:00:41.00,Default,,0,0,0,,An immutable audit drawer\Ntracks every single event in code.
-Dialogue: 0,0:00:42.20,0:00:47.50,Default,,0,0,0,,A customer asks where her order is.\NThe agent checks live Delhivery data.
-Dialogue: 0,0:00:48.00,0:00:54.00,Default,,0,0,0,,Immediate tracking status and ETA,\Nanswered without human delay.
-Dialogue: 0,0:00:54.50,0:01:02.00,Default,,0,0,0,,Delivery failed for Sneha Patil.\NThe agent reaches out right away.
-Dialogue: 0,0:01:02.50,0:01:08.20,Default,,0,0,0,,She texts an address change in Hinglish:\NFlat 14B, tomorrow at 6 PM.
-Dialogue: 0,0:01:08.60,0:01:13.20,Default,,0,0,0,,Parsed into a reattempt proposal,\Nscheduled with a single click.
-Dialogue: 0,0:01:14.30,0:01:19.50,Default,,0,0,0,,Now, multimodal evidence:\Nan unboxing clip and English voice note.
-Dialogue: 0,0:01:20.00,0:01:27.00,Default,,0,0,0,,The catalog says white headphones.\NAt 00:10, vision spots black!
-Dialogue: 0,0:01:27.50,0:01:33.00,Default,,0,0,0,,No guessing, no false claims.\NThe box barcode remains unverified.
-Dialogue: 0,0:01:33.30,0:01:37.40,Default,,0,0,0,,Zero rogue proposals created:\Ntransferred directly to human review.
-Dialogue: 0,0:01:38.40,0:01:45.00,Default,,0,0,0,,A dark video shows no visible damage.\NThe agent asks once for a clear photo.
-Dialogue: 0,0:01:45.50,0:01:51.50,Default,,0,0,0,,The customer leaves and returns later...\Nthe entire chat and context restore.
-Dialogue: 0,0:01:52.00,0:01:57.20,Default,,0,0,0,,It remembers preferred language Hinglish,\Nso it never asks twice.
-Dialogue: 0,0:01:58.20,0:02:03.50,Default,,0,0,0,,How does an agent earn autonomy?\NBy passing 5 of 5 runs in the harness.
-Dialogue: 0,0:02:04.00,0:02:09.50,Default,,0,0,0,,9 of 10 scenarios pass 5 of 5.\NMismatch sits at 4 of 5... locked.
-Dialogue: 0,0:02:10.00,0:02:13.60,Default,,0,0,0,,Nervous? One click on the kill switch\Ntakes back total control.
-Dialogue: 0,0:02:14.60,0:02:19.50,Default,,0,0,0,,Try to break it in the sandbox:\Nprompt injection neutralized.
-Dialogue: 0,0:02:20.00,0:02:25.60,Default,,0,0,0,,Over-refunds and velocity attacks:\Nhard-blocked by code invariants!
-Dialogue: 0,0:02:26.50,0:02:30.00,Default,,0,0,0,,ReturnLens.\NEvery decision, backed by evidence.
+Dialogue: 0,0:00:00.97,0:00:05.44,Default,,0,0,0,,Can an AI agent refund on its own? Sounds risky, right?
+Dialogue: 0,0:00:06.05,0:00:12.09,Default,,0,0,0,,ReturnLens says not yet: damage refunds stay locked on the live demo.
+Dialogue: 0,0:00:12.70,0:00:19.35,Default,,0,0,0,,The courier confirms the return parcel. Does the agent refund immediately?
+Dialogue: 0,0:00:19.96,0:00:26.61,Default,,0,0,0,,Not here. It drafts a refund proposal, and waits for seller review.
+Dialogue: 0,0:00:27.21,0:00:33.26,Default,,0,0,0,,Why? One of its tests is synthetic, and that never counts.
+Dialogue: 0,0:00:36.51,0:00:42.74,Default,,0,0,0,,Meet the multi-case inbox: order facts, seen evidence, unverified.
+Dialogue: 0,0:00:43.10,0:00:49.21,Default,,0,0,0,,An immutable audit drawer tracks every single event in code.
+Dialogue: 0,0:00:50.59,0:00:56.52,Default,,0,0,0,,A customer asks where her order is. The agent checks live Delhivery data.
+Dialogue: 0,0:00:57.08,0:01:03.78,Default,,0,0,0,,Immediate tracking status and ETA, answered without human delay.
+Dialogue: 0,0:01:04.34,0:01:12.73,Default,,0,0,0,,Delivery failed for Sneha Patil. The agent reaches out right away.
+Dialogue: 0,0:01:13.29,0:01:19.66,Default,,0,0,0,,She texts an address change in Hinglish: Flat 14B, tomorrow at 6 PM.
+Dialogue: 0,0:01:20.11,0:01:25.25,Default,,0,0,0,,Parsed into a reattempt proposal, scheduled with a single click.
+Dialogue: 0,0:01:26.46,0:01:32.03,Default,,0,0,0,,Now, multimodal evidence: an unboxing clip and English voice note.
+Dialogue: 0,0:01:32.57,0:01:40.07,Default,,0,0,0,,The catalog says white headphones. At 00:05, vision spots black!
+Dialogue: 0,0:01:40.61,0:01:46.51,Default,,0,0,0,,No guessing, no false claims. The box barcode remains unverified.
+Dialogue: 0,0:01:46.83,0:01:51.22,Default,,0,0,0,,Zero rogue proposals created: transferred directly to human review.
+Dialogue: 0,0:01:52.31,0:01:59.56,Default,,0,0,0,,A dark video shows no visible damage. The agent asks once for a clear photo.
+Dialogue: 0,0:02:00.11,0:02:06.71,Default,,0,0,0,,The customer leaves and returns later... the entire chat and context restore.
+Dialogue: 0,0:02:07.26,0:02:12.97,Default,,0,0,0,,It remembers preferred language Hinglish, so it never asks twice.
+Dialogue: 0,0:02:14.07,0:02:19.96,Default,,0,0,0,,How does an agent earn autonomy? By passing 5 of 5 runs in the harness.
+Dialogue: 0,0:02:20.51,0:02:26.62,Default,,0,0,0,,9 of 10 scenarios pass 5 of 5. Mismatch sits at 4 of 5... locked.
+Dialogue: 0,0:02:27.17,0:02:31.16,Default,,0,0,0,,Nervous? One click on the kill switch takes back total control.
+Dialogue: 0,0:02:32.33,0:02:38.34,Default,,0,0,0,,Try to break it in the sandbox: prompt injection neutralized.
+Dialogue: 0,0:02:38.96,0:02:45.83,Default,,0,0,0,,Over-refunds and velocity attacks: hard-blocked by code invariants!
+Dialogue: 0,0:02:46.84,0:02:50.36,Default,,0,0,0,,ReturnLens. Every decision, backed by evidence.

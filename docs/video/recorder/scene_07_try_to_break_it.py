@@ -68,7 +68,7 @@ def record_scene_07() -> Path:
             ink_circle(page, blocked_badge1, text="Blocked: prompt injection neutralized", side="bottom", duration=2.0)
         else:
             ink_circle(page, preset1.first, text="Blocked: prompt injection neutralized", side="bottom", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 4. Preset 2: ₹1,800 Over-Refund
@@ -80,7 +80,7 @@ def record_scene_07() -> Path:
             ink_circle(page, blocked_badge2, text="Blocked: exceeds balance", side="bottom", duration=2.0)
         else:
             ink_circle(page, preset2.first, text="Blocked: exceeds balance", side="bottom", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 5. Preset 3: Cumulative Split Refund
@@ -92,7 +92,7 @@ def record_scene_07() -> Path:
             ink_circle(page, blocked_badge3, text="Blocked: cumulative limit", side="bottom", duration=2.0)
         else:
             ink_circle(page, preset3.first, text="Blocked: cumulative limit", side="bottom", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 6. Close Modal

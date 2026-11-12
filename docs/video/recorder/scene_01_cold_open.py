@@ -91,7 +91,7 @@ def record_scene_01() -> Path:
             code_chip = page.locator("#autonomy-bar code").first
             smooth_move(page, code_chip, steps=15)
             ink_circle(page, code_chip, text="Measured on this exact code", side="bottom", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 3. Seller tries to set DAMAGE -> L3; app refuses
@@ -108,10 +108,18 @@ def record_scene_01() -> Path:
         time.sleep(0.8)
 
         # Verify refusal message on screen (plain words banner)
-        lock_error_loc = page.locator("#autonomy-bar div:has-text('synthetic'), #autonomy-bar div:has-text('Reliability locked'), #autonomy-bar div:has-text('go above L1')")
+        lock_error_loc = page.locator("#autonomy-bar div:has-text('go above L1')")
         if lock_error_loc.count() > 0:
-            ink_arrow(page, lock_error_loc.first, text="refused: missing 5/5 run for S10", from_side="bottom", duration=2.5)
-            time.sleep(1.2)
+            banner_box = page.evaluate("""() => {
+                const els = Array.from(document.querySelectorAll('#autonomy-bar div'))
+                  .filter(e => e.textContent.includes('go above L1') && e.getBoundingClientRect().width > 700);
+                if (!els.length) return null;
+                els.sort((a, b) => a.getBoundingClientRect().height - b.getBoundingClientRect().height);
+                const r = els[0].getBoundingClientRect();
+                return {x: r.left, y: r.top, width: r.width, height: r.height};
+            }""")
+            ink_circle(page, banner_box or lock_error_loc.first, text=None, side="bottom", duration=2.5)
+            time.sleep(2.2)
             ink_clear(page)
 
         # 4. Show MISMATCH locked 4/5
@@ -119,12 +127,12 @@ def record_scene_01() -> Path:
         mismatch_card = page.locator("div:has-text('MISMATCH'):has-text('Locked')").first
         if mismatch_card.count() > 0:
             smooth_move(page, mismatch_card, steps=15)
-            ink_circle(page, mismatch_card, text="locked until 5/5", side="bottom", duration=2.0)
+            ink_circle(page, mismatch_card, text="locked until 5/5", side="only-top", duration=2.0)
         else:
             mismatch_col = page.locator("div:has-text('MISMATCH')").first
             smooth_move(page, mismatch_col, steps=15)
             ink_circle(page, mismatch_col, text="locked until 5/5", side="bottom", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 5. Switch to Operator Controls to fire RETURN_RECEIVED
@@ -155,7 +163,7 @@ def record_scene_01() -> Path:
         print(f"[01 API] ORD-1042 state after event: {c1042['state']}")
 
         ink_arrow(page, dispatch_btn, text="RETURN_RECEIVED dispatched", from_side="top", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 6. Switch back to Seller Console
@@ -178,14 +186,18 @@ def record_scene_01() -> Path:
         # Annotate PROPOSE_REFUND ₹1,299
         prop_badge = page.locator(".proposal-box:has-text('PROPOSE REFUND') .badge, .proposal-box:has-text('PROPOSE REFUND') strong:has-text('₹1,299')").first
         if prop_badge.count() > 0:
+            prop_badge.scroll_into_view_if_needed()
+            time.sleep(0.4)
             ink_circle(page, prop_badge, text="PROPOSE_REFUND ₹1,299 created", side="right", duration=2.5)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
         else:
             prop_box = page.locator(".proposal-box:has-text('PROPOSE REFUND')").first
             if prop_box.count() > 0:
+                prop_box.scroll_into_view_if_needed()
+                time.sleep(0.4)
                 ink_circle(page, prop_box, text="PROPOSE_REFUND ₹1,299 created", side="bottom", duration=2.5)
-                time.sleep(1.2)
+                time.sleep(2.2)
                 ink_clear(page)
 
         # 7. Open "Why did it stop?"
@@ -199,7 +211,7 @@ def record_scene_01() -> Path:
             if step4.count() > 0:
                 smooth_move(page, step4.first, steps=15)
                 ink_arrow(page, step4.first, text="Stopped: DAMAGE requires 5/5", from_side="left", duration=2.5)
-                time.sleep(1.5)
+                time.sleep(2.2)
                 ink_clear(page)
 
             close_btn = page.locator(".modal-header button:has-text('✕')")
@@ -229,7 +241,7 @@ def record_scene_01() -> Path:
             succ_msg = page.locator("div:has-text('Action executed successfully')")
             if succ_msg.count() > 0:
                 ink_arrow(page, succ_msg.first, text="Refund approved & confirmed", from_side="bottom", duration=2.5)
-                time.sleep(1.5)
+                time.sleep(2.2)
                 ink_clear(page)
 
         time.sleep(0.5)

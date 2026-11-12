@@ -1,5 +1,13 @@
 # ReturnLens — Video Scene Facts & Timing Guide (Wave 17 Verified)
 
+> **Wave 18 re-record (12/11, 07:40) supersedes the timings below.** Scene durations now 35.9 / 14.0 / 36.0 / 25.8 / 21.8 / 18.2 / 14.7 / 4.3 s, total **170.8 s** (2:50.8). Ink notes stay ~2.5 s and hug the innermost target. Changes in on-screen facts:
+> - Scene 04: this run's model observed colour **black at 00:05** (the timestamp varies per run; the ink note is read from the API: "saw black at 00:05, ordered white"). Narration cue 14 says "At 00:05".
+> - Scene 01: refusal banner circled without a note; MISMATCH note "locked until 5/5" placed above the card; "PROPOSE_REFUND ₹1,299 created" is scrolled into view.
+> - Scene 03: the reattempt success message is circled without a note. The false "2x speed" badge was removed (the scene plays at 1x).
+> - Scene 05: ink "Chat restored after leaving" circles the restored agent message; the memory chip `preferred_language=hinglish` is circled without a note.
+> - Scene 06: the kill-switch button ("Autonomy killed") is circled without a note.
+
+
 This document lists the exact ground-truth facts, on-screen events, and timing cues for each recorded scene (`scene_01.mp4` through `scene_08.mp4`). AUDIO narration (`docs/video/narration.srt`) must align its voice cues and claims strictly with these verified on-screen facts.
 
 - **Total Video Duration**: 150.40s (02:30.4) — comfortably within the hard 180.00s ceiling (29.6s safety buffer).

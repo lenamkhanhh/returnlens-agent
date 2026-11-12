@@ -213,7 +213,7 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H80000000,&H80000000,0,0,0,0,100,100,0,0,3,4,0,2,60,60,60,1
+Style: Default,Arial,32,&H00FFFFFF,&H000000FF,&H59000000,&H59000000,0,0,0,0,100,100,0,0,3,10,0,2,60,60,56,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -223,7 +223,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     for c in cues:
         start_ass = srt_time_to_ass(c["start"])
         end_ass = srt_time_to_ass(c["end"])
-        text = "\\N".join(c["lines"])
+        text = " ".join(l.strip() for l in c["lines"])  # one line, one box (no overlapping boxes)
         dialogue_lines.append(f"Dialogue: 0,{start_ass},{end_ass},Default,,0,0,0,,{text}")
 
     ass_output_path.write_text(ass_header + "\n".join(dialogue_lines) + "\n", encoding="utf-8")
@@ -738,7 +738,7 @@ def main() -> None:
     parser.add_argument(
         "--badge-scenes",
         type=str,
-        default="scene_03,3",
+        default="",
         help="Comma-separated scene identifiers to receive '2x speed' badge",
     )
     parser.add_argument(

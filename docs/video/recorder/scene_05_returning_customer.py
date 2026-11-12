@@ -93,7 +93,7 @@ def record_scene_05() -> Path:
         if agent_reply.count() > 0:
             smooth_move(page, agent_reply, steps=12)
             ink_circle(page, agent_reply, text="Agent requests clear closeup", side="top", duration=2.0)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
 
         # 2. Customer leaves (navigates away / simulates closing tab)
@@ -114,11 +114,11 @@ def record_scene_05() -> Path:
         time.sleep(0.8)
 
         # Circle ONLY the case ID chip in header
-        case_chip = page.locator(".case-id-chip")
+        case_chip = page.locator(".chat-bubble.agent")
         if case_chip.count() > 0:
-            smooth_move(page, case_chip.first, steps=12)
-            ink_circle(page, case_chip.first, text="Session restored", side="bottom", duration=2.0)
-            time.sleep(1.2)
+            smooth_move(page, case_chip.last, steps=12)
+            ink_circle(page, case_chip.last, text="Chat restored after leaving", side="left", duration=2.0)
+            time.sleep(2.2)
             ink_clear(page)
 
         # 4. View Seller Console to show Plan Card Memory chip
@@ -136,14 +136,14 @@ def record_scene_05() -> Path:
         memory_chip = page.locator(".plan-card .memory-chip, .plan-card .badge:has-text('preferred_language'), .plan-card .badge").first
         if memory_chip.count() > 0:
             smooth_move(page, memory_chip, steps=15)
-            ink_arrow(page, memory_chip, text="Remembers language & context - never asks twice", from_side="bottom", duration=2.5)
-            time.sleep(1.5)
+            ink_circle(page, memory_chip, text=None, side="right", duration=2.5)
+            time.sleep(2.2)
         else:
             plan_card = page.locator(".plan-card").first
             if plan_card.count() > 0:
                 smooth_move(page, plan_card, steps=15)
                 ink_arrow(page, plan_card, text="Remembers language & context - never asks twice", from_side="bottom", duration=2.5)
-                time.sleep(1.5)
+                time.sleep(2.2)
 
         ink_clear(page)
         time.sleep(0.4)

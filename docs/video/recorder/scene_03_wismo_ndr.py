@@ -89,7 +89,7 @@ def record_scene_03() -> Path:
         if agent_bubble.count() > 0:
             smooth_move(page, agent_bubble, steps=12)
             ink_circle(page, agent_bubble, text="Live Delhivery tracking & ETA", side="top", duration=2.0)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
 
         # -------------------------------------------------------------
@@ -122,7 +122,7 @@ def record_scene_03() -> Path:
         print(f"[03 API] NDR Case: {ndr_case['case_id'] if ndr_case else 'None'}, state: {ndr_case.get('state') if ndr_case else 'None'}")
 
         ink_arrow(page, dispatch_btn, text="NDR delivery failure", from_side="top", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # -------------------------------------------------------------
@@ -152,7 +152,7 @@ def record_scene_03() -> Path:
         if cus_bubble.count() > 0:
             smooth_move(page, cus_bubble, steps=12)
             ink_circle(page, cus_bubble, text="Address parsed from Hinglish", side="bottom", duration=2.0)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
 
         # -------------------------------------------------------------
@@ -187,8 +187,8 @@ def record_scene_03() -> Path:
 
             succ_msg = page.locator("div:has-text('Action executed successfully')")
             if succ_msg.count() > 0:
-                ink_arrow(page, succ_msg.first, text="One-click reattempt scheduled", from_side="left", duration=2.0)
-                time.sleep(1.4)
+                ink_circle(page, succ_msg.first, text=None, side="top", duration=2.0)
+                time.sleep(2.2)
                 ink_clear(page)
 
         time.sleep(0.5)

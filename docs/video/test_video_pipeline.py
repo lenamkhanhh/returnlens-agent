@@ -33,8 +33,10 @@ class TestVideoPipeline(unittest.TestCase):
         blocks = re.findall(r"^\d+\s*$", content, re.MULTILINE)
         self.assertEqual(len(blocks), 25, "narration.srt should have exactly 25 timed subtitle blocks")
 
-        # Verify timing bounds (ends near 02:30)
-        self.assertIn("00:02:26,500 --> 00:02:30,000", content)
+        # Verify timing bounds: last cue ends before the 3:00 limit
+        ends = re.findall(r"--> (\d\d):(\d\d):(\d\d),(\d\d\d)", content)
+        h, m, sec, ms = (int(x) for x in ends[-1])
+        self.assertLessEqual(h * 3600 + m * 60 + sec + ms / 1000, 180.0)
 
     def test_shotlist_covers_all_eight_scenes(self):
         """Verify SHOTLIST.md exists and covers scenes 01 through 08 per 18 §3 and 19 §1."""
@@ -77,9 +79,9 @@ class TestVideoPipeline(unittest.TestCase):
             self.assertGreaterEqual(len(parts), 10)
             text = parts[9].replace("\\N", "\n").replace("\\n", "\n")
             lines = [l.strip() for l in text.split("\n") if l.strip()]
-            self.assertLessEqual(len(lines), 2, f"Cue has >2 lines: {text}")
-            for l in lines:
-                self.assertLessEqual(len(l), 42, f"Line exceeds 42 characters ({len(l)} chars): '{l}'")
+            # One line per cue so there is a single background box (no overlapping boxes)
+            self.assertEqual(len(lines), 1, f"Cue must be one line: {text}")
+            self.assertLessEqual(len(lines[0]), 90, f"Line exceeds 90 characters ({len(lines[0])} chars): '{lines[0]}'")
 
     def test_audio_assets_and_credits(self):
         """Verify 25 MP3 clips exist, no WAV copies remain, music exists, and CREDITS.md is complete."""

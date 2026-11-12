@@ -81,7 +81,7 @@ def record_scene_02() -> Path:
         if facts_panel.count() > 0:
             smooth_move(page, facts_panel, steps=15)
             ink_circle(page, facts_panel, text="3-group triad: facts, seen, unverified", side="bottom", duration=2.5)
-            time.sleep(1.4)
+            time.sleep(2.2)
 
         # 4. Open Timeline Drawer
         print("[02] Opening Audit Timeline Drawer...")
@@ -96,7 +96,7 @@ def record_scene_02() -> Path:
                 ink_arrow(page, drawer_head, text="Immutable event log", from_side="left", duration=2.5)
             else:
                 ink_arrow(page, ".timeline-drawer", text="Immutable event log", from_side="left", duration=2.5)
-            time.sleep(1.2)
+            time.sleep(2.2)
 
             # Scroll timeline drawer down smoothly
             timeline_drawer = page.locator(".timeline-drawer")

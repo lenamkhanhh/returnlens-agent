@@ -66,7 +66,7 @@ def record_scene_06() -> Path:
             code_chip = page.locator("#autonomy-bar code").first
             smooth_move(page, code_chip, steps=15)
             ink_circle(page, code_chip, text="Measured on this exact code", side="bottom", duration=2.0)
-        time.sleep(1.2)
+        time.sleep(2.2)
         ink_clear(page)
 
         # 2. Open Operator Controls to show System Provenance & Benchmark
@@ -79,13 +79,13 @@ def record_scene_06() -> Path:
         if reliability_row.count() > 0:
             smooth_move(page, reliability_row, steps=15)
             ink_circle(page, reliability_row, text="9 of 10 pass 5/5", side="bottom", duration=2.0)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
         else:
             provenance_card = page.locator(".seller-col:has-text('System provenance')").first
             smooth_move(page, provenance_card, steps=15)
             ink_circle(page, provenance_card, text="9 of 10 pass 5/5", side="bottom", duration=2.0)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
 
         # 3. Return to Seller Console
@@ -123,8 +123,8 @@ def record_scene_06() -> Path:
             smooth_click(page, kill_btn.first, steps=15, delay_after=0.8)
             print("[06] Kill Switch clicked! Red alert banner active...")
 
-            ink_arrow(page, "#autonomy-bar", text="one click takes it back", from_side="bottom", duration=2.5)
-            time.sleep(1.8)
+            ink_circle(page, page.locator("#autonomy-bar button:has-text('Autonomy killed'), #autonomy-bar button:has-text('Kill switch')").first, text=None, side="bottom", duration=2.5)
+            time.sleep(2.2)
 
         ink_clear(page)
         time.sleep(0.5)

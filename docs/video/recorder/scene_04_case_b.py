@@ -121,7 +121,7 @@ def record_scene_04() -> Path:
         if media_thumb.count() > 0:
             smooth_move(page, media_thumb, steps=12)
             ink_circle(page, media_thumb, text="Voice note & unboxing clip", side="top", duration=2.0)
-            time.sleep(1.2)
+            time.sleep(2.2)
             ink_clear(page)
 
         # 2. Switch to Seller Console
@@ -145,20 +145,27 @@ def record_scene_04() -> Path:
 
         # 3. Inspect Triad Facts Panel
         print("[04] Highlighting Triad Facts Panel...")
-        seen_section = page.locator(".triad-group:has-text('What the agent saw') button:has-text('00:10'), .triad-group:has-text('What the agent saw') li:has-text('00:10'), .triad-group:has-text('What the agent saw')").first
+        colour_obs = next((o for o in detail.get('observations', []) if str(o.get('attribute', '')).lower() in ('color', 'colour', 'item_color')), None)
+        colour_t = (colour_obs or {}).get('t') or ''
+        colour_val = (colour_obs or {}).get('color_class') or (colour_obs or {}).get('value') or 'black'
+        colour_note = f"saw {colour_val} at {colour_t}, ordered white" if colour_t else f"saw {colour_val}, ordered white"
+        print(f"[04 API] colour observation: {colour_val} at {colour_t or 'n/a'}")
+        seen_section = page.locator(".triad-group:has-text('What the agent saw') .triad-content > div:has-text('Colour')").first
+        if seen_section.count() == 0:
+            seen_section = page.locator(".triad-group:has-text('What the agent saw') .triad-content").first
         if seen_section.count() > 0:
             smooth_move(page, seen_section, steps=15)
-            ink_circle(page, seen_section, text="black at 00:10", side="bottom", duration=2.5)
-            time.sleep(1.4)
+            ink_circle(page, seen_section, text=colour_note, side="right", duration=2.5)
+            time.sleep(2.6)
 
         unverified_section = page.locator(".triad-group:has-text('Still unverified') .unverified-item, .triad-group:has-text('Still unverified') li, .triad-group:has-text('Still unverified')").first
         if unverified_section.count() > 0:
             ink_arrow(page, unverified_section, text="Still unverified", from_side="bottom", duration=2.5)
-            time.sleep(1.4)
+            time.sleep(2.2)
 
         # 4. Click Timestamp button to seek video (00:10 timestamp)
         print("[04] Clicking timestamp button to seek video...")
-        timestamp_btn = page.locator("button.timestamp-pill:has-text('00:10'), button:has-text('00:10')")
+        timestamp_btn = page.locator(".triad-group:has-text('What the agent saw') .triad-content > div:has-text('Colour') button.timestamp-pill")
         if timestamp_btn.count() > 0:
             smooth_click(page, timestamp_btn.first, steps=15, delay_after=0.8)
         else:

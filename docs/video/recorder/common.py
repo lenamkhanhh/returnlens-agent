@@ -150,6 +150,10 @@ def smooth_click(
     else:
         loc = page.locator(target).first
 
+    try:
+        loc.scroll_into_view_if_needed(timeout=2000)
+    except Exception:
+        pass
     box = loc.bounding_box()
     if box:
         tx = box["x"] + box["width"] / 2.0
@@ -163,6 +167,28 @@ def smooth_click(
     if delay_after > 0:
         time.sleep(delay_after)
 
+def _tight_box(target: Locator):
+    """Bounding box of the innermost visible match.
+
+    Selectors like "div:has-text('X')" match every ancestor div; `.first` is then the
+    outermost one (often the whole page). Ink must hug the smallest element instead.
+    """
+    try:
+        sel = target._impl_obj._selector
+        base = sel.replace(" >> nth=0", "")
+        if base != sel:
+            rects = target.page.locator(base).evaluate_all(
+                """els => els.map(e => { const r = e.getBoundingClientRect();
+                    return {x: r.left, y: r.top, width: r.width, height: r.height}; })
+                    .filter(r => r.width > 8 && r.height > 8 && r.y < window.innerHeight && r.y + r.height > 0)"""
+            )
+            if rects:
+                return min(rects, key=lambda r: r["width"] * r["height"])
+    except Exception:
+        pass
+    return target.bounding_box()
+
+
 def ink_circle(
     page: Page,
     target: Union[str, Locator, dict],
@@ -173,7 +199,7 @@ def ink_circle(
 ) -> None:
     """Draw a hand-drawn wobbly ink circle around target with optional Patrick Hand note."""
     if isinstance(target, Locator):
-        box = target.bounding_box()
+        box = _tight_box(target)
         js_target = box if box else None
     elif isinstance(target, dict):
         js_target = target
@@ -201,7 +227,7 @@ def ink_circle(
             text,
             {
                 "side": side,
-                "duration": int(duration * 1000),
+                "duration": int(max(duration, 5.0) * 1000),
                 "color": color,
             },
         ],
@@ -217,7 +243,7 @@ def ink_arrow(
 ) -> None:
     """Draw a hand-drawn curving arrow from Patrick Hand note to target element."""
     if isinstance(target, Locator):
-        box = target.bounding_box()
+        box = _tight_box(target)
         js_target = box if box else None
     elif isinstance(target, dict):
         js_target = target
@@ -243,7 +269,7 @@ def ink_arrow(
             text,
             {
                 "fromSide": from_side,
-                "duration": int(duration * 1000),
+                "duration": int(max(duration, 5.0) * 1000),
                 "color": color,
             },
         ],

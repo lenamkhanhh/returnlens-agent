@@ -141,7 +141,7 @@ JS_TEMPLATE = r"""/**
       .ink-note-bubble {
         position: absolute;
         font-family: 'Patrick Hand', cursive, sans-serif;
-        font-size: 25px;
+        font-size: 30px;
         line-height: 1.15;
         font-weight: 600;
         color: #e11d48;
@@ -459,9 +459,10 @@ JS_TEMPLATE = r"""/**
       const targetRect = targetInfo;
       const targetEl = targetInfo.el;
 
-      const pref = preferredSide && preferredSide !== 'auto' ? preferredSide : 'right';
+      const only = preferredSide && preferredSide.indexOf('only-') === 0;
+      const pref = only ? preferredSide.slice(5) : (preferredSide && preferredSide !== 'auto' ? preferredSide : 'right');
       const opposite = getOppositeSide(pref);
-      const sides = [pref, opposite, 'right', 'left', 'bottom', 'top'];
+      const sides = only ? [pref] : [pref, opposite, 'right', 'left', 'bottom', 'top'];
       const uniqueSides = Array.from(new Set(sides));
 
       let bestPlacement = null;
@@ -487,7 +488,7 @@ JS_TEMPLATE = r"""/**
         }
 
         noteX = clamp(noteX, 16, window.innerWidth - estWidth - 16);
-        noteY = clamp(noteY, 16, window.innerHeight - estHeight - 16);
+        noteY = clamp(noteY, 16, window.innerHeight - estHeight - 150);
 
         // Arrow endpoints
         let sx, sy, tx, ty;
@@ -519,7 +520,7 @@ JS_TEMPLATE = r"""/**
         if (arrowDist > maxArrowDist) {
           const factor = (maxArrowDist - 12) / arrowDist;
           noteX = clamp(tx + (sx - tx) * factor, 16, window.innerWidth - estWidth - 16);
-          noteY = clamp(ty + (sy - ty) * factor, 16, window.innerHeight - estHeight - 16);
+          noteY = clamp(ty + (sy - ty) * factor, 16, window.innerHeight - estHeight - 150);
           if (side === 'right') {
             sx = noteX - 4;
           } else if (side === 'left') {
@@ -568,37 +569,20 @@ JS_TEMPLATE = r"""/**
      * Generates a wobbly hand-drawn circle/oval path hugging (cx, cy)
      */
     function createWobblyCirclePath(cx, cy, rx, ry) {
-      const numPoints = 8;
-      const points = [];
-      const baseAngle = -Math.PI / 2;
-
-      for (let i = 0; i <= numPoints + 2; i++) {
-        const angle = baseAngle + (i / numPoints) * 2 * Math.PI;
-        // Subtle wobble <= 1.8px so diameter never exceeds target + 24px
-        const wobbleR = (Math.sin(i * 2.3) * 1.2 + Math.cos(i * 1.7) * 0.8);
-        const curRx = rx + wobbleR;
-        const curRy = ry + wobbleR * 0.8;
-        const spiral = (i > numPoints) ? (i - numPoints) * 1.2 : 0;
-        points.push({
-          x: cx + (curRx + spiral) * Math.cos(angle),
-          y: cy + (curRy + spiral) * Math.sin(angle)
-        });
-      }
-
-      let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = points[Math.max(0, i - 1)];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = points[Math.min(points.length - 1, i + 2)];
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-        d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-      }
+      // Hand-drawn rounded rectangle that encloses the whole target box,
+      // with a small overshoot at the end like a pen stroke.
+      const r = Math.min(ry, 16);
+      const L = cx - rx, R = cx + rx, T = cy - ry, B = cy + ry;
+      const j = (k) => (Math.sin(k * 2.7) * 1.4 + Math.cos(k * 1.3) * 0.9);
+      let d = `M ${(L + r + 6).toFixed(1)} ${(T + j(1)).toFixed(1)}`;
+      d += ` Q ${((L + R) / 2).toFixed(1)} ${(T - 2 + j(2)).toFixed(1)}, ${(R - r).toFixed(1)} ${(T + j(3)).toFixed(1)}`;
+      d += ` Q ${(R + 1).toFixed(1)} ${(T - 1).toFixed(1)}, ${(R + j(4)).toFixed(1)} ${(T + r).toFixed(1)}`;
+      d += ` Q ${(R + 2 + j(5)).toFixed(1)} ${cy.toFixed(1)}, ${(R + j(6)).toFixed(1)} ${(B - r).toFixed(1)}`;
+      d += ` Q ${(R + 1).toFixed(1)} ${(B + 1).toFixed(1)}, ${(R - r).toFixed(1)} ${(B + j(7)).toFixed(1)}`;
+      d += ` Q ${((L + R) / 2).toFixed(1)} ${(B + 2 + j(8)).toFixed(1)}, ${(L + r).toFixed(1)} ${(B + j(9)).toFixed(1)}`;
+      d += ` Q ${(L - 1).toFixed(1)} ${(B + 1).toFixed(1)}, ${(L + j(10)).toFixed(1)} ${(B - r).toFixed(1)}`;
+      d += ` Q ${(L - 2 + j(11)).toFixed(1)} ${cy.toFixed(1)}, ${(L + j(12)).toFixed(1)} ${(T + r).toFixed(1)}`;
+      d += ` Q ${(L - 1).toFixed(1)} ${(T - 3).toFixed(1)}, ${(L + r + 22).toFixed(1)} ${(T - 4).toFixed(1)}`;
       return d;
     }
 
@@ -644,15 +628,15 @@ JS_TEMPLATE = r"""/**
 
         const color = options.color || '#e11d48';
         // Padding <= 12 px, diameter <= target + 24 px
-        const padX = Math.min(12, Math.max(4, options.padX !== undefined ? options.padX : (options.pad !== undefined ? options.pad : 8)));
-        const padY = Math.min(12, Math.max(4, options.padY !== undefined ? options.padY : (options.pad !== undefined ? options.pad : 6)));
-        const strokeWidth = options.strokeWidth || 3.2;
+        const padX = Math.min(14, Math.max(8, options.padX !== undefined ? options.padX : (options.pad !== undefined ? options.pad : 12)));
+        const padY = Math.min(12, Math.max(6, options.padY !== undefined ? options.padY : (options.pad !== undefined ? options.pad : 8)));
+        const strokeWidth = options.strokeWidth || 4.2;
         const duration = options.duration || 3000;
 
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const rx = Math.min((rect.width / 2) + padX, (rect.width / 2) + 12);
-        const ry = Math.min((rect.height / 2) + padY, (rect.height / 2) + 12);
+        const rx = (rect.width / 2) + padX;
+        const ry = (rect.height / 2) + padY;
 
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.className.baseVal = 'ink-group';
@@ -676,8 +660,8 @@ JS_TEMPLATE = r"""/**
           noteEl.textContent = text;
           notesLayer.appendChild(noteEl);
 
-          const estWidth = Math.max(110, text.length * 13 + 24);
-          const estHeight = 36;
+          const estWidth = Math.max(120, text.length * 15 + 28);
+          const estHeight = 44;
           const placement = findBestPlacement(rect, estWidth, estHeight, options.side || 'auto', 160);
 
           noteEl.style.left = `${placement.noteX}px`;
@@ -700,7 +684,7 @@ JS_TEMPLATE = r"""/**
         path.style.strokeDasharray = `${pathLength}`;
         path.style.strokeDashoffset = `${pathLength}`;
         path.getBoundingClientRect();
-        path.style.transition = 'stroke-dashoffset 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+        path.style.transition = 'stroke-dashoffset 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
         path.style.strokeDashoffset = '0';
 
         if (arrowPath) {
@@ -743,7 +727,7 @@ JS_TEMPLATE = r"""/**
         }
 
         const color = options.color || '#e11d48';
-        const strokeWidth = options.strokeWidth || 3.0;
+        const strokeWidth = options.strokeWidth || 4.0;
         const duration = options.duration || 3000;
 
         const noteEl = document.createElement('div');
@@ -752,8 +736,8 @@ JS_TEMPLATE = r"""/**
         noteEl.textContent = text;
         notesLayer.appendChild(noteEl);
 
-        const estWidth = Math.max(110, text.length * 13 + 24);
-        const estHeight = 36;
+        const estWidth = Math.max(120, text.length * 15 + 28);
+        const estHeight = 44;
         const placement = findBestPlacement(rect, estWidth, estHeight, options.fromSide || options.side || 'auto', 160);
 
         noteEl.style.left = `${placement.noteX}px`;
@@ -776,7 +760,7 @@ JS_TEMPLATE = r"""/**
         path.style.strokeDasharray = `${pathLength}`;
         path.style.strokeDashoffset = `${pathLength}`;
         path.getBoundingClientRect();
-        path.style.transition = 'stroke-dashoffset 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+        path.style.transition = 'stroke-dashoffset 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
         path.style.strokeDashoffset = '0';
 
         const handle = {
@@ -805,7 +789,7 @@ JS_TEMPLATE = r"""/**
       clear: function () {
         while (activeAnnotations.length > 0) {
           const item = activeAnnotations.shift();
-          item.removeImmediate();
+          item.fadeOutAndRemove();
         }
       },
 
