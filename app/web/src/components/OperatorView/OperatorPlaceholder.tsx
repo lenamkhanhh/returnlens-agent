@@ -3,7 +3,7 @@ import React from 'react';
 export const OperatorPlaceholder: React.FC = () => {
   return (
     <div className="operator-placeholder-card">
-      <div style={{ fontSize: '36px', marginBottom: '12px' }}>⚙️</div>
+      
       <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--pine-green)', marginBottom: '8px' }}>
         Operator Console & Autonomy Bar
       </h2>

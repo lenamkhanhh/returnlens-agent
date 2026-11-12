@@ -43,7 +43,7 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
             />
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            💡 Click any observation timestamp in the center panel to seek video.
+            Click any observation timestamp in the center panel to seek video.
           </div>
         </div>
       )}
@@ -55,7 +55,7 @@ export const CaseChatMedia: React.FC<CaseChatMediaProps> = ({
           <div key={audio.evidence_id} style={{ background: '#fbfbfa', padding: '10px', borderRadius: '4px', border: 'var(--border-thin)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: 600 }}>
-                🎙️ Voice Note ({formatDetectedLanguage(audio.language_detected)})
+                Voice note ({formatDetectedLanguage(audio.language_detected)})
               </span>
               <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>{audio.filename}</span>
             </div>

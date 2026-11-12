@@ -70,7 +70,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <strong style={{ fontSize: '14px', letterSpacing: '-0.2px', color: isKilled ? '#b91c1c' : 'var(--pine-green)' }}>
-              🛡️ Autonomy bar
+              Autonomy bar
             </strong>
 
             <span
@@ -106,7 +106,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
               }}
               title="Inspect 7-step autonomy evaluation checklist"
             >
-              ❓ Why did it stop?
+              Why did it stop?
             </button>
           )}
 
@@ -120,7 +120,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
               fontWeight: 600,
             }}
           >
-            {isKilled ? '⚠️ Autonomy killed' : '⚡ Kill switch'}
+            {isKilled ? 'Autonomy killed' : 'Kill switch'}
           </button>
         </div>
       </div>
@@ -177,7 +177,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
                 }}
               >
                 {isLocked
-                  ? (passInfo.text.startsWith('Locked') ? `🔒 ${passInfo.text}` : `🔒 Locked · ${passInfo.text}`)
+                  ? (passInfo.text.startsWith('Locked') ? passInfo.text : `Locked · ${passInfo.text}`)
                   : `✓ ${passInfo.text}`}
               </div>
 
@@ -218,7 +218,7 @@ export const AutonomyBar: React.FC<AutonomyBarProps> = ({
             lineHeight: 1.4,
           }}
         >
-          ⚠️ {lockError}
+          {lockError}
         </div>
       )}
     </div>

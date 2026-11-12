@@ -23,12 +23,12 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     <div className="demo-order-strip">
       <div className="demo-strip-label">
         <span className="demo-tag">DEMO</span>
-        <span>Choose customer & order:</span>
+        <span>Choose a customer and order</span>
       </div>
 
       <div className="demo-strip-controls">
         <div className="demo-control-group">
-          <label>Customer:</label>
+          <label>Customer</label>
           <select
             className="select-field demo-select"
             value={selectedCustomer?.customer_id || ''}
@@ -46,7 +46,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         </div>
 
         <div className="demo-control-group">
-          <label>Order:</label>
+          <label>Order</label>
           <select
             className="select-field demo-select"
             value={selectedOrder?.order_id || ''}
@@ -66,10 +66,10 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
         {selectedOrder && (
           <div className="demo-order-info">
             <span className="info-badge">
-              📦 <strong>{selectedOrder.item_name}</strong> ({selectedOrder.catalog_color})
+              <strong>{selectedOrder.item_name}</strong> ({selectedOrder.catalog_color})
             </span>
             <span className="info-badge">
-              🚚 <strong>{selectedOrder.shipping_status}</strong>
+              <strong>{selectedOrder.shipping_status}</strong>
             </span>
             <span className="info-badge scenario-badge">
               {selectedOrder.scenario_tag}

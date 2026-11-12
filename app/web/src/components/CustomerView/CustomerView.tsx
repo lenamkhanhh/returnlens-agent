@@ -8,6 +8,7 @@ import { ChatThread } from './ChatThread';
 import { VoiceRecorder } from './VoiceRecorder';
 import { MediaUploader } from './MediaUploader';
 import { RecordedAudio } from '../../utils/audioRecorder';
+import { Icon } from '../Icon';
 
 export const CustomerView: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -192,7 +193,7 @@ export const CustomerView: React.FC = () => {
         <div className="phone-header">
           <div className="phone-header-left">
             <div className="phone-avatar">
-              <span className="avatar-icon">🎧</span>
+              <span className="avatar-icon">DA</span>
               <span className="avatar-status-dot" />
             </div>
             <div className="phone-meta">
@@ -233,7 +234,7 @@ export const CustomerView: React.FC = () => {
           <div className="staged-media-bar">
             {pendingFile && (
               <div className="staged-chip">
-                <span>📎 {pendingFile.name}</span>
+                <span><Icon name="paperclip" size={14} /> {pendingFile.name}</span>
                 <button
                   type="button"
                   onClick={() => setPendingFile(null)}
@@ -246,7 +247,7 @@ export const CustomerView: React.FC = () => {
             )}
             {pendingAudio && (
               <div className="staged-chip">
-                <span>🎙️ Voice Note ({formatSecondsToTimestamp(pendingAudio.durationSeconds)})</span>
+                <span><Icon name="mic" size={14} /> Voice note ({formatSecondsToTimestamp(pendingAudio.durationSeconds)})</span>
                 <button
                   type="button"
                   onClick={() => setPendingAudio(null)}
@@ -300,7 +301,7 @@ export const CustomerView: React.FC = () => {
               disabled={status === 'sending' || (!inputText.trim() && !pendingFile && !pendingAudio)}
               title="Send message"
             >
-              ➤
+              <Icon name="send" size={18} />
             </button>
           </div>
         </div>

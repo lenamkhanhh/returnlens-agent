@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { Icon } from '../Icon';
 
 interface MediaUploaderProps {
   onFileSelected: (file: File) => void;
@@ -69,7 +70,7 @@ export const MediaUploader: React.FC<MediaUploaderProps> = ({
           flexShrink: 0,
         }}
       >
-        <span>📎</span>
+        <Icon name="paperclip" size={18} />
       </button>
 
       {showAttachedLabel && selectedFileName && (

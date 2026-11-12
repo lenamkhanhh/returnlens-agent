@@ -59,7 +59,7 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
       {/* 409 Stale Alert */}
       {staleError && (
         <div className="alert-box alert-409">
-          <strong>⚠️ 409 Conflict — Stale Proposal</strong>
+          <strong>409 Conflict — Stale Proposal</strong>
           <div>{staleError}</div>
           <button
             type="button"
@@ -74,7 +74,7 @@ export const ProposalsPanel: React.FC<ProposalsPanelProps> = ({
       {/* 422 Blocked Alert */}
       {blockedError && (
         <div className="alert-box alert-422">
-          <strong>🚫 422 Blocked — Policy Gate {blockedError.code}</strong>
+          <strong>422 Blocked — Policy Gate {blockedError.code}</strong>
           <div>{blockedError.message}</div>
           <div style={{ fontSize: '11px', color: 'var(--terracotta)', marginTop: '2px' }}>
             Domain guardrails prevent this mutation from executing on the ledger.

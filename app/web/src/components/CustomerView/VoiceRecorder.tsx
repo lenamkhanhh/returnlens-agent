@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { AudioRecordingSession, RecordedAudio } from '../../utils/audioRecorder';
 import { formatSecondsToTimestamp } from '../../utils/format';
+import { Icon } from '../Icon';
 
 interface VoiceRecorderProps {
   onAudioReady: (audio: RecordedAudio) => void;
@@ -86,7 +87,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onAudioReady, disa
               color: 'var(--text-muted)',
             }}
           >
-            <span>🎙️</span>
+            <Icon name="mic" size={18} />
           </button>
         )}
 
@@ -97,7 +98,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onAudioReady, disa
               Recording ({formatSecondsToTimestamp(elapsedSeconds)} / 02:00)
             </span>
             <button type="button" onClick={handleStop} className="btn-danger" style={{ padding: '3px 10px' }}>
-              ⏹ Stop
+              Stop
             </button>
           </div>
         )}

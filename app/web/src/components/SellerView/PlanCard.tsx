@@ -61,7 +61,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan }) => {
           <div style={{ marginTop: '2px' }}>
             {memoryUsed.map((m) => (
               <span key={m} className="memory-chip">
-                🏷️ {m}
+                {m}
               </span>
             ))}
           </div>

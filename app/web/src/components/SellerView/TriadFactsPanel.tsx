@@ -159,7 +159,7 @@ export const TriadFactsPanel: React.FC<TriadFactsPanelProps> = ({
 
                   {isMismatch && (
                     <div style={{ fontSize: '12px', color: 'var(--terracotta)', fontWeight: 600, marginTop: '4px' }}>
-                      ⚠️ Discrepancy: Ordered "{catalogColor}", but evidence shows "{obs.color_class}".
+                      Discrepancy: Ordered "{catalogColor}", but evidence shows "{obs.color_class}".
                     </div>
                   )}
 

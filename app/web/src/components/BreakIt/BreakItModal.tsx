@@ -59,7 +59,7 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
         <div className="modal-header">
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--terracotta)' }}>
-              ⚡ Try to Break It — Guardrail Sandbox
+              Try to Break It — Guardrail Sandbox
             </h3>
             <span style={{ fontSize: '12px', color: 'var(--text-light)' }}>
               Verify code-enforced financial guardrails, prompt injection defenses, and cumulative velocity caps.
@@ -172,7 +172,7 @@ export const BreakItModal: React.FC<BreakItModalProps> = ({ isOpen, onClose }) =
               </div>
 
               <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-main)', marginBottom: '6px' }}>
-                🛡️ {result.reason}
+                {result.reason}
               </div>
 
               <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', background: '#ffffff', padding: '8px 10px', borderRadius: '4px', border: 'var(--border-thin)' }}>

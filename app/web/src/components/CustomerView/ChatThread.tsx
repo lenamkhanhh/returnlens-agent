@@ -91,7 +91,7 @@ const WaveformVoicePlayer: React.FC<{
         </span>
 
         <span className="waveform-lang-chip">
-          🎙️ {formatDetectedLanguage(language)}
+          {formatDetectedLanguage(language)}
         </span>
       </div>
 
@@ -120,7 +120,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ messages, evidenceList, 
 
       {messages.length === 0 ? (
         <div className="chat-empty-hint">
-          <div style={{ fontSize: '24px', marginBottom: '6px' }}>💬</div>
+          
           <strong style={{ color: 'var(--text-main)', fontSize: '13px' }}>Start a conversation with Dhun Audio</strong>
           <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
             Ask where your order is, report damage, or request a return with video/photos.
@@ -167,7 +167,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ messages, evidenceList, 
                           src={mediaUrl}
                           className="chat-video-player"
                         />
-                        <div className="chat-thumb-label">🎥 {evi.filename}</div>
+                        <div className="chat-thumb-label">{evi.filename}</div>
                       </div>
                     )}
 
@@ -178,7 +178,7 @@ export const ChatThread: React.FC<ChatThreadProps> = ({ messages, evidenceList, 
                           alt="Customer upload"
                           className="chat-image-preview"
                         />
-                        <div className="chat-thumb-label">🖼️ {evi.filename}</div>
+                        <div className="chat-thumb-label">{evi.filename}</div>
                       </div>
                     )}
                   </div>

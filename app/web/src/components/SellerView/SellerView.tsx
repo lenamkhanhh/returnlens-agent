@@ -11,6 +11,7 @@ import { PolicyChecks } from './PolicyChecks';
 import { PlanCard } from './PlanCard';
 import { ProposalsPanel } from './ProposalsPanel';
 import { TimelineDrawer } from './TimelineDrawer';
+import { Icon } from '../Icon';
 
 export const SellerView: React.FC = () => {
   const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
@@ -203,7 +204,7 @@ export const SellerView: React.FC = () => {
           onClick={() => setIsTimelineOpen(!isTimelineOpen)}
           style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
         >
-          <span>📜</span>
+          <Icon name="audit" size={15} />
           <span>{isTimelineOpen ? 'Close timeline' : 'Case audit timeline'}</span>
           {events.length > 0 && (
             <span style={{ background: 'var(--pine-green)', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '11px' }}>

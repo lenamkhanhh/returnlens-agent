@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, onTabChange, onOpenBr
           style={{ padding: '6px 14px', fontSize: '13px', fontWeight: 600 }}
           title="Security guardrails sandbox"
         >
-          ⚡ Try to Break It
+          Try to Break It
         </button>
       </div>
     </header>

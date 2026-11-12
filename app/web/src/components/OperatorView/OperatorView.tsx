@@ -103,11 +103,9 @@ export const OperatorView: React.FC = () => {
             <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Dispatch delivery and NDR webhooks</span>
           </div>
 
-          <form onSubmit={handleFireCourierEvent} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Shipment / Order ID:
-              </label>
+          <form onSubmit={handleFireCourierEvent} className="form-stack">
+            <div className="field">
+              <label className="field-label">Shipment or order ID</label>
               <input
                 type="text"
                 className="select-field"
@@ -117,11 +115,9 @@ export const OperatorView: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                  Event Type:
-                </label>
+            <div className="form-row-2">
+              <div className="field">
+              <label className="field-label">Event type</label>
                 <select
                   className="select-field"
                   value={eventType}
@@ -133,10 +129,8 @@ export const OperatorView: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                  Attempt No:
-                </label>
+              <div className="field">
+              <label className="field-label">Attempt</label>
                 <select
                   className="select-field"
                   value={attemptNo}
@@ -149,10 +143,8 @@ export const OperatorView: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Reason Code:
-              </label>
+            <div className="field">
+              <label className="field-label">Reason code</label>
               <select
                 className="select-field"
                 value={reason}
@@ -170,8 +162,8 @@ export const OperatorView: React.FC = () => {
             </button>
 
             {courierResult && (
-              <div style={{ fontSize: '12px', fontWeight: 600, color: courierResult.startsWith('✓') ? 'var(--pine-green)' : 'var(--terracotta)' }}>
-                {courierResult}
+              <div className={`form-result ${courierResult.startsWith('✓') ? 'ok' : 'err'}`}>
+                {courierResult.replace(/^[✓✗] /, '')}
               </div>
             )}
           </form>
@@ -184,11 +176,9 @@ export const OperatorView: React.FC = () => {
             <span style={{ fontSize: '11px', color: 'var(--text-light)' }}>Update shipment status and delivery dates live</span>
           </div>
 
-          <form onSubmit={handleUpdateTracking} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Target Order:
-              </label>
+          <form onSubmit={handleUpdateTracking} className="form-stack">
+            <div className="field">
+              <label className="field-label">Order</label>
               <select
                 className="select-field"
                 value={orderId}
@@ -201,10 +191,8 @@ export const OperatorView: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                New Shipment Status:
-              </label>
+            <div className="field">
+              <label className="field-label">New shipment status</label>
               <select
                 className="select-field"
                 value={trackingStatus}
@@ -217,10 +205,8 @@ export const OperatorView: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Delivered Date (YYYY-MM-DD):
-              </label>
+            <div className="field">
+              <label className="field-label">Delivered date (YYYY-MM-DD)</label>
               <input
                 type="text"
                 className="select-field"
@@ -228,9 +214,7 @@ export const OperatorView: React.FC = () => {
                 onChange={(e) => setDeliveredDate(e.target.value)}
                 placeholder="e.g. 2026-10-25 for >7 days late"
               />
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Set to 2026-10-25 to test return window policy expiration.
-              </span>
+              <span className="field-hint">Use 2026-10-25 to test an expired return window.</span>
             </div>
 
             <button type="submit" className="btn-primary" style={{ marginTop: '4px' }}>
@@ -238,8 +222,8 @@ export const OperatorView: React.FC = () => {
             </button>
 
             {trackingResult && (
-              <div style={{ fontSize: '12px', fontWeight: 600, color: trackingResult.startsWith('✓') ? 'var(--pine-green)' : 'var(--terracotta)' }}>
-                {trackingResult}
+              <div className={`form-result ${trackingResult.startsWith('✓') ? 'ok' : 'err'}`}>
+                {trackingResult.replace(/^[✓✗] /, '')}
               </div>
             )}
           </form>
@@ -270,8 +254,8 @@ export const OperatorView: React.FC = () => {
           </button>
 
           {resetMessage && (
-            <div style={{ fontSize: '12px', fontWeight: 600, color: resetMessage.startsWith('✓') ? 'var(--pine-green)' : 'var(--terracotta)' }}>
-              {resetMessage}
+            <div className={`form-result ${resetMessage.startsWith('✓') ? 'ok' : 'err'}`}>
+                {resetMessage.replace(/^[✓✗] /, '')}
             </div>
           )}
         </div>
@@ -285,23 +269,23 @@ export const OperatorView: React.FC = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
             <div className="fact-row">
-              <span className="fact-label">Agent Engine:</span>
+              <span className="fact-label">Agent engine</span>
               <span className="fact-value">ReturnLens Core v1.0</span>
             </div>
             <div className="fact-row">
-              <span className="fact-label">Clock (DEMO_TODAY):</span>
+              <span className="fact-label">Demo clock</span>
               <span className="fact-value">2026-11-11 (Asia/Kolkata)</span>
             </div>
             <div className="fact-row">
-              <span className="fact-label">Primary Vision Model:</span>
+              <span className="fact-label">Vision model</span>
               <span className="fact-value">{modelId || 'gemini-3.5-flash-lite'}</span>
             </div>
             <div className="fact-row">
-              <span className="fact-label">Audio Transcriber:</span>
+              <span className="fact-label">Voice transcription</span>
               <span className="fact-value">Hindi / Hinglish / English</span>
             </div>
             <div className="fact-row">
-              <span className="fact-label">Reliability:</span>
+              <span className="fact-label">Reliability</span>
               <span className="fact-value" style={{ color: 'var(--pine-green)', fontWeight: 600 }}>
                 {reliabilitySummary}
               </span>
